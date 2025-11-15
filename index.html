@@ -5,73 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chill Chat</title>
 
-  <!-- React e ReactDOM da CDN -->
+  <!-- React e ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 
-  <!-- Firebase SDK da CDN -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
 
-  <!-- CSS moderno -->
+  <!-- CSS -->
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #f0f4f8;
       margin: 0;
       padding: 0;
-      display: flex;
-      justify-content: center;
-      padding-top: 50px;
     }
 
     #root {
-      width: 400px;
+      display: flex;
+      max-width: 800px;
+      margin: 50px auto;
       background: white;
       border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      padding: 20px;
+      height: 500px;
     }
 
-    h1, h2, h3 {
-      text-align: center;
-      color: #333;
-    }
-
-    input {
-      width: 100%;
+    .sidebar {
+      width: 200px;
+      border-right: 1px solid #ccc;
       padding: 10px;
-      margin: 8px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
 
-    button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      border: none;
-      border-radius: 8px;
-      background-color: #4CAF50;
-      color: white;
-      font-size: 16px;
+    .contacts div {
+      padding: 5px;
+      margin-bottom: 5px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      border-radius: 6px;
     }
 
-    button:hover {
-      background-color: #45a049;
+    .contacts div:hover {
+      background: #e1f5fe;
+    }
+
+    .chat-section {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
     }
 
     .chat-box {
       border: 1px solid #ddd;
       border-radius: 8px;
       padding: 10px;
-      height: 300px;
-      overflow-y: scroll;
+      flex: 1;
+      overflow-y: auto;
       margin-bottom: 10px;
       background: #f9f9f9;
     }
@@ -79,10 +72,34 @@
     .chat-box div {
       padding: 5px;
       margin-bottom: 5px;
-      border-radius: 6px;
-      background: #e1f5fe;
+      border-radius: 8px;
       word-wrap: break-word;
     }
+
+    .sent { background: #dcf8c6; align-self: flex-end; }
+    .received { background: #fff; align-self: flex-start; }
+
+    input, button {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover { background: #45a049; }
+
+    .logout-btn { background: #f44336; }
+    .logout-btn:hover { background: #d32f2f; }
   </style>
 </head>
 
@@ -93,4 +110,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
