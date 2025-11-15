@@ -22,6 +22,7 @@ function generateChillNumber() {
 // ======== APP ========
 function App() {
   const [user, setUser] = React.useState(null);
+  const [userData, setUserData] = React.useState(null);
   const [contacts, setContacts] = React.useState([]);
   const [activeContact, setActiveContact] = React.useState(null);
   const [messages, setMessages] = React.useState([]);
@@ -32,15 +33,19 @@ function App() {
   React.useEffect(() => {
     auth.onAuthStateChanged(async (u) => {
       if (u) {
+        setUser(u);
         const userRef = db.ref("users/" + u.uid);
         const snapshot = await userRef.get();
         if (!snapshot.exists()) {
           const chillNumber = generateChillNumber();
           userRef.set({ email: u.email, username: "", chillNumber });
         }
-        setUser(u);
+        userRef.on("value", (snap) => {
+          setUserData(snap.val());
+        });
       } else {
         setUser(null);
+        setUserData(null);
       }
     });
   }, []);
@@ -74,8 +79,9 @@ function App() {
     const contactsRef = db.ref("contacts/" + user.uid);
     contactsRef.on("value", (snap) => {
       const data = snap.val() || {};
-      setContacts(Object.values(data));
-      if (Object.keys(data).length > 0) setWelcomeVisible(false);
+      const list = Object.keys(data).map(uid => ({ uid, ...data[uid] }));
+      setContacts(list);
+      if (list.length > 0) setWelcomeVisible(false);
     });
     return () => contactsRef.off();
   }, [user]);
@@ -87,7 +93,13 @@ function App() {
     const messagesRef = db.ref("messages/" + chatId);
     messagesRef.on("value", (snap) => {
       const data = snap.val() || {};
-      setMessages(Object.values(data));
+      const list = Object.keys(data).map(k => data[k]);
+      setMessages(list);
+      // scroll automatico
+      setTimeout(() => {
+        const chatBox = document.getElementById("messagesDiv");
+        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+      }, 100);
     });
     return () => db.ref("messages/" + chatId).off();
   }, [user, activeContact]);
@@ -113,7 +125,7 @@ function App() {
   }
 
   if (!user) {
-    return React.createElement("div", { style:{padding:"20px"}},
+    return React.createElement("div", { style:{padding:"20px"} },
       React.createElement("h2", null, "Login / Registrati"),
       React.createElement("input", { id:"email", placeholder:"Email", type:"email" }),
       React.createElement("input", { id:"username", placeholder:"Username" }),
@@ -123,7 +135,7 @@ function App() {
     );
   }
 
-  return React.createElement("div", { style:{display:"flex", flex:1, height:"100%"}},
+  return React.createElement("div", { style:{display:"flex", flex:1, height:"100%", animation:"fadeIn 0.5s"} },
     // ===== SIDEBAR =====
     React.createElement("div", { className:"sidebar" },
       React.createElement("button", { onClick:()=>setTab("chat") }, "Chat"),
@@ -136,19 +148,19 @@ function App() {
       tab === "chat" && React.createElement("div", { className:"chat-container" },
         React.createElement("div", { className:"contacts-list" },
           contacts.map((c, idx) =>
-            React.createElement("div", { key:idx, className: activeContact && activeContact.uid===c.uid ? "active": "", onClick:()=>setActiveContact(c) }, c.username + " (" + c.chillNumber + ")")
+            React.createElement("div", { key:idx, className: activeContact && activeContact.uid===c.uid ? "active": "", onClick:()=>setActiveContact(c), style:{transition:"0.3s"} }, c.username + " (" + c.chillNumber + ")")
           )
         ),
         React.createElement("div", { className:"chat-box" },
           welcomeVisible && React.createElement("div", { className:"welcome" }, "Benvenuto su Chill Chat! Aggiungi i tuoi amici e chilla con loro."),
-          React.createElement("div", { className:"messages" },
+          React.createElement("div", { className:"messages", id:"messagesDiv" },
             messages.map((m, idx)=>
-              React.createElement("div", { key:idx, className:m.from===user.uid?"sent":"received" }, m.text)
+              React.createElement("div", { key:idx, className:m.from===user.uid?"message sent":"message received", style:{transition:"all 0.3s ease"} }, m.text)
             )
           ),
           activeContact && React.createElement("div", { className:"message-input" },
             React.createElement("input", { id:"messageInput", placeholder:"Scrivi un messaggio" }),
-            React.createElement("button", { onClick:sendMessage }, "Invia")
+            React.createElement("button", { className:"send", onClick:sendMessage }, "Invia")
           )
         )
       ),
@@ -161,8 +173,8 @@ function App() {
       // ===== PROFILE =====
       tab === "profile" && React.createElement("div", { className:"profile-section" },
         React.createElement("h3", null, "Profilo"),
-        React.createElement("p", null, "Chill #: " + (user.uid ? contacts.find(c=>c.uid===user.uid)?.chillNumber || "???":"???")),
-        React.createElement("p", null, "Username: " + (user.uid ? contacts.find(c=>c.uid===user.uid)?.username || "???":"???")),
+        React.createElement("p", null, "Chill #: " + (userData?.chillNumber || "???")),
+        React.createElement("p", null, "Username: " + (userData?.username || "???")),
         React.createElement("button", { onClick:handleLogout }, "Logout")
       )
     )
