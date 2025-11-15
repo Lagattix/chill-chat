@@ -13,82 +13,79 @@
   <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
-  
+
+  <!-- CSS moderno -->
   <style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f0f4f8;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-  }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      padding-top: 50px;
+    }
 
-  #root {
-    width: 400px;
-    background: white;
-    margin-top: 50px;
-    border-radius: 12px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    padding: 20px;
-  }
+    #root {
+      width: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
 
-  h1, h2, h3 {
-    text-align: center;
-    color: #333;
-  }
+    h1, h2, h3 {
+      text-align: center;
+      color: #333;
+    }
 
-  input {
-    width: 100%;
-    padding: 10px;
-    margin: 8px 0;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-  }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
 
-  button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    border: none;
-    border-radius: 8px;
-    background-color: #4CAF50;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
 
-  button:hover {
-    background-color: #45a049;
-  }
+    button:hover {
+      background-color: #45a049;
+    }
 
-  .chat-box {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    height: 300px;
-    overflow-y: scroll;
-    margin-bottom: 10px;
-    background: #f9f9f9;
-  }
+    .chat-box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      height: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+      background: #f9f9f9;
+    }
 
-  .chat-box div {
-    padding: 5px;
-    margin-bottom: 5px;
-    border-radius: 6px;
-    background: #e1f5fe;
-  }
-
-  input[type="text"], input[type="email"], input[type="password"] {
-    box-sizing: border-box;
-  }
-</style>
-  
+    .chat-box div {
+      padding: 5px;
+      margin-bottom: 5px;
+      border-radius: 6px;
+      background: #e1f5fe;
+      word-wrap: break-word;
+    }
+  </style>
 </head>
+
 <body>
   <div id="root"></div>
 
@@ -96,3 +93,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+
