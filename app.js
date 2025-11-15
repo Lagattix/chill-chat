@@ -27,17 +27,33 @@ function App() {
   const [addContactInput, setAddContactInput] = React.useState("");
   const [loadingUser, setLoadingUser] = React.useState(true);
 
-  // ----- Utente e contatti -----
+  // ----- Utente e Chill Number -----
   React.useEffect(() => {
     auth.onAuthStateChanged(async (u) => {
       if (u) {
         setUser(u);
-        const docSnap = await db.collection("users").doc(u.uid).get();
-        if (docSnap.exists) {
-          const data = docSnap.data();
-          setChillNumber(data.chillNumber);
-          setContacts(data.contacts || []);
+        let docRef = db.collection("users").doc(u.uid);
+        let docSnap = await docRef.get();
+
+        // Se l’utente è nuovo, creiamo il Chill Number
+        if (!docSnap.exists) {
+          const counterRef = db.collection("counters").doc("chillNumber");
+          const counterSnap = await counterRef.get();
+          let nextNumber = 6700000000;
+          if (counterSnap.exists) nextNumber = counterSnap.data().lastNumber + 1;
+
+          await docRef.set({
+            chillNumber: nextNumber,
+            email: u.email,
+            contacts: []
+          });
+          await counterRef.set({ lastNumber: nextNumber });
+
+          docSnap = await docRef.get();
         }
+
+        setChillNumber(docSnap.data().chillNumber);
+        setContacts(docSnap.data().contacts || []);
       } else {
         setUser(null);
         setChillNumber(null);
@@ -57,7 +73,7 @@ function App() {
       .onSnapshot(snapshot => {
         const msgs = snapshot.docs.map(d => d.data());
         setMessages(msgs);
-        // Scroll automatico in basso
+        // Scroll automatico
         const chatBox = document.getElementById("chat-box");
         if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
       });
@@ -76,21 +92,7 @@ function App() {
       // Se login fallisce, crea utente
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const uid = userCredential.user.uid;
-
-      const counterRef = db.collection("counters").doc("chillNumber");
-      const counterSnap = await counterRef.get();
-      let nextNumber = 6700000000;
-      if (counterSnap.exists) nextNumber = counterSnap.data().lastNumber + 1;
-
-      await db.collection("users").doc(uid).set({
-        chillNumber: nextNumber,
-        email,
-        contacts: []
-      });
-      await counterRef.set({ lastNumber: nextNumber });
-
-      setChillNumber(nextNumber);
-      setContacts([]);
+      // Chill Number creato nello useEffect onAuthStateChanged
     }
   };
 
@@ -163,7 +165,7 @@ function App() {
     // Chat section
     e("div", { className: "chat-section" },
       selectedChat ?
-        e("div", { style: { display: "flex", flexDirection: "column", height: "100%" } },
+        e("div", { style: { display: "flex', flexDirection: 'column', height: '100%' } },
           e("div", { className: "chat-header" }, `Chat con ${selectedChat}`),
           e("div", { id: "chat-box", className: "chat-box" },
             messages.map((m, i) => e("div", { key: i, className: "message " + (m.sender === chillNumber ? "sent" : "received") }, m.text))
@@ -176,7 +178,7 @@ function App() {
           }),
           e("button", { onClick: sendMessage }, "Invia")
         )
-        : e("div", { style: { textAlign: "center", marginTop: "50%" } }, "Seleziona un contatto per chattare")
+        : e("div", { style: { textAlign: "center', marginTop: '50%' } }, "Seleziona un contatto per chattare")
     )
   );
 }
