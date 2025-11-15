@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chill Chat</title>
+  <!-- React e ReactDOM da CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script>
+    // Configurazione Firebase
+    const firebaseConfig = {
+      apiKey: "...",
+      authDomain: "...",
+      projectId: "...",
+      storageBucket: "...",
+      messagingSenderId: "...",
+      appId: "..."
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Esempio React semplice
+    const e = React.createElement;
+
+    function App() {
+      const [user, setUser] = React.useState(null);
+
+      React.useEffect(() => {
+        auth.onAuthStateChanged(u => setUser(u));
+      }, []);
+
+      const login = async () => {
+        await auth.signInWithEmailAndPassword("test@test.com","123456");
+      }
+
+      return e("div", null,
+        e("h1", null, "Chill Chat"),
+        user ? e("p", null, "Ciao " + user.email) :
+        e("button", {onClick: login}, "Login")
+      );
+    }
+
+    ReactDOM.render(e(App), document.getElementById('root'));
+  </script>
+</body>
+</html>
