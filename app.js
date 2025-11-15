@@ -54,6 +54,7 @@ function App() {
     const email = document.getElementById("email").value;
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
+    if (!email || !password || !username) return alert("Compila tutti i campi");
     auth.createUserWithEmailAndPassword(email, password)
       .then((cred) => {
         const chillNumber = generateChillNumber();
@@ -65,6 +66,7 @@ function App() {
   function handleLogin() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
+    if (!email || !password) return alert("Compila email e password");
     auth.signInWithEmailAndPassword(email, password)
       .catch((err) => alert(err.message));
   }
@@ -95,7 +97,6 @@ function App() {
       const data = snap.val() || {};
       const list = Object.keys(data).map(k => data[k]);
       setMessages(list);
-      // scroll automatico
       setTimeout(() => {
         const chatBox = document.getElementById("messagesDiv");
         if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
@@ -115,6 +116,7 @@ function App() {
 
   function addContact() {
     const num = document.getElementById("addNumber").value;
+    if (!num) return alert("Inserisci un Chill Number valido");
     db.ref("users").orderByChild("chillNumber").equalTo(num).once("value").then(snap => {
       if (!snap.exists()) { alert("Utente non trovato"); return; }
       const friendData = Object.values(snap.val())[0];
@@ -124,27 +126,29 @@ function App() {
     });
   }
 
+  // ======== LOGIN / REG SCREEN ========
   if (!user) {
-    return React.createElement("div", { style:{padding:"20px"} },
+    return React.createElement("div", { style:{padding:"20px", maxWidth:"400px", margin:"auto"} },
       React.createElement("h2", null, "Login / Registrati"),
       React.createElement("input", { id:"email", placeholder:"Email", type:"email" }),
-      React.createElement("input", { id:"username", placeholder:"Username" }),
+      React.createElement("input", { id:"username", placeholder:"Username (solo per registrazione)" }),
       React.createElement("input", { id:"password", placeholder:"Password", type:"password" }),
       React.createElement("button", { onClick:handleRegister }, "Registrati"),
       React.createElement("button", { onClick:handleLogin, style:{marginTop:"5px"} }, "Accedi")
     );
   }
 
+  // ======== MAIN APP ========
   return React.createElement("div", { style:{display:"flex", flex:1, height:"100%", animation:"fadeIn 0.5s"} },
-    // ===== SIDEBAR =====
+    // SIDEBAR
     React.createElement("div", { className:"sidebar" },
       React.createElement("button", { onClick:()=>setTab("chat") }, "Chat"),
       React.createElement("button", { onClick:()=>setTab("add") }, "Aggiungi"),
       React.createElement("button", { onClick:()=>setTab("profile") }, "Profilo")
     ),
-    // ===== CONTENT =====
+    // CONTENT
     React.createElement("div", { className:"content" },
-      // ===== CHAT =====
+      // CHAT
       tab === "chat" && React.createElement("div", { className:"chat-container" },
         React.createElement("div", { className:"contacts-list" },
           contacts.map((c, idx) =>
@@ -164,13 +168,13 @@ function App() {
           )
         )
       ),
-      // ===== ADD CONTACT =====
+      // ADD CONTACT
       tab === "add" && React.createElement("div", { className:"add-contact-section" },
         React.createElement("h3", null, "Aggiungi il divertimento!"),
         React.createElement("input", { id:"addNumber", placeholder:"Chill Number dell'amico (+67 XXX XXX XXX)" }),
         React.createElement("button", { onClick:addContact }, "Aggiungi")
       ),
-      // ===== PROFILE =====
+      // PROFILE
       tab === "profile" && React.createElement("div", { className:"profile-section" },
         React.createElement("h3", null, "Profilo"),
         React.createElement("p", null, "Chill #: " + (userData?.chillNumber || "???")),
