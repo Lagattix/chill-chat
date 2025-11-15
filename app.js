@@ -1,4 +1,6 @@
-// ======== Config Firebase ========
+const e = React.createElement;
+
+// ======== Firebase Config ========
 const firebaseConfig = {
   apiKey: "AIzaSyA25PyertpC4XpRQj9vY84yTYf_uaep0m4",
   authDomain: "chill-chat-c2102.firebaseapp.com",
@@ -12,110 +14,153 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ======== React App ========
-const e = React.createElement;
-
+// ======== App ========
 function App() {
   const [user, setUser] = React.useState(null);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [chillNumber, setChillNumber] = React.useState(null);
-  const [message, setMessage] = React.useState("");
+  const [contacts, setContacts] = React.useState([]);
+  const [selectedChat, setSelectedChat] = React.useState(null);
   const [messages, setMessages] = React.useState([]);
+  const [newMessage, setNewMessage] = React.useState("");
+  const [addContactInput, setAddContactInput] = React.useState("");
 
-  // Aggiorna lo stato utente
+  // Stato utente
   React.useEffect(() => {
-    auth.onAuthStateChanged(async (u) => {
+    auth.onAuthStateChanged(async u => {
       if(u){
         setUser(u);
-        // Prendi chill number
-        const docRef = db.collection("users").doc(u.uid);
-        const docSnap = await docRef.get();
+        const docSnap = await db.collection("users").doc(u.uid).get();
         if(docSnap.exists){
-          setChillNumber(docSnap.data().chillNumber);
+          const data = docSnap.data();
+          setChillNumber(data.chillNumber);
+          setContacts(data.contacts || []);
         }
       } else {
         setUser(null);
         setChillNumber(null);
       }
     });
-
-    // Ascolta messaggi in tempo reale
-    const unsubscribe = db.collection("messages")
-      .orderBy("timestamp")
-      .onSnapshot(snapshot => {
-        const msgs = snapshot.docs.map(d => d.data());
-        setMessages(msgs);
-      });
-
-    return () => unsubscribe();
   }, []);
 
-  // Signup / Login
+  // Selezione chat
+  React.useEffect(() => {
+    if(!selectedChat) return;
+    const chatId = generateChatId(chillNumber, selectedChat);
+    const unsubscribe = db.collection("messages")
+      .where("chatId","==",chatId)
+      .orderBy("timestamp")
+      .onSnapshot(snapshot => {
+        const msgs = snapshot.docs.map(d=>d.data());
+        setMessages(msgs);
+      });
+    return () => unsubscribe();
+  }, [selectedChat, chillNumber]);
+
+  // ---------- FUNZIONI ----------
+
   const handleAuth = async () => {
     try {
-      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      const userCredential = await auth.signInWithEmailAndPassword(email,password);
       const uid = userCredential.user.uid;
       const docSnap = await db.collection("users").doc(uid).get();
       setChillNumber(docSnap.data().chillNumber);
-    } catch (err) {
-      // Se login fallisce, crea utente
-      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      setContacts(docSnap.data().contacts || []);
+    } catch(err){
+      // se login fallisce, crea utente
+      const userCredential = await auth.createUserWithEmailAndPassword(email,password);
       const uid = userCredential.user.uid;
-
-      // Genera Chill Number unico
+      // genera chill number
       const counterRef = db.collection("counters").doc("chillNumber");
       const counterSnap = await counterRef.get();
       let nextNumber = 6700000000;
-      if(counterSnap.exists){
-        nextNumber = counterSnap.data().lastNumber + 1;
-      }
-
-      await db.collection("users").doc(uid).set({ chillNumber: nextNumber, email });
-      await counterRef.set({ lastNumber: nextNumber });
-
+      if(counterSnap.exists) nextNumber = counterSnap.data().lastNumber+1;
+      await db.collection("users").doc(uid).set({
+        chillNumber: nextNumber,
+        email,
+        contacts: []
+      });
+      await counterRef.set({lastNumber: nextNumber});
       setChillNumber(nextNumber);
+      setContacts([]);
     }
   };
 
-  // Logout
   const logout = () => auth.signOut();
 
-  // Invia messaggio
+  const generateChatId = (num1,num2) => {
+    return num1<num2 ? `${num1}-${num2}` : `${num2}-${num1}`;
+  };
+
   const sendMessage = async () => {
-    if(message.trim()==="") return;
+    if(!newMessage.trim() || !selectedChat) return;
+    const chatId = generateChatId(chillNumber, selectedChat);
     await db.collection("messages").add({
-      text: message,
+      chatId,
       sender: chillNumber,
+      text: newMessage,
       timestamp: Date.now()
     });
-    setMessage("");
+    setNewMessage("");
+  };
+
+  const addContact = async () => {
+    const chillNum = parseInt(addContactInput);
+    if(!chillNum || chillNum===chillNumber || contacts.includes(chillNum)) return alert("Numero non valido o già in contatti");
+
+    // Controlla se esiste l’utente
+    const usersSnap = await db.collection("users").where("chillNumber","==",chillNum).get();
+    if(usersSnap.empty) return alert("Utente non trovato");
+
+    const updatedContacts = [...contacts, chillNum];
+    await db.collection("users").doc(user.uid).update({contacts: updatedContacts});
+    setContacts(updatedContacts);
+    setAddContactInput("");
   };
 
   // ---------- RENDER ----------
+
   if(!user){
     return e("div", null,
-      e("h1", null, "Chill Chat"),
-      e("input", {placeholder:"Email", value:email, onChange:e=>setEmail(e.target.value)}),
-      e("input", {placeholder:"Password", type:"password", value:password, onChange:e=>setPassword(e.target.value)}),
+      e("h1", null,"Chill Chat"),
+      e("input",{placeholder:"Email",value:email,onChange:e=>setEmail(e.target.value)}),
+      e("input",{placeholder:"Password",type:"password",value:password,onChange:e=>setPassword(e.target.value)}),
       e("button",{onClick:handleAuth},"Login / Signup")
     );
   }
 
-  return e("div", null,
-    e("h2", null, `Benvenuto! Il tuo Chill Number: ${chillNumber}`),
-    e("button",{onClick:logout},"Logout"),
-    e("h3", null, "Chat"),
-    e("div",{className:"chat-box"},
-      messages.map((m,i) => e("div",{key:i}, `[${m.sender}]: ${m.text}`))
+  // Home con contatti
+  return e("div",{style:{display:"flex"}},
+    // Sidebar contatti
+    e("div",{style:{width:"150px",borderRight:"1px solid #ccc",paddingRight:"10px"}},
+      e("h3",null,"Contatti"),
+      e("div",null,
+        contacts.map(c=>e("div",{key:c,style:{padding:"5px",cursor:"pointer",background:selectedChat===c?"#e1f5fe":"transparent"},onClick:()=>setSelectedChat(c)},c))
+      ),
+      e("div",null,
+        e("input",{placeholder:"Aggiungi Chill Number",value:addContactInput,onChange:e=>setAddContactInput(e.target.value)}),
+        e("button",{onClick:addContact},"Aggiungi")
+      ),
+      e("button",{onClick:logout,style:{marginTop:"10px",background:"#f44336"}},"Logout")
     ),
-    e("input",{placeholder:"Scrivi un messaggio", value:message, onChange:e=>setMessage(e.target.value)}),
-    e("button",{onClick:sendMessage},"Invia")
+    // Chat box
+    e("div",{style:{flex:1,marginLeft:"10px"}},
+      selectedChat ? e("div",null,
+        e("h3",null,`Chat con ${selectedChat}`),
+        e("div",{className:"chat-box"},
+          messages.map((m,i)=>e("div",{key:i, style:{background:m.sender===chillNumber?"#dcf8c6":"#fff"}}, `[${m.sender}]: ${m.text}`))
+        ),
+        e("input",{placeholder:"Scrivi un messaggio",value:newMessage,onChange:e=>setNewMessage(e.target.value)}),
+        e("button",{onClick:sendMessage},"Invia")
+      ) : e("h3",null,"Seleziona un contatto per chattare")
+    )
   );
 }
 
 // ======== MOUNT REACT ========
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(e(App));
+
 
 
