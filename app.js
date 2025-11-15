@@ -17,9 +17,9 @@ function App() {
   const [user, setUser] = React.useState(null);
   const [chillNumber, setChillNumber] = React.useState(null);
   const [showWelcome, setShowWelcome] = React.useState(true);
-  const [loginMode, setLoginMode] = React.useState(true); // true=accedi, false=registrati
+  const [loginMode, setLoginMode] = React.useState(true); 
   const [username, setUsername] = React.useState('');
-  const [activeTab, setActiveTab] = React.useState('chat'); // 'chat' o 'add'
+  const [activeTab, setActiveTab] = React.useState('chat'); // 'chat', 'add', 'profile'
   const [contacts, setContacts] = React.useState([]);
 
   React.useEffect(() => {
@@ -49,7 +49,6 @@ function App() {
     });
   }, []);
 
-  // Login / Registrazione
   const handleAuth = async () => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -59,9 +58,9 @@ function App() {
       return;
     }
     try{
-      if(loginMode){ // Accedi
+      if(loginMode){
         await auth.signInWithEmailAndPassword(email,password);
-      } else { // Registrati
+      } else {
         await auth.createUserWithEmailAndPassword(email,password);
         setUsername(uname);
       }
@@ -70,12 +69,10 @@ function App() {
     }
   }
 
-  // Aggiungi contatto
   const addContact = (chill) => {
     if(!chill) return alert('Inserisci un Chill Number');
     setContacts([...contacts, chill]);
     setShowWelcome(false);
-    // Aggiorna su Firestore
     db.collection('users').doc(user.uid).update({ hasAddedContact: true });
     document.getElementById('addChill').value = '';
     setActiveTab('chat');
@@ -97,17 +94,15 @@ function App() {
   return React.createElement('div',{style:{display:'flex', flexDirection:'column', height:'100%'}},
     React.createElement('div',{className:'tabs'},
       React.createElement('button',{className: activeTab==='chat'?'active':'', onClick:()=>setActiveTab('chat')}, 'Chat'),
-      React.createElement('button',{className: activeTab==='add'?'active':'', onClick:()=>setActiveTab('add')}, 'Aggiungi')
+      React.createElement('button',{className: activeTab==='add'?'active':'', onClick:()=>setActiveTab('add')}, 'Aggiungi'),
+      React.createElement('button',{className: activeTab==='profile'?'active':'', onClick:()=>setActiveTab('profile')}, 'Profilo')
     ),
     React.createElement('div',{className:'tab-content', style:{flex:1}},
       // ----- Chat Tab -----
       activeTab==='chat' && React.createElement('div',{style:{flex:1, display:'flex', flexDirection:'column'}},
         showWelcome && React.createElement('div',{className:'welcome'}, 'Benvenuto su Chill Chat! Aggiungi i tuoi amici e "chilla" con loro.'),
-        React.createElement('div',null,'Benvenuto! Chill #: '+chillNumber+' ('+username+')'),
-        contacts.length > 0 && React.createElement('div', {style:{marginTop:'10px'}},
-          contacts.map(c=>React.createElement('div',{key:c, style:{padding:'5px', borderBottom:'1px solid #ccc'}}, c))
-        ),
-        React.createElement('button',{className:'logout-btn', style:{marginTop:'10px'}, onClick:()=>auth.signOut()}, 'Logout')
+        contacts.length > 0 ? contacts.map(c=>React.createElement('div',{key:c, style:{padding:'5px', borderBottom:'1px solid #ccc'}}, c))
+                             : React.createElement('div', {style:{textAlign:'center', marginTop:'20px'}}, 'Non hai ancora contatti.')
       ),
       // ----- Aggiungi Tab -----
       activeTab==='add' && React.createElement('div',{
@@ -130,6 +125,20 @@ function App() {
           onClick:()=>addContact(document.getElementById('addChill').value),
           style:{width:'30%'}
         },'Aggiungi')
+      ),
+      // ----- Profilo Tab -----
+      activeTab==='profile' && React.createElement('div',{
+        style:{
+          flex:1,
+          display:'flex',
+          flexDirection:'column',
+          justifyContent:'center',
+          alignItems:'center'
+        }},
+        React.createElement('h3', null, 'Profilo'),
+        React.createElement('p', null, 'Chill #: '+chillNumber),
+        React.createElement('p', null, 'Username: '+username),
+        React.createElement('button',{className:'logout-btn', style:{marginTop:'10px'}, onClick:()=>auth.signOut()}, 'Logout')
       )
     )
   );
@@ -138,3 +147,4 @@ function App() {
 // ====== Mount React ======
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
+
