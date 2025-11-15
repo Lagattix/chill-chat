@@ -40,9 +40,7 @@ function App() {
           const chillNumber = generateChillNumber();
           userRef.set({ email: u.email, username: "", chillNumber });
         }
-        userRef.on("value", (snap) => {
-          setUserData(snap.val());
-        });
+        userRef.on("value", (snap) => setUserData(snap.val()));
       } else {
         setUser(null);
         setUserData(null);
@@ -83,7 +81,7 @@ function App() {
       const data = snap.val() || {};
       const list = Object.keys(data).map(uid => ({ uid, ...data[uid] }));
       setContacts(list);
-      if (list.length > 0) setWelcomeVisible(false);
+      setWelcomeVisible(list.length === 0);
     });
     return () => contactsRef.off();
   }, [user]);
@@ -159,7 +157,7 @@ function App() {
           welcomeVisible && React.createElement("div", { className:"welcome" }, "Benvenuto su Chill Chat! Aggiungi i tuoi amici e chilla con loro."),
           React.createElement("div", { className:"messages", id:"messagesDiv" },
             messages.map((m, idx)=>
-              React.createElement("div", { key:idx, className:m.from===user.uid?"message sent":"message received", style:{transition:"all 0.3s ease"} }, m.text)
+              React.createElement("div", { key:idx, className:m.from===user.uid?"message sent":"message received", style:{transition:"all 0.4s ease", opacity:0, transform:"translateY(20px)", animation:"fadeSlide 0.4s forwards"} }, m.text)
             )
           ),
           activeContact && React.createElement("div", { className:"message-input" },
