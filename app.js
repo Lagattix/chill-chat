@@ -26,7 +26,7 @@ function App() {
   const [newMessage, setNewMessage] = React.useState("");
   const [addContactInput, setAddContactInput] = React.useState("");
 
-  // Stato utente
+  // Utente e contatti
   React.useEffect(() => {
     auth.onAuthStateChanged(async u => {
       if(u){
@@ -44,7 +44,7 @@ function App() {
     });
   }, []);
 
-  // Selezione chat
+  // Messaggi real-time
   React.useEffect(() => {
     if(!selectedChat) return;
     const chatId = generateChatId(chillNumber, selectedChat);
@@ -59,7 +59,6 @@ function App() {
   }, [selectedChat, chillNumber]);
 
   // ---------- FUNZIONI ----------
-
   const handleAuth = async () => {
     try {
       const userCredential = await auth.signInWithEmailAndPassword(email,password);
@@ -68,14 +67,15 @@ function App() {
       setChillNumber(docSnap.data().chillNumber);
       setContacts(docSnap.data().contacts || []);
     } catch(err){
-      // se login fallisce, crea utente
+      // Crea utente
       const userCredential = await auth.createUserWithEmailAndPassword(email,password);
       const uid = userCredential.user.uid;
-      // genera chill number
+
       const counterRef = db.collection("counters").doc("chillNumber");
       const counterSnap = await counterRef.get();
       let nextNumber = 6700000000;
       if(counterSnap.exists) nextNumber = counterSnap.data().lastNumber+1;
+
       await db.collection("users").doc(uid).set({
         chillNumber: nextNumber,
         email,
@@ -89,9 +89,7 @@ function App() {
 
   const logout = () => auth.signOut();
 
-  const generateChatId = (num1,num2) => {
-    return num1<num2 ? `${num1}-${num2}` : `${num2}-${num1}`;
-  };
+  const generateChatId = (num1,num2) => num1<num2 ? `${num1}-${num2}` : `${num2}-${num1}`;
 
   const sendMessage = async () => {
     if(!newMessage.trim() || !selectedChat) return;
@@ -109,7 +107,6 @@ function App() {
     const chillNum = parseInt(addContactInput);
     if(!chillNum || chillNum===chillNumber || contacts.includes(chillNum)) return alert("Numero non valido o già in contatti");
 
-    // Controlla se esiste l’utente
     const usersSnap = await db.collection("users").where("chillNumber","==",chillNum).get();
     if(usersSnap.empty) return alert("Utente non trovato");
 
@@ -120,7 +117,6 @@ function App() {
   };
 
   // ---------- RENDER ----------
-
   if(!user){
     return e("div", null,
       e("h1", null,"Chill Chat"),
@@ -131,25 +127,23 @@ function App() {
   }
 
   // Home con contatti
-  return e("div",{style:{display:"flex"}},
+  return e("div",{style:{display:"flex",height:"100%"}},
     // Sidebar contatti
-    e("div",{style:{width:"150px",borderRight:"1px solid #ccc",paddingRight:"10px"}},
+    e("div",{className:"sidebar"},
       e("h3",null,"Contatti"),
-      e("div",null,
-        contacts.map(c=>e("div",{key:c,style:{padding:"5px",cursor:"pointer",background:selectedChat===c?"#e1f5fe":"transparent"},onClick:()=>setSelectedChat(c)},c))
+      e("div",{className:"contacts"},
+        contacts.map(c=>e("div",{key:c,style:{background:selectedChat===c?"#e1f5fe":"transparent"},onClick:()=>setSelectedChat(c)},c))
       ),
-      e("div",null,
-        e("input",{placeholder:"Aggiungi Chill Number",value:addContactInput,onChange:e=>setAddContactInput(e.target.value)}),
-        e("button",{onClick:addContact},"Aggiungi")
-      ),
-      e("button",{onClick:logout,style:{marginTop:"10px",background:"#f44336"}},"Logout")
+      e("input",{placeholder:"Aggiungi Chill Number",value:addContactInput,onChange:e=>setAddContactInput(e.target.value)}),
+      e("button",{onClick:addContact},"Aggiungi"),
+      e("button",{onClick:logout,className:"logout-btn"},"Logout")
     ),
     // Chat box
-    e("div",{style:{flex:1,marginLeft:"10px"}},
+    e("div",{className:"chat-section"},
       selectedChat ? e("div",null,
         e("h3",null,`Chat con ${selectedChat}`),
         e("div",{className:"chat-box"},
-          messages.map((m,i)=>e("div",{key:i, style:{background:m.sender===chillNumber?"#dcf8c6":"#fff"}}, `[${m.sender}]: ${m.text}`))
+          messages.map((m,i)=>e("div",{key:i,className:m.sender===chillNumber?"sent":"received"}, m.text))
         ),
         e("input",{placeholder:"Scrivi un messaggio",value:newMessage,onChange:e=>setNewMessage(e.target.value)}),
         e("button",{onClick:sendMessage},"Invia")
@@ -161,6 +155,3 @@ function App() {
 // ======== MOUNT REACT ========
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(e(App));
-
-
-
