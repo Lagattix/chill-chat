@@ -1,136 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chill Chat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chill Chat</title>
 
-  <!-- React e ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<!-- React e ReactDOM -->
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
 
-  <!-- CSS -->
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f0f4f8;
-    }
+<style>
+body {
+  margin:0;
+  font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background:#f0f4f8;
+  display:flex;
+  justify-content:center;
+}
 
-    #root {
-      display: flex;
-      max-width: 900px;
-      height: 600px;
-      margin: 50px auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
+#root {
+  width:100%;
+  max-width:900px;
+  height:90vh;
+  margin:20px;
+  display:flex;
+  flex-direction:column;
+  background:white;
+  border-radius:12px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.1);
+  overflow:hidden;
+  transition: all 0.3s ease;
+}
 
-    .sidebar {
-      width: 250px;
-      border-right: 1px solid #ccc;
-      display: flex;
-      flex-direction: column;
-      padding: 10px;
-    }
+.sidebar {
+  width:250px;
+  border-right:1px solid #ddd;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+  background:#f5f5f5;
+  transition: all 0.3s ease;
+}
 
-    .contacts {
-      flex: 1;
-      overflow-y: auto;
-      margin-bottom: 10px;
-    }
+.contacts {
+  flex:1;
+  overflow-y:auto;
+  margin-bottom:10px;
+}
 
-    .contacts div {
-      padding: 8px;
-      margin-bottom: 5px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+.contacts div {
+  padding:8px;
+  margin-bottom:5px;
+  border-radius:6px;
+  cursor:pointer;
+  transition: background 0.2s ease;
+}
 
-    .contacts div:hover {
-      background: #e1f5fe;
-    }
+.contacts div:hover { background:#e1f5fe; }
+.contacts .active { background:#b3e5fc; }
 
-    .contacts .active {
-      background: #b3e5fc;
-    }
+.chat-section {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+}
 
-    .chat-section {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 10px;
-    }
+.chat-header { font-weight:bold; margin-bottom:10px; text-align:center; }
 
-    .chat-header {
-      font-weight: bold;
-      margin-bottom: 10px;
-      text-align: center;
-    }
+.chat-box {
+  flex:1;
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:10px;
+  margin-bottom:10px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+}
 
-    .chat-box {
-      flex: 1;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 10px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
+.message {
+  padding:6px 10px;
+  margin-bottom:6px;
+  border-radius:12px;
+  max-width:70%;
+  word-wrap:break-word;
+  opacity:0;
+  animation: fadeIn 0.3s forwards;
+}
 
-    .message {
-      padding: 6px 10px;
-      margin-bottom: 6px;
-      border-radius: 12px;
-      max-width: 70%;
-      word-wrap: break-word;
-    }
+.sent { align-self:flex-end; background:#dcf8c6; }
+.received { align-self:flex-start; background:#fff; }
 
-    .sent {
-      align-self: flex-end;
-      background: #dcf8c6;
-    }
+input, button {
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  margin-bottom:5px;
+  box-sizing:border-box;
+  transition: all 0.2s ease;
+}
 
-    .received {
-      align-self: flex-start;
-      background: #fff;
-    }
+button {
+  background:#4CAF50;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
 
-    input, button {
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      margin-bottom: 5px;
-      box-sizing: border-box;
-    }
+button:hover { background:#45a049; }
+.logout-btn { background:#f44336; }
+.logout-btn:hover { background:#d32f2f; }
 
-    button {
-      background: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-      font-size: 14px;
-    }
+.add-contact-section input { width: calc(100% - 10px); }
 
-    button:hover { background: #45a049; }
-    .logout-btn { background: #f44336; }
-    .logout-btn:hover { background: #d32f2f; }
+.tabs {
+  display:flex;
+  justify-content:space-around;
+  border-top:1px solid #ddd;
+}
 
-    .add-contact-section input {
-      width: calc(100% - 10px);
-    }
-  </style>
+.tabs button {
+  flex:1;
+  padding:10px;
+  border:none;
+  background:#f5f5f5;
+  cursor:pointer;
+  transition: background 0.3s ease;
+}
+
+.tabs button.active { background:#b3e5fc; }
+
+.tab-content { flex:1; display:flex; flex-direction:column; }
+
+@keyframes fadeIn { from {opacity:0; transform:translateY(5px);} to {opacity:1; transform:translateY(0);} }
+
+/* Responsive */
+@media (max-width:600px) {
+  #root { flex-direction:column; margin:0; height:100vh; }
+  .sidebar { width:100%; border-right:none; border-bottom:1px solid #ddd; flex-direction:row; overflow-x:auto; }
+  .contacts { flex-direction:row; overflow-x:auto; }
+}
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script src="app.js"></script>
+<div id="root"></div>
+<script src="app.js"></script>
 </body>
 </html>
