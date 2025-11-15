@@ -1,6 +1,6 @@
 // ====== Config Firebase ======
 const firebaseConfig = {
-  apiKey: "LA_TUA_API_KEY",
+  apiKey: "AIzaSyA25PyertpC4XpRQj9vY84yTYf_uaep0m4",
   authDomain: "chill-chat-c2102.firebaseapp.com",
   projectId: "chill-chat-c2102",
   storageBucket: "chill-chat-c2102.appspot.com",
