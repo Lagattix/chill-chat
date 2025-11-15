@@ -1,4 +1,4 @@
-// ======== Config Firebase ========
+// ======== CONFIG FIREBASE ========
 const firebaseConfig = {
   apiKey: "AIzaSyA25PyertpC4XpRQj9vY84yTYf_uaep0m4",
   authDomain: "chill-chat-c2102.firebaseapp.com",
@@ -13,184 +13,162 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-// ======== React App ========
+// ======== UTILITY ========
+function generateChillNumber() {
+  let num = Math.floor(Math.random() * 900000000) + 100000000;
+  return "+67 " + String(num).replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+}
+
+// ======== APP ========
 function App() {
   const [user, setUser] = React.useState(null);
-  const [loginMode, setLoginMode] = React.useState(true); // true=Accedi, false=Registrati
-  const [username, setUsername] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [chillNumber, setChillNumber] = React.useState(null);
-
-  const [activeTab, setActiveTab] = React.useState("chat"); // chat, aggiungi, profilo
   const [contacts, setContacts] = React.useState([]);
   const [activeContact, setActiveContact] = React.useState(null);
   const [messages, setMessages] = React.useState([]);
-  const [messageText, setMessageText] = React.useState("");
+  const [tab, setTab] = React.useState("chat"); // chat / add / profile
+  const [welcomeVisible, setWelcomeVisible] = React.useState(true);
 
-  // ======== Auth State Listener ========
+  // ======== LOGIN / REG ========
   React.useEffect(() => {
     auth.onAuthStateChanged(async (u) => {
       if (u) {
+        const userRef = db.ref("users/" + u.uid);
+        const snapshot = await userRef.get();
+        if (!snapshot.exists()) {
+          const chillNumber = generateChillNumber();
+          userRef.set({ email: u.email, username: "", chillNumber });
+        }
         setUser(u);
-        // Carica dati utente
-        const snapshot = await db.ref("users/" + u.uid).once("value");
-        const data = snapshot.val();
-        setUsername(data.username);
-        setChillNumber(data.chillNumber);
-
-        // Carica contatti
-        const contactsSnap = await db.ref("contacts/" + u.uid).once("value");
-        setContacts(contactsSnap.val() ? Object.values(contactsSnap.val()) : []);
       } else {
         setUser(null);
       }
     });
   }, []);
 
-  // ======== Registrazione ========
-  const handleRegister = async () => {
-    if (!email || !password || !username) return alert("Completa tutti i campi");
-    try {
-      const u = await auth.createUserWithEmailAndPassword(email, password);
-      const chill = "+67 " + Math.floor(100000000 + Math.random() * 900000000);
-      setChillNumber(chill);
-      await db.ref("users/" + u.user.uid).set({
-        username,
-        email,
-        chillNumber: chill
-      });
-    } catch (err) {
-      alert(err.message);
-    }
-  };
+  function handleRegister() {
+    const email = document.getElementById("email").value;
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    auth.createUserWithEmailAndPassword(email, password)
+      .then((cred) => {
+        const chillNumber = generateChillNumber();
+        db.ref("users/" + cred.user.uid).set({ email, username, chillNumber });
+      })
+      .catch((err) => alert(err.message));
+  }
 
-  // ======== Login ========
-  const handleLogin = async () => {
-    if (!email || !password) return alert("Inserisci email e password");
-    try {
-      await auth.signInWithEmailAndPassword(email, password);
-    } catch (err) {
-      alert(err.message);
-    }
-  };
+  function handleLogin() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    auth.signInWithEmailAndPassword(email, password)
+      .catch((err) => alert(err.message));
+  }
 
-  // ======== Logout ========
-  const handleLogout = async () => {
-    await auth.signOut();
-    setActiveContact(null);
-    setContacts([]);
-    setMessages([]);
-  };
+  function handleLogout() {
+    auth.signOut();
+  }
 
-  // ======== Aggiungi Contatto ========
-  const addContact = async (chillNum) => {
-    if (!chillNum) return;
-    const snapshot = await db.ref("users").orderByChild("chillNumber").equalTo(chillNum).once("value");
-    if (!snapshot.exists()) return alert("Utente non trovato!");
-    const data = snapshot.val();
-    const contactId = Object.keys(data)[0];
-    const contactData = data[contactId];
-    await db.ref("contacts/" + user.uid + "/" + contactId).set(contactData);
-    setContacts(prev => [...prev, contactData]);
-    alert("Contatto aggiunto!");
-  };
-
-  // ======== Chat real-time ========
+  // ======== CARICA CONTATTI ========
   React.useEffect(() => {
-    if (!activeContact) return;
-    const chatId = [user.uid, activeContact.id].sort().join("_");
-    const messagesRef = db.ref("messages/" + chatId);
+    if (!user) return;
+    const contactsRef = db.ref("contacts/" + user.uid);
+    contactsRef.on("value", (snap) => {
+      const data = snap.val() || {};
+      setContacts(Object.values(data));
+      if (Object.keys(data).length > 0) setWelcomeVisible(false);
+    });
+    return () => contactsRef.off();
+  }, [user]);
 
+  // ======== CARICA MESSAGGI ========
+  React.useEffect(() => {
+    if (!user || !activeContact) return;
+    const chatId = [user.uid, activeContact.uid].sort().join("_");
+    const messagesRef = db.ref("messages/" + chatId);
     messagesRef.on("value", (snap) => {
       const data = snap.val() || {};
-      const msgs = Object.values(data).sort((a,b) => a.timestamp - b.timestamp);
-      setMessages(msgs);
+      setMessages(Object.values(data));
     });
+    return () => db.ref("messages/" + chatId).off();
+  }, [user, activeContact]);
 
-    return () => messagesRef.off();
-  }, [activeContact]);
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    if (!input.value || !activeContact) return;
+    const chatId = [user.uid, activeContact.uid].sort().join("_");
+    const msgRef = db.ref("messages/" + chatId).push();
+    msgRef.set({ from: user.uid, to: activeContact.uid, text: input.value, timestamp: Date.now() });
+    input.value = "";
+  }
 
-  const sendMessage = () => {
-    if (!messageText || !activeContact) return;
-    const chatId = [user.uid, activeContact.id].sort().join("_");
-    db.ref("messages/" + chatId).push({
-      from: user.uid,
-      to: activeContact.id,
-      text: messageText,
-      timestamp: Date.now()
+  function addContact() {
+    const num = document.getElementById("addNumber").value;
+    db.ref("users").orderByChild("chillNumber").equalTo(num).once("value").then(snap => {
+      if (!snap.exists()) { alert("Utente non trovato"); return; }
+      const friendData = Object.values(snap.val())[0];
+      const friendUid = Object.keys(snap.val())[0];
+      db.ref("contacts/" + user.uid + "/" + friendUid).set(friendData);
+      setTab("chat");
     });
-    setMessageText("");
-  };
+  }
 
-  // ======== Render Login/Registrazione ========
   if (!user) {
-    return React.createElement("div", { style:{padding:'20px', maxWidth:'400px', margin:'50px auto'} },
-      React.createElement("h2", null, loginMode ? "Accedi" : "Registrati"),
-      !loginMode && React.createElement("input", { placeholder:"Username", value:username, onChange:e=>setUsername(e.target.value) }),
-      React.createElement("input", { placeholder:"Email", value:email, onChange:e=>setEmail(e.target.value) }),
-      React.createElement("input", { type:"password", placeholder:"Password", value:password, onChange:e=>setPassword(e.target.value) }),
-      React.createElement("button", { onClick: loginMode ? handleLogin : handleRegister }, loginMode ? "Accedi" : "Registrati"),
-      React.createElement("button", { onClick: ()=>setLoginMode(!loginMode), style:{marginTop:'10px'} }, loginMode ? "Vai a Registrati" : "Vai a Accedi")
+    return React.createElement("div", { style:{padding:"20px"}},
+      React.createElement("h2", null, "Login / Registrati"),
+      React.createElement("input", { id:"email", placeholder:"Email", type:"email" }),
+      React.createElement("input", { id:"username", placeholder:"Username" }),
+      React.createElement("input", { id:"password", placeholder:"Password", type:"password" }),
+      React.createElement("button", { onClick:handleRegister }, "Registrati"),
+      React.createElement("button", { onClick:handleLogin, style:{marginTop:"5px"} }, "Accedi")
     );
   }
 
-  // ======== Render Interfaccia principale ========
-  return React.createElement("div", { style:{display:'flex', height:'90vh', maxWidth:'900px', margin:'20px auto', border:'1px solid #ccc', borderRadius:'10px', overflow:'hidden'} },
-    // Sidebar Tab
-    React.createElement("div", { style:{width:'200px', borderRight:'1px solid #ccc', display:'flex', flexDirection:'column'} },
-      React.createElement("button", { onClick:()=>setActiveTab('chat') }, "Chat"),
-      React.createElement("button", { onClick:()=>setActiveTab('aggiungi') }, "Aggiungi"),
-      React.createElement("button", { onClick:()=>setActiveTab('profilo') }, "Profilo")
+  return React.createElement("div", { style:{display:"flex", flex:1, height:"100%"}},
+    // ===== SIDEBAR =====
+    React.createElement("div", { className:"sidebar" },
+      React.createElement("button", { onClick:()=>setTab("chat") }, "Chat"),
+      React.createElement("button", { onClick:()=>setTab("add") }, "Aggiungi"),
+      React.createElement("button", { onClick:()=>setTab("profile") }, "Profilo")
     ),
-    // Contenuto Tab
-    React.createElement("div", { style:{flex:1, padding:'10px', display:'flex', flexDirection:'column'} },
-      // Chat Tab
-      activeTab === 'chat' && React.createElement("div", { style:{flex:1, display:'flex'} },
-        // Lista contatti
-        React.createElement("div", { style:{width:'150px', borderRight:'1px solid #ccc', overflowY:'auto'} },
-          contacts.map((c,i) =>
-            React.createElement("div", { key:i, style:{padding:'5px', cursor:'pointer'}, onClick:()=>setActiveContact(c) },
-              c.username + " (" + c.chillNumber + ")"
-            )
+    // ===== CONTENT =====
+    React.createElement("div", { className:"content" },
+      // ===== CHAT =====
+      tab === "chat" && React.createElement("div", { className:"chat-container" },
+        React.createElement("div", { className:"contacts-list" },
+          contacts.map((c, idx) =>
+            React.createElement("div", { key:idx, className: activeContact && activeContact.uid===c.uid ? "active": "", onClick:()=>setActiveContact(c) }, c.username + " (" + c.chillNumber + ")")
           )
         ),
-        // Chat Box
-        React.createElement("div", { style:{flex:1, display:'flex', flexDirection:'column', marginLeft:'10px'} },
-          activeContact ? React.createElement("h3", null, "Chat con "+activeContact.username) : React.createElement("h3", null, "Seleziona un contatto"),
-          React.createElement("div", { style:{flex:1, border:'1px solid #ddd', padding:'10px', overflowY:'auto', marginBottom:'10px'} },
-            messages.map((m,i) => React.createElement("div", { key:i, style:{
-              alignSelf: m.from===user.uid ? 'flex-end' : 'flex-start',
-              background: m.from===user.uid ? '#dcf8c6':'#fff',
-              padding:'5px 10px',
-              borderRadius:'10px',
-              marginBottom:'5px',
-              maxWidth:'70%'
-            }}, m.text))
+        React.createElement("div", { className:"chat-box" },
+          welcomeVisible && React.createElement("div", { className:"welcome" }, "Benvenuto su Chill Chat! Aggiungi i tuoi amici e chilla con loro."),
+          React.createElement("div", { className:"messages" },
+            messages.map((m, idx)=>
+              React.createElement("div", { key:idx, className:m.from===user.uid?"sent":"received" }, m.text)
+            )
           ),
-          activeContact && React.createElement("div", { style:{display:'flex'} },
-            React.createElement("input", { type:'text', value:messageText, onChange:e=>setMessageText(e.target.value), style:{flex:1, marginRight:'5px'} }),
+          activeContact && React.createElement("div", { className:"message-input" },
+            React.createElement("input", { id:"messageInput", placeholder:"Scrivi un messaggio" }),
             React.createElement("button", { onClick:sendMessage }, "Invia")
           )
         )
       ),
-      // Aggiungi Tab
-      activeTab === 'aggiungi' && React.createElement("div", null,
-        React.createElement("h3", null, "Aggiungi il divertimento"),
-        React.createElement("input", { placeholder:"Chill Number", id:"addContactInput" }),
-        React.createElement("button", { onClick:()=>addContact(document.getElementById("addContactInput").value) }, "Aggiungi")
+      // ===== ADD CONTACT =====
+      tab === "add" && React.createElement("div", { className:"add-contact-section" },
+        React.createElement("h3", null, "Aggiungi il divertimento!"),
+        React.createElement("input", { id:"addNumber", placeholder:"Chill Number dell'amico (+67 XXX XXX XXX)" }),
+        React.createElement("button", { onClick:addContact }, "Aggiungi")
       ),
-      // Profilo Tab
-      activeTab === 'profilo' && React.createElement("div", null,
+      // ===== PROFILE =====
+      tab === "profile" && React.createElement("div", { className:"profile-section" },
         React.createElement("h3", null, "Profilo"),
-        React.createElement("p", null, "Username: " + username),
-        React.createElement("p", null, "Chill #: " + chillNumber),
-        React.createElement("button", { onClick:handleLogout, style:{background:'#f44336', color:'white'} }, "Logout")
+        React.createElement("p", null, "Chill #: " + (user.uid ? contacts.find(c=>c.uid===user.uid)?.chillNumber || "???":"???")),
+        React.createElement("p", null, "Username: " + (user.uid ? contacts.find(c=>c.uid===user.uid)?.username || "???":"???")),
+        React.createElement("button", { onClick:handleLogout }, "Logout")
       )
     )
   );
 }
 
-// ======== Mount React ========
+// ======== MOUNT APP ========
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(React.createElement(App));
