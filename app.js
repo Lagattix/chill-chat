@@ -14,10 +14,9 @@ const auth = firebase.auth();
 const db = firebase.database();
 
 // ======== React App ========
-
 function App() {
   const [user, setUser] = React.useState(null);
-  const [loginMode, setLoginMode] = React.useState(true); // true=accedi, false=registrati
+  const [loginMode, setLoginMode] = React.useState(true); // true=Accedi, false=Registrati
   const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -34,11 +33,12 @@ function App() {
     auth.onAuthStateChanged(async (u) => {
       if (u) {
         setUser(u);
-        // Carica dati utente dal Realtime Database
+        // Carica dati utente
         const snapshot = await db.ref("users/" + u.uid).once("value");
         const data = snapshot.val();
         setUsername(data.username);
         setChillNumber(data.chillNumber);
+
         // Carica contatti
         const contactsSnap = await db.ref("contacts/" + u.uid).once("value");
         setContacts(contactsSnap.val() ? Object.values(contactsSnap.val()) : []);
@@ -53,10 +53,8 @@ function App() {
     if (!email || !password || !username) return alert("Completa tutti i campi");
     try {
       const u = await auth.createUserWithEmailAndPassword(email, password);
-      // Genera Chill Number casuale
       const chill = "+67 " + Math.floor(100000000 + Math.random() * 900000000);
       setChillNumber(chill);
-      // Salva utente su Realtime Database
       await db.ref("users/" + u.user.uid).set({
         username,
         email,
@@ -88,13 +86,11 @@ function App() {
   // ======== Aggiungi Contatto ========
   const addContact = async (chillNum) => {
     if (!chillNum) return;
-    // Cerca utente per chillNumber
     const snapshot = await db.ref("users").orderByChild("chillNumber").equalTo(chillNum).once("value");
     if (!snapshot.exists()) return alert("Utente non trovato!");
     const data = snapshot.val();
     const contactId = Object.keys(data)[0];
     const contactData = data[contactId];
-    // Aggiungi nei contatti
     await db.ref("contacts/" + user.uid + "/" + contactId).set(contactData);
     setContacts(prev => [...prev, contactData]);
     alert("Contatto aggiunto!");
@@ -105,11 +101,13 @@ function App() {
     if (!activeContact) return;
     const chatId = [user.uid, activeContact.id].sort().join("_");
     const messagesRef = db.ref("messages/" + chatId);
+
     messagesRef.on("value", (snap) => {
       const data = snap.val() || {};
       const msgs = Object.values(data).sort((a,b) => a.timestamp - b.timestamp);
       setMessages(msgs);
     });
+
     return () => messagesRef.off();
   }, [activeContact]);
 
@@ -125,7 +123,7 @@ function App() {
     setMessageText("");
   };
 
-  // ======== Render ========
+  // ======== Render Login/Registrazione ========
   if (!user) {
     return React.createElement("div", { style:{padding:'20px', maxWidth:'400px', margin:'50px auto'} },
       React.createElement("h2", null, loginMode ? "Accedi" : "Registrati"),
@@ -137,7 +135,7 @@ function App() {
     );
   }
 
-  // ======== Interfaccia principale ========
+  // ======== Render Interfaccia principale ========
   return React.createElement("div", { style:{display:'flex', height:'90vh', maxWidth:'900px', margin:'20px auto', border:'1px solid #ccc', borderRadius:'10px', overflow:'hidden'} },
     // Sidebar Tab
     React.createElement("div", { style:{width:'200px', borderRight:'1px solid #ccc', display:'flex', flexDirection:'column'} },
@@ -145,7 +143,7 @@ function App() {
       React.createElement("button", { onClick:()=>setActiveTab('aggiungi') }, "Aggiungi"),
       React.createElement("button", { onClick:()=>setActiveTab('profilo') }, "Profilo")
     ),
-    // Contenuto
+    // Contenuto Tab
     React.createElement("div", { style:{flex:1, padding:'10px', display:'flex', flexDirection:'column'} },
       // Chat Tab
       activeTab === 'chat' && React.createElement("div", { style:{flex:1, display:'flex'} },
@@ -178,7 +176,7 @@ function App() {
       ),
       // Aggiungi Tab
       activeTab === 'aggiungi' && React.createElement("div", null,
-        React.createElement("h3", null, "Aggiungi un contatto"),
+        React.createElement("h3", null, "Aggiungi il divertimento"),
         React.createElement("input", { placeholder:"Chill Number", id:"addContactInput" }),
         React.createElement("button", { onClick:()=>addContact(document.getElementById("addContactInput").value) }, "Aggiungi")
       ),
@@ -193,6 +191,6 @@ function App() {
   );
 }
 
-// ======== MOUNT ========
+// ======== Mount React ========
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(React.createElement(App));
