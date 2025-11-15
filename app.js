@@ -14,6 +14,16 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ======== Helper ========
+function formatChillNumber(num) {
+  const s = num.toString().padStart(9,"0");
+  return `+67 ${s.slice(1,4)} ${s.slice(4,7)} ${s.slice(7)}`;
+}
+
+function generateChatId(num1, num2){
+  return num1 < num2 ? `${num1}-${num2}` : `${num2}-${num1}`;
+}
+
 // ======== App ========
 function App() {
   const [user, setUser] = React.useState(null);
@@ -25,80 +35,64 @@ function App() {
   const [messages, setMessages] = React.useState([]);
   const [newMessage, setNewMessage] = React.useState("");
   const [addContactInput, setAddContactInput] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState("chat");
   const [loadingUser, setLoadingUser] = React.useState(true);
 
-  // ----- Utente e Chill Number -----
+  // ----- Auth e Chill Number -----
   React.useEffect(() => {
-    auth.onAuthStateChanged(async (u) => {
-      if (u) {
+    auth.onAuthStateChanged(async u => {
+      if(u){
         setUser(u);
         let docRef = db.collection("users").doc(u.uid);
         let docSnap = await docRef.get();
-
-        // Se nuovo utente, crea Chill Number
-        if (!docSnap.exists) {
+        if(!docSnap.exists){
           const counterRef = db.collection("counters").doc("chillNumber");
           const counterSnap = await counterRef.get();
           let nextNumber = 6700000000;
-          if (counterSnap.exists) nextNumber = counterSnap.data().lastNumber + 1;
+          if(counterSnap.exists) nextNumber = counterSnap.data().lastNumber + 1;
 
-          await docRef.set({
-            chillNumber: nextNumber,
-            email: u.email,
-            contacts: []
-          });
+          await docRef.set({ chillNumber: nextNumber, email: u.email, contacts: [] });
           await counterRef.set({ lastNumber: nextNumber });
-
           docSnap = await docRef.get();
         }
-
         setChillNumber(docSnap.data().chillNumber);
         setContacts(docSnap.data().contacts || []);
       } else {
-        setUser(null);
-        setChillNumber(null);
-        setContacts([]);
+        setUser(null); setChillNumber(null); setContacts([]);
       }
       setLoadingUser(false);
     });
   }, []);
 
   // ----- Chat real-time -----
-  React.useEffect(() => {
-    if (!selectedChat || !chillNumber) return;
+  React.useEffect(()=>{
+    if(!selectedChat || !chillNumber) return;
     const chatId = generateChatId(chillNumber, selectedChat);
     const unsubscribe = db.collection("messages")
-      .where("chatId", "==", chatId)
+      .where("chatId","==",chatId)
       .orderBy("timestamp")
-      .onSnapshot(snapshot => {
-        const msgs = snapshot.docs.map(d => d.data());
+      .onSnapshot(snap=>{
+        const msgs = snap.docs.map(d=>d.data());
         setMessages(msgs);
         const chatBox = document.getElementById("chat-box");
         if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
       });
-    return () => unsubscribe();
-  }, [selectedChat, chillNumber]);
+    return ()=>unsubscribe();
+  },[selectedChat, chillNumber]);
 
   // ----- Funzioni -----
-  const handleAuth = async () => {
-    try {
-      const userCredential = await auth.signInWithEmailAndPassword(email, password);
-      const uid = userCredential.user.uid;
-      const docSnap = await db.collection("users").doc(uid).get();
-      setChillNumber(docSnap.data().chillNumber);
-      setContacts(docSnap.data().contacts || []);
-    } catch (err) {
-      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-      // Chill Number creato nello useEffect onAuthStateChanged
+  const handleAuth = async ()=>{
+    try{
+      await auth.signInWithEmailAndPassword(email,password);
+    }catch{
+      await auth.createUserWithEmailAndPassword(email,password);
     }
-  };
+  }
 
-  const logout = () => auth.signOut();
+  const logout = ()=> auth.signOut();
 
-  const generateChatId = (num1, num2) => num1 < num2 ? `${num1}-${num2}` : `${num2}-${num1}`;
-
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat || !chillNumber) return;
+  const sendMessage = async ()=>{
+    if(!newMessage.trim() || !selectedChat || !chillNumber) return;
     const chatId = generateChatId(chillNumber, selectedChat);
     await db.collection("messages").add({
       chatId,
@@ -107,74 +101,71 @@ function App() {
       timestamp: Date.now()
     });
     setNewMessage("");
-  };
+  }
 
-  const addContact = async () => {
+  const addContact = async ()=>{
     const chillNum = parseInt(addContactInput);
-    if (!chillNum || chillNum === chillNumber || contacts.includes(chillNum)) return alert("Numero non valido o già in contatti");
-
-    const usersSnap = await db.collection("users").where("chillNumber", "==", chillNum).get();
-    if (usersSnap.empty) return alert("Utente non trovato");
-
+    if(!chillNum || chillNum===chillNumber || contacts.includes(chillNum)) return alert("Numero non valido o già in contatti");
+    const usersSnap = await db.collection("users").where("chillNumber","==",chillNum).get();
+    if(usersSnap.empty) return alert("Utente non trovato");
     const updatedContacts = [...contacts, chillNum];
-    await db.collection("users").doc(user.uid).update({ contacts: updatedContacts });
+    await db.collection("users").doc(user.uid).update({contacts:updatedContacts});
     setContacts(updatedContacts);
     setAddContactInput("");
-  };
+    setActiveTab("chat"); // torna alla chat dopo aggiunta
+  }
 
   // ----- Render -----
-  if (loadingUser) return e("div", null, "Caricamento...");
+  if(loadingUser) return e("div", null,"Caricamento...");
 
-  if (!user) {
-    return e("div", { style: { padding: "20px" } },
-      e("h1", null, "Chill Chat"),
-      e("input", { placeholder: "Email", value: email, onChange: e => setEmail(e.target.value) }),
-      e("input", { placeholder: "Password", type: "password", value: password, onChange: e => setPassword(e.target.value) }),
-      e("button", { onClick: handleAuth }, "Login / Signup")
+  if(!user){
+    return e("div", {style:{padding:"20px"}},
+      e("h1", null,"Chill Chat"),
+      e("input",{placeholder:"Email",value:email,onChange:e=>setEmail(e.target.value)}),
+      e("input",{placeholder:"Password",type:"password",value:password,onChange:e=>setPassword(e.target.value)}),
+      e("button",{onClick:handleAuth},"Login / Signup")
     );
   }
 
-  return e("div", { style: { display: "flex', height: '100%'" } },
-    // Sidebar
-    e("div", { className: "sidebar" },
-      e("h3", null, `Benvenuto! Chill #: ${chillNumber}`),
-      e("div", { className: "contacts" },
-        contacts.map(c =>
-          e("div", {
-            key: c,
-            className: selectedChat === c ? "active" : "",
-            onClick: () => setSelectedChat(c)
-          }, c)
+  return e("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+    // Contenuto schede
+    e("div",{className:"tab-content", style:{flex:1, display:"flex", flexDirection:"column"}},
+      activeTab==="chat" &&
+        (contacts.length===0
+          ? e("div",{style:{textAlign:"center",marginTop:"50%",color:"#666"}},
+              e("h2", null,"Benvenuto su Chill Chat!"),
+              e("p", null,'Aggiungi i tuoi amici e "chilla" con loro')
+            )
+          : e("div",{className:"chat-section", style:{display:"flex", flexDirection:"column", height:"100%"}},
+              selectedChat ?
+                e("div",{style:{display:"flex", flexDirection:"column", height:"100%"}},
+                  e("div",{className:"chat-header"},`Chat con ${selectedChat}`),
+                  e("div",{id:"chat-box",className:"chat-box"},
+                    messages.map((m,i)=>e("div",{key:i,className:"message "+(m.sender===chillNumber?"sent":"received")},m.text))
+                  ),
+                  e("input",{
+                    placeholder:"Scrivi un messaggio",
+                    value:newMessage,
+                    onChange:e=>setNewMessage(e.target.value),
+                    onKeyDown:(e)=>{if(e.key==="Enter")sendMessage();}
+                  }),
+                  e("button",{onClick:sendMessage},"Invia")
+                )
+                : e("div",{style:{textAlign:"center",marginTop:"50%"}}, "Seleziona un contatto per chattare")
+            )
+        ),
+      activeTab==="aggiungi" &&
+        e("div",{style:{padding:"20px", display:"flex", flexDirection:"column"}},
+          e("h2", null,"Aggiungi un amico"),
+          e("input",{placeholder:"Chill Number", value:addContactInput,onChange:e=>setAddContactInput(e.target.value)}),
+          e("button",{onClick:addContact},"Aggiungi")
         )
-      ),
-      e("div", { className: "add-contact-section" },
-        e("input", {
-          placeholder: "Aggiungi Chill Number",
-          value: addContactInput,
-          onChange: e => setAddContactInput(e.target.value)
-        }),
-        e("button", { onClick: addContact }, "Aggiungi")
-      ),
-      e("button", { onClick: logout, className: "logout-btn" }, "Logout")
     ),
 
-    // Chat section
-    e("div", { className: "chat-section" },
-      selectedChat ?
-        e("div", { style: { display: "flex", flexDirection: "column", height: "100%" } },
-          e("div", { className: "chat-header" }, `Chat con ${selectedChat}`),
-          e("div", { id: "chat-box", className: "chat-box" },
-            messages.map((m, i) => e("div", { key: i, className: "message " + (m.sender === chillNumber ? "sent" : "received") }, m.text))
-          ),
-          e("input", {
-            placeholder: "Scrivi un messaggio",
-            value: newMessage,
-            onChange: e => setNewMessage(e.target.value),
-            onKeyDown: (e) => { if (e.key === "Enter") sendMessage(); }
-          }),
-          e("button", { onClick: sendMessage }, "Invia")
-        )
-        : e("div", { style: { textAlign: "center', marginTop: '50%'" } }, "Seleziona un contatto per chattare")
+    // Tabs in basso
+    e("div",{className:"tabs"},
+      e("button",{onClick:()=>setActiveTab("chat"), className:activeTab==="chat"?"active":""},"Chat"),
+      e("button",{onClick:()=>setActiveTab("aggiungi"), className:activeTab==="aggiungi"?"active":""},"Aggiungi")
     )
   );
 }
@@ -182,3 +173,4 @@ function App() {
 // ======== Mount React ========
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(e(App));
+
