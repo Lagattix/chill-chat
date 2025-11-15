@@ -12,6 +12,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ====== Helper ======
+const randomChillNumber = () => {
+  let num = Math.floor(Math.random() * 900000000) + 100000000; // 9 cifre casuali
+  return '+67 ' + num.toString().replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3');
+}
+
 // ====== React App ======
 function App() {
   const [user, setUser] = React.useState(null);
@@ -23,28 +29,27 @@ function App() {
   const [contacts, setContacts] = React.useState([]);
 
   React.useEffect(() => {
-    auth.onAuthStateChanged(u => {
+    auth.onAuthStateChanged(async u => {
       setUser(u);
       if(u){
-        db.collection('users').doc(u.uid).get().then(doc=>{
-          if(doc.exists){
-            const data = doc.data();
-            setChillNumber(data.chillNumber);
-            setUsername(data.username || u.email.split('@')[0]);
-            setShowWelcome(!data.hasAddedContact);
-          } else {
-            const num = '+67 ' + Math.floor(100000000 + Math.random()*900000000)
-                        .toString()
-                        .replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3');
-            setChillNumber(num);
-            db.collection('users').doc(u.uid).set({
-              email: u.email,
-              username: username || u.email.split('@')[0],
-              chillNumber: num,
-              hasAddedContact: false
-            });
-          }
-        });
+        const doc = await db.collection('users').doc(u.uid).get();
+        if(doc.exists){
+          const data = doc.data();
+          setChillNumber(data.chillNumber);
+          setUsername(data.username || u.email.split('@')[0]);
+          setShowWelcome(!data.hasAddedContact);
+        } else {
+          const num = randomChillNumber();
+          const uname = username || u.email.split('@')[0];
+          setChillNumber(num);
+          setUsername(uname);
+          await db.collection('users').doc(u.uid).set({
+            email: u.email,
+            username: uname,
+            chillNumber: num,
+            hasAddedContact: false
+          });
+        }
       }
     });
   }, []);
@@ -69,13 +74,23 @@ function App() {
     }
   }
 
-  const addContact = (chill) => {
+  const addContact = async (chill) => {
     if(!chill) return alert('Inserisci un Chill Number');
-    setContacts([...contacts, chill]);
+
+    const query = await db.collection('users').where('chillNumber','==',chill).get();
+    if(query.empty){
+      alert('Chill Number non trovato!');
+      return;
+    }
+
+    const contactData = query.docs[0].data();
+    const contactId = query.docs[0].id;
+
+    if(contacts.find(c=>c.id===contactId)) return alert('Contatto già aggiunto');
+
+    setContacts([...contacts, {id: contactId, username: contactData.username, chillNumber: contactData.chillNumber}]);
     setShowWelcome(false);
-    db.collection('users').doc(user.uid).update({ hasAddedContact: true });
     document.getElementById('addChill').value = '';
-    setActiveTab('chat');
   }
 
   if(!user){
@@ -101,7 +116,7 @@ function App() {
       // ----- Chat Tab -----
       activeTab==='chat' && React.createElement('div',{style:{flex:1, display:'flex', flexDirection:'column'}},
         showWelcome && React.createElement('div',{className:'welcome'}, 'Benvenuto su Chill Chat! Aggiungi i tuoi amici e "chilla" con loro.'),
-        contacts.length > 0 ? contacts.map(c=>React.createElement('div',{key:c, style:{padding:'5px', borderBottom:'1px solid #ccc'}}, c))
+        contacts.length > 0 ? contacts.map(c=>React.createElement('div',{key:c.id, style:{padding:'5px', borderBottom:'1px solid #ccc'}}, c.username + ' ('+c.chillNumber+')'))
                              : React.createElement('div', {style:{textAlign:'center', marginTop:'20px'}}, 'Non hai ancora contatti.')
       ),
       // ----- Aggiungi Tab -----
@@ -147,4 +162,3 @@ function App() {
 // ====== Mount React ======
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
-
