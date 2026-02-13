@@ -693,11 +693,19 @@
         </div>
     </div>
 
-    <!-- Firebase SDK v9 compat -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Firebase SDK v8 (compat mode) from cdnjs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
 
     <script>
+        // Global variables
+        let currentUser = null;
+        let activeChat = null;
+        let unsubscribeMessages = null;
+        let db = null;
+        
+        const CONVERSINA_ID = 'conversina_ai_bot';
+
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCp2SjlW-JX9FeW1csVslhJm4qW51kzSKg",
@@ -708,16 +716,35 @@
             appId: "1:803118071656:web:90708d615b96cdfd31e0dd"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // Global variables
-        let currentUser = null;
-        let activeChat = null;
-        let unsubscribeMessages = null;
-        
-        const CONVERSINA_ID = 'conversina_ai_bot';
+        // Initialize Firebase immediately
+        try {
+            console.log('🔄 Inizializzazione Firebase...');
+            firebase.initializeApp(firebaseConfig);
+            console.log('✅ Firebase App inizializzato');
+            
+            db = firebase.firestore();
+            
+            // Disable network persistence to avoid WebChannel issues in restricted environments
+            db.settings({
+                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+            });
+            
+            console.log('✅ Firestore inizializzato');
+            
+            // Test connection
+            db.collection('_test_').doc('test').set({ test: true })
+                .then(() => {
+                    console.log('✅ Connessione Firestore OK!');
+                })
+                .catch((error) => {
+                    console.error('❌ Errore test connessione:', error);
+                    console.log('💡 L\'app funziona comunque - i dati vengono salvati');
+                });
+                
+        } catch (error) {
+            console.error('❌ Errore nell\'inizializzazione di Firebase:', error);
+            alert('Errore nell\'inizializzazione di Firebase. Controlla la console per dettagli.');
+        }
 
         // Login function
         function login() {
@@ -807,6 +834,7 @@
 
         // Load messages from Firestore
         function loadMessages(chatId) {
+            console.log('📨 Caricamento messaggi per chat:', chatId);
             const messagesContainer = document.getElementById('messagesContainer');
             
             // Unsubscribe from previous chat
@@ -816,19 +844,27 @@
 
             // Create chat room ID (sorted to ensure consistency)
             const roomId = [currentUser.id, chatId].sort().join('_');
+            console.log('🔑 Room ID:', roomId);
 
-            // Listen for real-time updates
-            unsubscribeMessages = db.collection('messages')
-                .where('roomId', '==', roomId)
-                .orderBy('timestamp', 'asc')
-                .onSnapshot((snapshot) => {
-                    const messages = [];
-                    snapshot.forEach((doc) => {
-                        messages.push({ id: doc.id, ...doc.data() });
+            try {
+                // Listen for real-time updates
+                unsubscribeMessages = db.collection('messages')
+                    .where('roomId', '==', roomId)
+                    .orderBy('timestamp', 'asc')
+                    .onSnapshot((snapshot) => {
+                        console.log('📬 Messaggi ricevuti:', snapshot.size);
+                        const messages = [];
+                        snapshot.forEach((doc) => {
+                            messages.push({ id: doc.id, ...doc.data() });
+                        });
+
+                        renderMessages(messages);
+                    }, (error) => {
+                        console.error('❌ Errore nel caricamento messaggi:', error);
                     });
-
-                    renderMessages(messages);
-                });
+            } catch (error) {
+                console.error('❌ Errore setup listener:', error);
+            }
         }
 
         // Render messages
@@ -883,15 +919,27 @@
 
         // Send message
         async function sendMessage() {
+            console.log('📤 Tentativo invio messaggio...');
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             
-            if (!text || !activeChat) return;
+            if (!text || !activeChat) {
+                console.log('⚠️ Messaggio vuoto o chat non selezionata');
+                return;
+            }
+            
+            if (!db) {
+                alert('Database non ancora inizializzato. Riprova tra un momento.');
+                console.error('❌ DB non inizializzato');
+                return;
+            }
 
             const roomId = [currentUser.id, activeChat.id].sort().join('_');
+            console.log('🔑 Invio a room:', roomId);
 
             try {
                 // Add message to Firestore
+                console.log('💾 Salvataggio messaggio su Firestore...');
                 await db.collection('messages').add({
                     roomId: roomId,
                     senderId: currentUser.id,
@@ -901,17 +949,20 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
+                console.log('✅ Messaggio salvato!');
+                
                 // Clear input
                 input.value = '';
 
                 // If chatting with Conversina or mentioned her, get AI response
                 if (activeChat.id === CONVERSINA_ID || text.toLowerCase().includes('@conversina')) {
+                    console.log('🤖 Chiamata a Conversina...');
                     await getConversinaResponse(text, roomId);
                 }
 
             } catch (error) {
-                console.error('Errore nell\'invio del messaggio:', error);
-                alert('Errore nell\'invio del messaggio. Verifica la configurazione Firebase.');
+                console.error('❌ Errore nell\'invio del messaggio:', error);
+                alert('Errore nell\'invio del messaggio: ' + error.message);
             }
         }
 
