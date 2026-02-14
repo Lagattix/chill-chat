@@ -397,10 +397,13 @@
         .messages-container {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 32px;
             display: flex;
             flex-direction: column;
             gap: 16px;
+            min-height: 0; /* Fix per flex scrolling */
+            -webkit-overflow-scrolling: touch; /* Smooth scroll su iOS */
         }
 
         .messages-container::-webkit-scrollbar {
@@ -414,6 +417,10 @@
         .messages-container::-webkit-scrollbar-thumb {
             background: var(--border-subtle);
             border-radius: 4px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
 
         .message {
