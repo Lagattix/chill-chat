@@ -675,6 +675,9 @@
                         </div>
                     </div>
                 </div>
+                <button class="logout-btn" onclick="if(window.reloadMessages) window.reloadMessages()" title="Ricarica messaggi">
+                    🔄
+                </button>
             </div>
 
             <div class="messages-container" id="messagesContainer">
@@ -847,7 +850,7 @@
             console.log('🔑 Room ID:', roomId);
 
             // Funzione per caricare i messaggi
-            async function fetchMessages() {
+            window.reloadMessages = async function() {
                 try {
                     const snapshot = await db.collection('messages')
                         .where('roomId', '==', roomId)
@@ -867,14 +870,14 @@
             }
 
             // Carica subito
-            fetchMessages();
+            window.reloadMessages();
 
-            // Polling ogni 3 secondi per nuovi messaggi (aumentato da 2 a 3)
-            const intervalId = setInterval(fetchMessages, 3000);
-
-            // Cleanup function
+            // POLLING DISABILITATO - Ricarica solo manuale o dopo invio messaggi
+            // Per ricaricare manualmente: premi F5 o invia un messaggio
+            
+            // Cleanup function (vuota ma necessaria)
             unsubscribeMessages = () => {
-                clearInterval(intervalId);
+                // Nessun interval da cancellare
             };
         }
 
@@ -970,21 +973,10 @@
                 // Clear input
                 input.value = '';
                 
-                // Ricarica i messaggi immediatamente per mostrare il nuovo messaggio
-                setTimeout(() => {
-                    if (activeChat && activeChat.id === chatId) {
-                        const roomId = [currentUser.id, activeChat.id].sort().join('_');
-                        db.collection('messages')
-                            .where('roomId', '==', roomId)
-                            .orderBy('timestamp', 'asc')
-                            .get()
-                            .then(snapshot => {
-                                const messages = [];
-                                snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-                                renderMessages(messages);
-                            });
-                    }
-                }, 500);
+                // Ricarica i messaggi immediatamente
+                if (window.reloadMessages) {
+                    setTimeout(window.reloadMessages, 500);
+                }
 
                 // If chatting with Conversina or mentioned her, get AI response
                 if (activeChat.id === CONVERSINA_ID || text.toLowerCase().includes('@conversina')) {
@@ -1061,6 +1053,11 @@
                 });
                 
                 console.log('✅ Risposta AI salvata!');
+                
+                // Ricarica i messaggi per mostrare la risposta di Conversina
+                if (window.reloadMessages) {
+                    setTimeout(window.reloadMessages, 500);
+                }
 
             } catch (error) {
                 console.error('❌ Errore nella risposta di Conversina:', error);
