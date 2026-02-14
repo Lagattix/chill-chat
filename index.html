@@ -915,6 +915,11 @@
                 <span class="top-nav-item-icon">🏠</span>
                 <span>Home</span>
             </button>
+            <button class="top-nav-item" id="navFriends" onclick="showFriends()">
+                <span class="top-nav-item-icon">👥</span>
+                <span>Amici</span>
+                <span id="friendRequestBadge" style="display: none; background: #ff4444; color: white; border-radius: 10px; padding: 2px 6px; font-size: 11px; margin-left: 4px;">0</span>
+            </button>
             <button class="top-nav-item" id="navProfile" onclick="showProfile()">
                 <span class="top-nav-item-icon">👤</span>
                 <span>Profilo</span>
@@ -975,6 +980,11 @@
             <div class="search-box">
                 <input type="text" class="search-input" placeholder="Cerca conversazioni..." id="searchInput">
             </div>
+
+            <button onclick="showAddFriend()" style="margin: 16px; padding: 12px; background: var(--accent-primary); color: var(--bg-primary); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span style="font-size: 20px;">➕</span>
+                Aggiungi Amici
+            </button>
 
             <div class="contacts-list" id="contactsList">
                 <!-- Contacts will be populated by JavaScript -->
@@ -1043,6 +1053,43 @@
             <div class="profile-actions">
                 <button class="profile-button profile-button-secondary" onclick="closeProfile()">Chiudi</button>
                 <button class="profile-button profile-button-primary" onclick="logout()">Esci</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Friend Modal -->
+    <div class="profile-modal" id="addFriendModal" onclick="closeAddFriend(event)">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <h2 style="margin: 0 0 20px 0; font-size: 22px; color: var(--text-primary);">Aggiungi Amico</h2>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Inserisci il Codice Amico</label>
+                <input type="text" id="friendCodeInput" placeholder="CHILL-XXXXXX" style="width: 100%; padding: 12px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); font-size: 16px; font-family: monospace; text-transform: uppercase;" />
+            </div>
+            
+            <div id="addFriendError" style="display: none; padding: 12px; background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.3); border-radius: 8px; color: #ff6b6b; font-size: 13px; margin-bottom: 16px;"></div>
+            <div id="addFriendSuccess" style="display: none; padding: 12px; background: rgba(0,255,0,0.1); border: 1px solid rgba(0,255,0,0.3); border-radius: 8px; color: #4ecca3; font-size: 13px; margin-bottom: 16px;"></div>
+            
+            <div class="profile-actions">
+                <button class="profile-button profile-button-secondary" onclick="closeAddFriend()">Annulla</button>
+                <button class="profile-button profile-button-primary" onclick="sendFriendRequest()">Invia Richiesta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Friends Modal -->
+    <div class="profile-modal" id="friendsModal" onclick="closeFriends(event)">
+        <div class="profile-card" onclick="event.stopPropagation()" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="margin: 0 0 20px 0; font-size: 22px; color: var(--text-primary);">Richieste di Amicizia</h2>
+            
+            <div id="friendRequestsList" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="text-align: center; padding: 32px; color: var(--text-secondary);">
+                    Nessuna richiesta
+                </div>
+            </div>
+            
+            <div class="profile-actions" style="margin-top: 20px;">
+                <button class="profile-button profile-button-secondary" onclick="closeFriends()">Chiudi</button>
             </div>
         </div>
     </div>
@@ -1299,6 +1346,203 @@
                 document.getElementById('profileModal').classList.remove('visible');
                 document.getElementById('navProfile').classList.remove('active');
                 document.getElementById('navHome').classList.add('active');
+            }
+        }
+
+        // Add Friend Modal
+        function showAddFriend() {
+            document.getElementById('addFriendModal').classList.add('visible');
+            document.getElementById('friendCodeInput').value = '';
+            document.getElementById('addFriendError').style.display = 'none';
+            document.getElementById('addFriendSuccess').style.display = 'none';
+        }
+
+        function closeAddFriend(event) {
+            if (!event || event.target.id === 'addFriendModal') {
+                document.getElementById('addFriendModal').classList.remove('visible');
+            }
+        }
+
+        async function sendFriendRequest() {
+            const friendCode = document.getElementById('friendCodeInput').value.trim().toUpperCase();
+            const errorDiv = document.getElementById('addFriendError');
+            const successDiv = document.getElementById('addFriendSuccess');
+            
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            if (!friendCode) {
+                errorDiv.textContent = 'Inserisci un codice amico';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (friendCode === currentUser.friendCode) {
+                errorDiv.textContent = 'Non puoi aggiungere te stesso!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            try {
+                // Cerca utente con questo friendCode
+                const usersSnapshot = await db.collection('users')
+                    .where('friendCode', '==', friendCode)
+                    .get();
+                
+                if (usersSnapshot.empty) {
+                    errorDiv.textContent = 'Codice amico non trovato';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                const friendUserId = usersSnapshot.docs[0].id;
+                const friendData = usersSnapshot.docs[0].data();
+                
+                // Controlla se già amici o richiesta già inviata
+                const existingRequest = await db.collection('friendRequests')
+                    .where('fromUserId', '==', currentUser.id)
+                    .where('toUserId', '==', friendUserId)
+                    .get();
+                
+                if (!existingRequest.empty) {
+                    errorDiv.textContent = 'Richiesta già inviata!';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Invia richiesta
+                await db.collection('friendRequests').add({
+                    fromUserId: currentUser.id,
+                    fromUserName: currentUser.name,
+                    fromUserAvatar: currentUser.avatar,
+                    toUserId: friendUserId,
+                    toUserName: friendData.name,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                successDiv.textContent = `Richiesta inviata a ${friendData.name}!`;
+                successDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    closeAddFriend();
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Errore invio richiesta:', error);
+                errorDiv.textContent = 'Errore nell\'invio della richiesta';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Friends Modal
+        async function showFriends() {
+            document.getElementById('navHome').classList.remove('active');
+            document.getElementById('navProfile').classList.remove('active');
+            document.getElementById('navFriends').classList.add('active');
+            
+            document.getElementById('friendsModal').classList.add('visible');
+            
+            // Carica richieste
+            await loadFriendRequests();
+        }
+
+        function closeFriends(event) {
+            if (!event || event.target.id === 'friendsModal') {
+                document.getElementById('friendsModal').classList.remove('visible');
+                document.getElementById('navFriends').classList.remove('active');
+                document.getElementById('navHome').classList.add('active');
+            }
+        }
+
+        async function loadFriendRequests() {
+            const container = document.getElementById('friendRequestsList');
+            
+            try {
+                const snapshot = await db.collection('friendRequests')
+                    .where('toUserId', '==', currentUser.id)
+                    .where('status', '==', 'pending')
+                    .get();
+                
+                if (snapshot.empty) {
+                    container.innerHTML = '<div style="text-align: center; padding: 32px; color: var(--text-secondary);">Nessuna richiesta</div>';
+                    document.getElementById('friendRequestBadge').style.display = 'none';
+                    return;
+                }
+                
+                // Aggiorna badge
+                document.getElementById('friendRequestBadge').textContent = snapshot.size;
+                document.getElementById('friendRequestBadge').style.display = 'inline-block';
+                
+                let html = '';
+                snapshot.forEach(doc => {
+                    const request = doc.data();
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--bg-primary);">
+                                ${request.fromUserAvatar}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--text-primary);">${request.fromUserName}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">vuole essere tuo amico</div>
+                            </div>
+                            <button onclick="acceptFriendRequest('${doc.id}', '${request.fromUserId}')" style="padding: 8px 16px; background: var(--accent-primary); color: var(--bg-primary); border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Accetta</button>
+                            <button onclick="rejectFriendRequest('${doc.id}')" style="padding: 8px 16px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-subtle); border-radius: 6px; cursor: pointer;">Rifiuta</button>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Errore caricamento richieste:', error);
+                container.innerHTML = '<div style="text-align: center; padding: 32px; color: #ff6b6b;">Errore nel caricamento</div>';
+            }
+        }
+
+        async function acceptFriendRequest(requestId, friendUserId) {
+            try {
+                // Aggiorna status richiesta
+                await db.collection('friendRequests').doc(requestId).update({
+                    status: 'accepted'
+                });
+                
+                // Aggiungi amicizia per entrambi gli utenti
+                const batch = db.batch();
+                
+                batch.set(db.collection('friends').doc(), {
+                    userId: currentUser.id,
+                    friendId: friendUserId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                batch.set(db.collection('friends').doc(), {
+                    userId: friendUserId,
+                    friendId: currentUser.id,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                await batch.commit();
+                
+                // Ricarica richieste e contatti
+                await loadFriendRequests();
+                loadChats();
+                
+            } catch (error) {
+                console.error('Errore accettazione richiesta:', error);
+                alert('Errore nell\'accettare la richiesta');
+            }
+        }
+
+        async function rejectFriendRequest(requestId) {
+            try {
+                await db.collection('friendRequests').doc(requestId).update({
+                    status: 'rejected'
+                });
+                
+                await loadFriendRequests();
+            } catch (error) {
+                console.error('Errore rifiuto richiesta:', error);
+                alert('Errore nel rifiutare la richiesta');
             }
         }
 
@@ -1631,6 +1875,7 @@
                     document.getElementById('currentUserName').textContent = currentUser.name;
                     
                     loadChats();
+                    loadFriendRequests(); // Carica richieste d'amicizia
                 } catch (error) {
                     console.error('Errore caricamento utente:', error);
                 }
