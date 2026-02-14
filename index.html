@@ -617,24 +617,94 @@
             font-weight: 500;
         }
 
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+
+        /* Mobile Overlay */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 999;
+        }
+
+        .mobile-overlay.visible {
+            display: block;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .app-container {
                 grid-template-columns: 1fr;
             }
 
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .chat-header {
+                padding-left: 60px;
+            }
+
             .sidebar {
                 display: none;
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 85%;
+                max-width: 320px;
+                z-index: 1000;
+                box-shadow: 2px 0 12px rgba(0,0,0,0.4);
             }
 
             .sidebar.mobile-visible {
                 display: flex;
-                position: absolute;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                width: 300px;
-                z-index: 100;
+            }
+
+            .chat-area {
+                width: 100%;
+                height: 100vh;
+            }
+
+            .messages-container {
+                padding: 16px;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+                font-size: 15px;
+            }
+
+            .input-area {
+                padding: 12px;
+            }
+
+            .login-card {
+                width: 90%;
+                max-width: 400px;
+                padding: 32px 24px;
+            }
+
+            .login-input, .message-input {
+                font-size: 16px; /* Previene zoom su iOS */
             }
         }
     </style>
@@ -674,6 +744,9 @@
     </div>
 
     <div class="app-container" id="appContainer">
+        <!-- Mobile Overlay -->
+        <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileSidebar()"></div>
+        
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -699,6 +772,9 @@
         <!-- Chat Area -->
         <div class="chat-area">
             <div class="chat-header" id="chatHeader" style="display: none;">
+                <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="Menu">
+                    ☰
+                </button>
                 <div class="chat-user-info">
                     <div class="chat-avatar" id="chatAvatar">C</div>
                     <div class="chat-user-details">
@@ -922,13 +998,34 @@
             auth.signOut();
         }
 
+        // Toggle mobile sidebar
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            sidebar.classList.toggle('mobile-visible');
+            overlay.classList.toggle('visible');
+        }
+
+        // Wrapper per selectChat che chiude sidebar su mobile
+        function selectChatMobile(chatId, name, avatar, isAI) {
+            selectChat(chatId, name, avatar, isAI);
+            // Close sidebar on mobile after selecting chat
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.getElementById('mobileOverlay');
+                sidebar.classList.remove('mobile-visible');
+                overlay.classList.remove('visible');
+            }
+        }
+
         // Load all chats
         function loadChats() {
             const contactsList = document.getElementById('contactsList');
             
             // Always show Conversina first
             const conversinaHTML = `
-                <div class="contact-item" onclick="selectChat('${CONVERSINA_ID}', 'Conversina', 'C', true)">
+                <div class="contact-item" onclick="selectChatMobile('${CONVERSINA_ID}', 'Conversina', 'C', true)">
                     <div class="contact-avatar ai online">🤖</div>
                     <div class="contact-info">
                         <div class="contact-name">Conversina AI</div>
