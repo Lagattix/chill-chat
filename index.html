@@ -1717,13 +1717,80 @@
             // Carica subito
             window.reloadMessages();
 
-            // Abilita polling automatico ogni 3 secondi per chat real-time con amici
-            // (Conversina non ha bisogno perché risponde immediatamente)
-            const intervalId = setInterval(() => {
-                if (activeChat && activeChat.id === chatId) {
-                    window.reloadMessages();
+            // Polling invisibile - aggiunge solo nuovi messaggi senza ricaricare tutto
+            let lastMessageId = null;
+            const intervalId = setInterval(async () => {
+                // Controlla se sei ancora nella stessa chat
+                if (!activeChat || activeChat.id !== chatId) {
+                    clearInterval(intervalId);
+                    return;
                 }
-            }, 3000);
+                
+                try {
+                    // Prendi solo messaggi dopo l'ultimo ID conosciuto
+                    let query = db.collection('messages')
+                        .where('roomId', '==', roomId)
+                        .orderBy('timestamp', 'asc');
+                    
+                    const snapshot = await query.get();
+                    
+                    // Se non ci sono messaggi, non fare nulla
+                    if (snapshot.empty) return;
+                    
+                    const allMessages = [];
+                    snapshot.forEach(doc => {
+                        allMessages.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // Se è il primo caricamento, salva l'ultimo ID
+                    if (!lastMessageId && allMessages.length > 0) {
+                        lastMessageId = allMessages[allMessages.length - 1].id;
+                        return;
+                    }
+                    
+                    // Trova l'indice dell'ultimo messaggio conosciuto
+                    const lastIndex = allMessages.findIndex(msg => msg.id === lastMessageId);
+                    
+                    // Se ci sono nuovi messaggi dopo l'ultimo conosciuto
+                    if (lastIndex !== -1 && lastIndex < allMessages.length - 1) {
+                        const newMessages = allMessages.slice(lastIndex + 1);
+                        
+                        // Aggiungi solo i nuovi messaggi al DOM senza ricaricare tutto
+                        const messagesContainer = document.getElementById('messagesContainer');
+                        const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
+                        
+                        newMessages.forEach(msg => {
+                            const isSent = msg.senderId === currentUser.id;
+                            const isAI = msg.senderId === CONVERSINA_ID;
+                            const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
+                            
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = `message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}`;
+                            messageDiv.innerHTML = `
+                                <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
+                                <div class="message-content">
+                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
+                                    <div class="message-bubble">${formatMessage(msg.text)}</div>
+                                    <div class="message-time">${time}</div>
+                                </div>
+                            `;
+                            
+                            messagesContainer.appendChild(messageDiv);
+                        });
+                        
+                        // Aggiorna ultimo ID
+                        lastMessageId = allMessages[allMessages.length - 1].id;
+                        
+                        // Scroll in basso solo se eri già in fondo
+                        if (wasAtBottom) {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('Errore polling:', error);
+                }
+            }, 3000); // Ogni 3 secondi, ma invisibile!
             
             // Cleanup function
             unsubscribeMessages = () => {
