@@ -1150,8 +1150,12 @@
 
         // Login con email/password
         async function loginUser() {
+            console.log('🔐 Tentativo login...');
             const email = document.getElementById('emailInput').value.trim();
             const password = document.getElementById('passwordInput').value;
+            
+            console.log('📧 Email:', email);
+            console.log('🔑 Password length:', password.length);
             
             if (!email || !password) {
                 showError('Inserisci email e password');
@@ -1159,10 +1163,12 @@
             }
             
             try {
+                console.log('🔄 Chiamata Firebase Auth...');
                 await auth.signInWithEmailAndPassword(email, password);
+                console.log('✅ Login riuscito!');
                 // L'app si caricherà automaticamente tramite onAuthStateChanged
             } catch (error) {
-                console.error('Errore login:', error);
+                console.error('❌ Errore login:', error);
                 if (error.code === 'auth/user-not-found') {
                     showError('Utente non trovato');
                 } else if (error.code === 'auth/wrong-password') {
@@ -1172,16 +1178,21 @@
                 } else if (error.code === 'auth/invalid-credential') {
                     showError('Credenziali non valide');
                 } else {
-                    showError('Errore durante il login');
+                    showError('Errore durante il login: ' + error.message);
                 }
             }
         }
 
         // Registrazione nuovo utente
         async function registerUser() {
+            console.log('📝 Tentativo registrazione...');
             const name = document.getElementById('regNameInput').value.trim();
             const email = document.getElementById('regEmailInput').value.trim();
             const password = document.getElementById('regPasswordInput').value;
+            
+            console.log('👤 Nome:', name);
+            console.log('📧 Email:', email);
+            console.log('🔑 Password length:', password.length);
             
             if (!name) {
                 showError('Inserisci il tuo nome');
@@ -1197,19 +1208,23 @@
             }
             
             try {
+                console.log('🔄 Creazione utente Firebase...');
                 // Crea utente
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                console.log('✅ Utente creato:', userCredential.user.uid);
                 
+                console.log('💾 Salvataggio dati utente...');
                 // Salva nome in Firestore
                 await db.collection('users').doc(userCredential.user.uid).set({
                     name: name,
                     email: email,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                console.log('✅ Registrazione completata!');
                 
                 // L'app si caricherà automaticamente tramite onAuthStateChanged
             } catch (error) {
-                console.error('Errore registrazione:', error);
+                console.error('❌ Errore registrazione:', error);
                 if (error.code === 'auth/email-already-in-use') {
                     showError('Email già registrata');
                 } else if (error.code === 'auth/invalid-email') {
@@ -1217,7 +1232,7 @@
                 } else if (error.code === 'auth/weak-password') {
                     showError('Password troppo debole');
                 } else {
-                    showError('Errore durante la registrazione');
+                    showError('Errore durante la registrazione: ' + error.message);
                 }
             }
         }
