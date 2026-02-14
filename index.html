@@ -644,8 +644,32 @@
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
             <h1 class="login-title">Chill Chat</h1>
-            <input type="text" id="usernameInput" class="login-input" placeholder="Il tuo nome" />
-            <button class="login-button" onclick="login()">Entra</button>
+            
+            <!-- Login Form -->
+            <div id="loginForm">
+                <input type="email" id="emailInput" class="login-input" placeholder="Email" autocomplete="email" />
+                <input type="password" id="passwordInput" class="login-input" placeholder="Password" autocomplete="current-password" />
+                <button class="login-button" onclick="loginUser()">Accedi</button>
+                <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
+                    Non hai un account? 
+                    <a href="#" onclick="showRegister(); return false;" style="color: var(--accent-primary); text-decoration: none;">Registrati</a>
+                </div>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" style="display: none;">
+                <input type="text" id="regNameInput" class="login-input" placeholder="Nome" />
+                <input type="email" id="regEmailInput" class="login-input" placeholder="Email" autocomplete="email" />
+                <input type="password" id="regPasswordInput" class="login-input" placeholder="Password (min 6 caratteri)" autocomplete="new-password" />
+                <button class="login-button" onclick="registerUser()">Registrati</button>
+                <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
+                    Hai già un account? 
+                    <a href="#" onclick="showLogin(); return false;" style="color: var(--accent-primary); text-decoration: none;">Accedi</a>
+                </div>
+            </div>
+            
+            <!-- Error Message -->
+            <div id="authError" style="display: none; margin-top: 16px; padding: 12px; background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.3); border-radius: 8px; color: #ff6b6b; font-size: 13px; text-align: center;"></div>
         </div>
     </div>
 
@@ -709,6 +733,7 @@
     <!-- Firebase SDK v8 (compat mode) from cdnjs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.js"></script>
 
     <script>
         // Global variables
@@ -716,6 +741,7 @@
         let activeChat = null;
         let unsubscribeMessages = null;
         let db = null;
+        let auth = null;
         
         const CONVERSINA_ID = 'conversina_ai_bot';
 
@@ -736,6 +762,10 @@
             console.log('✅ Firebase App inizializzato');
             
             db = firebase.firestore();
+            
+            // Initialize Firebase Auth
+            auth = firebase.auth();
+            console.log('✅ Firebase Auth inizializzato');
             
             // Disable network persistence to avoid WebChannel issues in restricted environments
             db.settings({
@@ -759,26 +789,129 @@
             alert('Errore nell\'inizializzazione di Firebase. Controlla la console per dettagli.');
         }
 
-        // Login function
-        function login() {
-            const username = document.getElementById('usernameInput').value.trim();
-            if (!username) {
-                alert('Inserisci un nome!');
+        // Auth state observer
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                // Utente loggato - carica i dati
+                try {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    const userData = userDoc.data();
+                    
+                    currentUser = {
+                        id: user.uid,
+                        name: userData?.name || user.email.split('@')[0],
+                        email: user.email,
+                        avatar: (userData?.name || user.email)[0].toUpperCase()
+                    };
+                    
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appContainer').classList.add('visible');
+                    document.getElementById('currentUserName').textContent = currentUser.name;
+                    
+                    loadChats();
+                } catch (error) {
+                    console.error('Errore caricamento utente:', error);
+                }
+            } else {
+                // Utente non loggato
+                currentUser = null;
+                activeChat = null;
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('appContainer').classList.remove('visible');
+            }
+        });
+
+        // Show/hide forms
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('authError').style.display = 'none';
+        }
+
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('authError').style.display = 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('authError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Login con email/password
+        async function loginUser() {
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            
+            if (!email || !password) {
+                showError('Inserisci email e password');
                 return;
             }
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                // L'app si caricherà automaticamente tramite onAuthStateChanged
+            } catch (error) {
+                console.error('Errore login:', error);
+                if (error.code === 'auth/user-not-found') {
+                    showError('Utente non trovato');
+                } else if (error.code === 'auth/wrong-password') {
+                    showError('Password errata');
+                } else if (error.code === 'auth/invalid-email') {
+                    showError('Email non valida');
+                } else if (error.code === 'auth/invalid-credential') {
+                    showError('Credenziali non valide');
+                } else {
+                    showError('Errore durante il login');
+                }
+            }
+        }
 
-            currentUser = {
-                id: 'user_' + Date.now(),
-                name: username,
-                avatar: username.charAt(0).toUpperCase()
-            };
-
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appContainer').classList.add('visible');
-            document.getElementById('currentUserName').textContent = username;
-
-            // Load chats
-            loadChats();
+        // Registrazione nuovo utente
+        async function registerUser() {
+            const name = document.getElementById('regNameInput').value.trim();
+            const email = document.getElementById('regEmailInput').value.trim();
+            const password = document.getElementById('regPasswordInput').value;
+            
+            if (!name) {
+                showError('Inserisci il tuo nome');
+                return;
+            }
+            if (!email) {
+                showError('Inserisci una email');
+                return;
+            }
+            if (password.length < 6) {
+                showError('La password deve essere di almeno 6 caratteri');
+                return;
+            }
+            
+            try {
+                // Crea utente
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                
+                // Salva nome in Firestore
+                await db.collection('users').doc(userCredential.user.uid).set({
+                    name: name,
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // L'app si caricherà automaticamente tramite onAuthStateChanged
+            } catch (error) {
+                console.error('Errore registrazione:', error);
+                if (error.code === 'auth/email-already-in-use') {
+                    showError('Email già registrata');
+                } else if (error.code === 'auth/invalid-email') {
+                    showError('Email non valida');
+                } else if (error.code === 'auth/weak-password') {
+                    showError('Password troppo debole');
+                } else {
+                    showError('Errore durante la registrazione');
+                }
+            }
         }
 
         // Logout function
@@ -786,11 +919,7 @@
             if (unsubscribeMessages) {
                 unsubscribeMessages();
             }
-            currentUser = null;
-            activeChat = null;
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('appContainer').classList.remove('visible');
-            document.getElementById('usernameInput').value = '';
+            auth.signOut();
         }
 
         // Load all chats
