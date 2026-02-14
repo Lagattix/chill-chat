@@ -340,8 +340,14 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-primary);
-            height: 100vh; /* Fix: forza altezza piena */
-            overflow: hidden; /* Previene scroll su chat-area */
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            .chat-area {
+                height: calc(100vh - 49px); /* Sottrae altezza top nav */
+            }
         }
 
         .chat-header {
@@ -644,7 +650,7 @@
             background: var(--bg-primary);
         }
         
-        /* Desktop - nasconde il pulsante menu */
+        /* Nascondi pulsante menu su desktop */
         @media (min-width: 769px) {
             .mobile-menu-btn {
                 display: none !important;
@@ -845,17 +851,22 @@
             .chat-header {
                 padding-left: 80px;
             }
+            
+            /* Nascondi icone su mobile nella top nav quando non serve */
+            .top-nav {
+                padding: 8px 12px;
+            }
 
             .top-nav-title {
                 font-size: 18px;
             }
 
-            .top-nav-item span {
-                display: none; /* Nascondi label su mobile */
+            .top-nav-item span:not(.top-nav-item-icon) {
+                display: none; /* Nascondi testo, mostra solo icone */
             }
-
-            .top-nav {
-                padding: 10px 16px;
+            
+            .top-nav-item {
+                padding: 8px 12px;
             }
 
             .sidebar {
@@ -997,7 +1008,7 @@
                 <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="Menu">
                     ☰
                 </button>
-                <h1 id="chatHeaderTitle" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1;">Chill Chat</h1>
+                <h1 id="chatHeaderTitle" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1; display: none;">Chill Chat</h1>
                 <div class="chat-user-info" id="chatUserInfo" style="display: none;">
                     <div class="chat-avatar" id="chatAvatar">C</div>
                     <div class="chat-user-details">
@@ -1656,7 +1667,6 @@
 
             // Update UI
             document.getElementById('chatHeader').style.display = 'flex';
-            document.getElementById('chatHeaderTitle').style.display = 'none';
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
             const chatAvatar = document.getElementById('chatAvatar');
