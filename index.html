@@ -1095,40 +1095,6 @@
             alert('Errore nell\'inizializzazione di Firebase. Controlla la console per dettagli.');
         }
 
-        // Auth state observer
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                // Utente loggato - carica i dati
-                try {
-                    const userDoc = await db.collection('users').doc(user.uid).get();
-                    const userData = userDoc.data();
-                    
-                    currentUser = {
-                        id: user.uid,
-                        name: userData?.name || user.email.split('@')[0],
-                        email: user.email,
-                        avatar: (userData?.name || user.email)[0].toUpperCase()
-                    };
-                    
-                    document.getElementById('loginScreen').style.display = 'none';
-                    document.getElementById('topNav').style.display = 'flex';
-                    document.getElementById('appContainer').classList.add('visible');
-                    document.getElementById('currentUserName').textContent = currentUser.name;
-                    
-                    loadChats();
-                } catch (error) {
-                    console.error('Errore caricamento utente:', error);
-                }
-            } else {
-                // Utente non loggato
-                currentUser = null;
-                activeChat = null;
-                document.getElementById('loginScreen').style.display = 'flex';
-                document.getElementById('topNav').style.display = 'none';
-                document.getElementById('appContainer').classList.remove('visible');
-            }
-        });
-
         // Show/hide forms
         function showLogin() {
             document.getElementById('loginForm').style.display = 'block';
@@ -1598,4 +1564,47 @@
             }
         }
 
+        // Auth state observer - DEVE essere dopo tutte le funzioni
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                // Utente loggato - carica i dati
+                try {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    const userData = userDoc.data();
+                    
+                    currentUser = {
+                        id: user.uid,
+                        name: userData?.name || user.email.split('@')[0],
+                        email: user.email,
+                        avatar: (userData?.name || user.email)[0].toUpperCase()
+                    };
+                    
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('topNav').style.display = 'flex';
+                    document.getElementById('appContainer').classList.add('visible');
+                    document.getElementById('currentUserName').textContent = currentUser.name;
+                    
+                    loadChats();
+                } catch (error) {
+                    console.error('Errore caricamento utente:', error);
+                }
+            } else {
+                // Utente non loggato
+                currentUser = null;
+                activeChat = null;
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('topNav').style.display = 'none';
+                document.getElementById('appContainer').classList.remove('visible');
+            }
+        });
+
+        // Event listener per Enter key
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
         /
