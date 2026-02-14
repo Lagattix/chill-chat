@@ -882,6 +882,9 @@
         function renderMessages(messages) {
             const messagesContainer = document.getElementById('messagesContainer');
             
+            // Salva la posizione di scroll corrente
+            const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
+            
             if (messages.length === 0) {
                 messagesContainer.innerHTML = `
                     <div class="date-divider">
@@ -919,8 +922,10 @@
                 ${messagesHTML}
             `;
 
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Scroll solo se eri già in fondo (nuovo messaggio)
+            if (wasAtBottom) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
         }
 
         // Format message (highlight mentions)
