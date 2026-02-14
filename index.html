@@ -620,17 +620,35 @@
         /* Mobile Menu Button */
         .mobile-menu-btn {
             display: none;
-            background: none;
-            border: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
             color: var(--text-primary);
-            font-size: 24px;
+            font-size: 28px;
+            line-height: 1;
             cursor: pointer;
-            padding: 8px;
+            padding: 12px 16px;
             position: absolute;
             left: 16px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 10;
+            min-width: 48px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .mobile-menu-btn:active {
+            background: var(--bg-primary);
+        }
+        
+        /* Desktop - nasconde il pulsante menu */
+        @media (min-width: 769px) {
+            .mobile-menu-btn {
+                display: none !important;
+            }
         }
 
         /* Mobile Overlay */
@@ -656,11 +674,11 @@
             }
 
             .mobile-menu-btn {
-                display: block;
+                display: flex !important; /* Forza visualizzazione su mobile */
             }
 
             .chat-header {
-                padding-left: 60px;
+                padding-left: 80px; /* Più spazio per il pulsante grande */
             }
 
             .sidebar {
