@@ -651,53 +651,71 @@
             }
         }
 
-        /* Bottom Navigation Bar */
-        .bottom-nav {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+        /* Top Navigation Bar */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             background: var(--bg-secondary);
-            border-top: 1px solid var(--border-subtle);
-            padding: 8px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 24px;
+            position: sticky;
+            top: 0;
             z-index: 100;
         }
 
-        .bottom-nav-container {
+        .top-nav-left {
             display: flex;
-            justify-content: space-around;
             align-items: center;
-            max-width: 600px;
-            margin: 0 auto;
+            gap: 16px;
         }
 
-        .bottom-nav-item {
+        .top-nav-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .top-nav-right {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 4px;
-            padding: 8px 24px;
+            gap: 8px;
+        }
+
+        .top-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
             cursor: pointer;
             color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.2s;
-            border: none;
             background: none;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
             font-size: 14px;
-        }
-
-        .bottom-nav-item.active {
-            color: var(--accent-primary);
-        }
-
-        .bottom-nav-item-icon {
-            font-size: 24px;
-        }
-
-        .bottom-nav-item-label {
-            font-size: 12px;
             font-weight: 500;
+        }
+
+        .top-nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .top-nav-item.active {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .top-nav-item-icon {
+            font-size: 20px;
+        }
+
+        /* App container con top nav */
+        .app-container {
+            height: calc(100vh - 49px); /* Sottrae altezza top nav */
         }
 
         /* Profile Modal */
@@ -817,26 +835,27 @@
         @media (max-width: 768px) {
             .app-container {
                 grid-template-columns: 1fr;
+                height: calc(100vh - 49px);
             }
 
             .mobile-menu-btn {
-                display: flex !important; /* Forza visualizzazione su mobile */
+                display: flex !important;
             }
 
             .chat-header {
-                padding-left: 80px; /* Più spazio per il pulsante grande */
+                padding-left: 80px;
             }
 
-            .bottom-nav {
-                display: block;
+            .top-nav-title {
+                font-size: 18px;
             }
 
-            .chat-area {
-                padding-bottom: 70px; /* Spazio per bottom nav */
+            .top-nav-item span {
+                display: none; /* Nascondi label su mobile */
             }
 
-            .input-area {
-                bottom: 60px; /* Sopra la bottom nav */
+            .top-nav {
+                padding: 10px 16px;
             }
 
             .sidebar {
@@ -886,6 +905,23 @@
     </style>
 </head>
 <body>
+    <!-- Top Navigation -->
+    <div class="top-nav" id="topNav" style="display: none;">
+        <div class="top-nav-left">
+            <h1 class="top-nav-title">Chill Chat</h1>
+        </div>
+        <div class="top-nav-right">
+            <button class="top-nav-item active" id="navHome" onclick="showHome()">
+                <span class="top-nav-item-icon">🏠</span>
+                <span>Home</span>
+            </button>
+            <button class="top-nav-item" id="navProfile" onclick="showProfile()">
+                <span class="top-nav-item-icon">👤</span>
+                <span>Profilo</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Login Screen -->
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
@@ -983,20 +1019,6 @@
         </div>
     </div>
 
-    <!-- Bottom Navigation (Mobile Only) -->
-    <div class="bottom-nav" id="bottomNav">
-        <div class="bottom-nav-container">
-            <button class="bottom-nav-item active" id="navHome" onclick="showHome()">
-                <div class="bottom-nav-item-icon">🏠</div>
-                <div class="bottom-nav-item-label">Home</div>
-            </button>
-            <button class="bottom-nav-item" id="navProfile" onclick="showProfile()">
-                <div class="bottom-nav-item-icon">👤</div>
-                <div class="bottom-nav-item-label">Profilo</div>
-            </button>
-        </div>
-    </div>
-
     <!-- Profile Modal -->
     <div class="profile-modal" id="profileModal" onclick="closeProfile(event)">
         <div class="profile-card" onclick="event.stopPropagation()">
@@ -1004,7 +1026,7 @@
                 <div class="profile-avatar" id="profileAvatar">U</div>
                 <div class="profile-info">
                     <h2 class="profile-name" id="profileName">Nome Utente</h2>
-                    <p class="profile-email" id="profileEmail">email@example.com</p>
+                    <p class="profile-email" id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="cca9a1ada5a08ca9b4ada1bca0a9e2afa3a1">[email&#160;protected]</a></p>
                 </div>
             </div>
             <div class="profile-actions">
@@ -1015,7 +1037,7 @@
     </div>
 
     <!-- Firebase SDK v8 (compat mode) from cdnjs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.js"></script>
 
@@ -1089,6 +1111,7 @@
                     };
                     
                     document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('topNav').style.display = 'flex';
                     document.getElementById('appContainer').classList.add('visible');
                     document.getElementById('currentUserName').textContent = currentUser.name;
                     
@@ -1101,6 +1124,7 @@
                 currentUser = null;
                 activeChat = null;
                 document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('topNav').style.display = 'none';
                 document.getElementById('appContainer').classList.remove('visible');
             }
         });
@@ -1559,12 +1583,4 @@
             }
         }
 
-        // Event listeners
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-    </script>
-</body>
-</html>
+        /
