@@ -1284,7 +1284,7 @@
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        history: history.slice(-10) // Send last 10 messages for context
+                        history: history.slice(-20) // Send last 20 messages for better context
                     })
                 });
 
