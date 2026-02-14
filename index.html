@@ -1547,12 +1547,12 @@
         }
 
         // Load all chats
-        function loadChats() {
+        async function loadChats() {
             const contactsList = document.getElementById('contactsList');
             
             // Always show Conversina first
-            const conversinaHTML = `
-                <div class="contact-item" onclick="selectChatMobile('${CONVERSINA_ID}', 'Conversina', 'C', true)">
+            let html = `
+                <div class="contact-item" onclick="selectChatMobile('${CONVERSINA_ID}', 'Conversina', '🤖', true)">
                     <div class="contact-avatar ai online">🤖</div>
                     <div class="contact-info">
                         <div class="contact-name">Conversina AI</div>
@@ -1564,7 +1564,85 @@
                 </div>
             `;
 
-            contactsList.innerHTML = conversinaHTML;
+            try {
+                // Carica lista amici
+                const friendsSnapshot = await db.collection('friends')
+                    .where('userId', '==', currentUser.id)
+                    .get();
+                
+                if (!friendsSnapshot.empty) {
+                    // Aggiungi separatore
+                    html += `
+                        <div style="padding: 16px 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">
+                            Amici
+                        </div>
+                    `;
+                    
+                    // Carica dati di ogni amico
+                    for (const doc of friendsSnapshot.docs) {
+                        const friendData = doc.data();
+                        const friendId = friendData.friendId;
+                        
+                        // Carica info amico
+                        const friendUserDoc = await db.collection('users').doc(friendId).get();
+                        if (friendUserDoc.exists) {
+                            const friendUser = friendUserDoc.data();
+                            const friendName = friendUser.name || 'Amico';
+                            const friendAvatar = friendName[0].toUpperCase();
+                            
+                            // Carica ultimo messaggio (opzionale)
+                            const roomId = [currentUser.id, friendId].sort().join('_');
+                            let lastMessage = 'Inizia una conversazione';
+                            let lastTime = '';
+                            
+                            try {
+                                const lastMsgSnapshot = await db.collection('messages')
+                                    .where('roomId', '==', roomId)
+                                    .orderBy('timestamp', 'desc')
+                                    .limit(1)
+                                    .get();
+                                
+                                if (!lastMsgSnapshot.empty) {
+                                    const lastMsg = lastMsgSnapshot.docs[0].data();
+                                    lastMessage = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
+                                    if (lastMsg.timestamp) {
+                                        const date = new Date(lastMsg.timestamp.seconds * 1000);
+                                        const now = new Date();
+                                        const diffHours = (now - date) / (1000 * 60 * 60);
+                                        
+                                        if (diffHours < 24) {
+                                            lastTime = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                                        } else {
+                                            lastTime = date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.log('Nessun messaggio precedente');
+                            }
+                            
+                            html += `
+                                <div class="contact-item" onclick="selectChatMobile('${friendId}', '${friendName}', '${friendAvatar}', false)">
+                                    <div class="contact-avatar online">${friendAvatar}</div>
+                                    <div class="contact-info">
+                                        <div class="contact-name">${friendName}</div>
+                                        <div class="contact-preview">${lastMessage}</div>
+                                    </div>
+                                    <div class="contact-meta">
+                                        <div class="contact-time">${lastTime}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                
+                contactsList.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Errore caricamento chat:', error);
+                contactsList.innerHTML = html; // Mostra almeno Conversina
+            }
         }
 
         // Select chat
@@ -1639,12 +1717,17 @@
             // Carica subito
             window.reloadMessages();
 
-            // POLLING DISABILITATO - Ricarica solo manuale o dopo invio messaggi
-            // Per ricaricare manualmente: premi F5 o invia un messaggio
+            // Abilita polling automatico ogni 3 secondi per chat real-time con amici
+            // (Conversina non ha bisogno perché risponde immediatamente)
+            const intervalId = setInterval(() => {
+                if (activeChat && activeChat.id === chatId) {
+                    window.reloadMessages();
+                }
+            }, 3000);
             
-            // Cleanup function (vuota ma necessaria)
+            // Cleanup function
             unsubscribeMessages = () => {
-                // Nessun interval da cancellare
+                clearInterval(intervalId);
             };
         }
 
