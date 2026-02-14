@@ -651,6 +651,152 @@
             }
         }
 
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-subtle);
+            padding: 8px 0;
+            z-index: 100;
+        }
+
+        .bottom-nav-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+            border: none;
+            background: none;
+            font-size: 14px;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--accent-primary);
+        }
+
+        .bottom-nav-item-icon {
+            font-size: 24px;
+        }
+
+        .bottom-nav-item-label {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Profile Modal */
+        .profile-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-modal.visible {
+            display: flex;
+        }
+
+        .profile-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 32px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 600;
+            color: var(--bg-primary);
+        }
+
+        .profile-info {
+            text-align: center;
+        }
+
+        .profile-name {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+        }
+
+        .profile-email {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .profile-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .profile-button {
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .profile-button-primary {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .profile-button-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .profile-button:active {
+            transform: scale(0.98);
+        }
+
         /* Mobile Overlay */
         .mobile-overlay {
             display: none;
@@ -679,6 +825,18 @@
 
             .chat-header {
                 padding-left: 80px; /* Più spazio per il pulsante grande */
+            }
+
+            .bottom-nav {
+                display: block;
+            }
+
+            .chat-area {
+                padding-bottom: 70px; /* Spazio per bottom nav */
+            }
+
+            .input-area {
+                bottom: 60px; /* Sopra la bottom nav */
             }
 
             .sidebar {
@@ -821,6 +979,37 @@
                     <input type="text" class="message-input" id="messageInput" placeholder="Scrivi un messaggio...">
                     <button class="send-button" id="sendButton" onclick="sendMessage()">➤</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation (Mobile Only) -->
+    <div class="bottom-nav" id="bottomNav">
+        <div class="bottom-nav-container">
+            <button class="bottom-nav-item active" id="navHome" onclick="showHome()">
+                <div class="bottom-nav-item-icon">🏠</div>
+                <div class="bottom-nav-item-label">Home</div>
+            </button>
+            <button class="bottom-nav-item" id="navProfile" onclick="showProfile()">
+                <div class="bottom-nav-item-icon">👤</div>
+                <div class="bottom-nav-item-label">Profilo</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="profile-modal" id="profileModal" onclick="closeProfile(event)">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <div class="profile-header">
+                <div class="profile-avatar" id="profileAvatar">U</div>
+                <div class="profile-info">
+                    <h2 class="profile-name" id="profileName">Nome Utente</h2>
+                    <p class="profile-email" id="profileEmail">email@example.com</p>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button class="profile-button profile-button-secondary" onclick="closeProfile()">Chiudi</button>
+                <button class="profile-button profile-button-primary" onclick="logout()">Esci</button>
             </div>
         </div>
     </div>
@@ -1035,6 +1224,41 @@
                 const overlay = document.getElementById('mobileOverlay');
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
+            }
+        }
+
+        // Bottom Nav Functions
+        function showHome() {
+            // Update active state
+            document.getElementById('navHome').classList.add('active');
+            document.getElementById('navProfile').classList.remove('active');
+            
+            // Close profile if open
+            document.getElementById('profileModal').classList.remove('visible');
+        }
+
+        function showProfile() {
+            // Update active state
+            document.getElementById('navHome').classList.remove('active');
+            document.getElementById('navProfile').classList.add('active');
+            
+            // Update profile info
+            if (currentUser) {
+                document.getElementById('profileAvatar').textContent = currentUser.avatar;
+                document.getElementById('profileName').textContent = currentUser.name;
+                document.getElementById('profileEmail').textContent = currentUser.email || '';
+            }
+            
+            // Show profile modal
+            document.getElementById('profileModal').classList.add('visible');
+        }
+
+        function closeProfile(event) {
+            // Close only if clicking on overlay or close button
+            if (!event || event.target.id === 'profileModal') {
+                document.getElementById('profileModal').classList.remove('visible');
+                document.getElementById('navProfile').classList.remove('active');
+                document.getElementById('navHome').classList.add('active');
             }
         }
 
