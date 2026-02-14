@@ -977,7 +977,7 @@
             }
         }
 
-        // Get response from Conversina (Hugging Face AI)
+        // Get response from Conversina (via backend API)
         async function getConversinaResponse(userMessage, roomId) {
             // Show typing indicator
             const statusElement = document.getElementById('chatUserStatus');
@@ -991,31 +991,29 @@
                     .orderBy('timestamp', 'asc')
                     .get();
                 
-                // Build conversation context
-                let conversationContext = "Sei Conversina, un'assistente AI amichevole. Rispondi in italiano.\n\n";
-                
+                // Build conversation history
+                const history = [];
                 historySnapshot.forEach((doc) => {
                     const data = doc.data();
                     const role = data.senderId === currentUser.id ? 'Utente' : 'Conversina';
-                    conversationContext += `${role}: ${data.text}\n`;
+                    history.push(`${role}: ${data.text}`);
                 });
 
-                console.log('🤖 Chiamando Hugging Face API...');
+                console.log('🤖 Chiamando backend API...');
                 
-                // Call Hugging Face API (Mistral-7B - Gratis, nessuna API key necessaria!)
-                const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
+                // IMPORTANTE: Sostituisci con il tuo URL Vercel dopo il deploy!
+                // Esempio: https://chill-chat-backend.vercel.app/api/chat
+                const BACKEND_URL = 'https://conversina-backend-ijue.vercel.app/';
+                
+                // Call backend API
+                const response = await fetch(BACKEND_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        inputs: conversationContext + "Utente: " + userMessage + "\nConversina:",
-                        parameters: {
-                            max_new_tokens: 250,
-                            temperature: 0.7,
-                            top_p: 0.95,
-                            return_full_text: false
-                        }
+                        message: userMessage,
+                        history: history.slice(-10) // Send last 10 messages for context
                     })
                 });
 
@@ -1024,21 +1022,10 @@
                 console.log('📦 Dati ricevuti:', data);
 
                 if (!response.ok) {
-                    throw new Error('Errore API Hugging Face: ' + (data.error || response.statusText));
+                    throw new Error('Errore backend: ' + (data.error || response.statusText));
                 }
 
-                // Extract AI response
-                let aiText = '';
-                if (Array.isArray(data) && data[0]?.generated_text) {
-                    aiText = data[0].generated_text.trim();
-                } else if (data.generated_text) {
-                    aiText = data.generated_text.trim();
-                } else {
-                    aiText = 'Mi dispiace, non sono riuscita a generare una risposta.';
-                }
-
-                // Clean up response (remove any role prefix if present)
-                aiText = aiText.replace(/^(Conversina:|Assistant:|AI:)\s*/i, '').trim();
+                const aiText = data.response || 'Mi dispiace, non sono riuscita a generare una risposta.';
 
                 console.log('💬 Risposta AI:', aiText.substring(0, 50) + '...');
 
@@ -1063,7 +1050,7 @@
                     senderId: CONVERSINA_ID,
                     senderName: 'Conversina',
                     senderAvatar: '🤖',
-                    text: 'Mi dispiace, ho avuto un problema tecnico. Riprova tra qualche secondo! 😊',
+                    text: '⚠️ Backend non configurato! Segui le istruzioni in SETUP_BACKEND.md per attivare Conversina. Per ora l\'app funziona solo per chat tra utenti.',
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
             } finally {
