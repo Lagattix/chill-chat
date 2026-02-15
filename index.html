@@ -343,13 +343,15 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-primary);
-            height: 100vh;
+            height: calc(100vh - 49px); /* Sottrae altezza top nav */
             overflow: hidden;
+            margin-top: 49px; /* Spazio per top nav */
         }
         
         @media (max-width: 768px) {
             .chat-area {
                 height: calc(100vh - 49px); /* Sottrae altezza top nav */
+                margin-top: 0; /* Su mobile il margin-top è già gestito */
             }
         }
 
