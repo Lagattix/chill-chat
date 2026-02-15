@@ -2108,7 +2108,7 @@
         async function loadChats() {
             const contactsList = document.getElementById('contactsList');
             
-            // Always show Conversina first
+            // 1️⃣ Mostra sempre Conversina per tutti
             let html = `
                 <div class="contact-item" onclick="selectChatMobile('${CONVERSINA_ID}', 'Conversina', '🤖', true)">
                     <div class="contact-avatar ai online">🤖</div>
@@ -2121,6 +2121,22 @@
                     </div>
                 </div>
             `;
+
+            // 2️⃣ Mostra sempre Conversando Official per TUTTI (eccetto se sei tu)
+            if (currentUser?.id !== 'admin_conversando_official') {
+                html += `
+                    <div class="contact-item" onclick="selectChatMobile('admin_conversando_official', 'Conversando Official', '👑', false)">
+                        <div class="contact-avatar online" style="background: linear-gradient(135deg, #c9a961, #d4af37); color: #0a0a0f;">👑</div>
+                        <div class="contact-info">
+                            <div class="contact-name" style="color: var(--accent-primary);">Conversando Official</div>
+                            <div class="contact-preview">Account ufficiale • Supporto & News</div>
+                        </div>
+                        <div class="contact-meta">
+                            <div class="contact-time">🔔</div>
+                        </div>
+                    </div>
+                `;
+            }
 
             try {
                 // 👑 ADMIN: Mostra TUTTI gli utenti invece che solo amici
