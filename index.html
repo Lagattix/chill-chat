@@ -1349,7 +1349,7 @@
 
         // Monitora nuovi messaggi per notifiche
         function checkForNewMessages(roomId, messages) {
-            if (!notificationsEnabled || !currentUser) return;
+            if (!currentUser) return;
 
             const lastSeenId = lastSeenMessages[roomId];
             
@@ -1376,9 +1376,11 @@
                     senderIcon = '👑';
                 }
 
-                // Mostra notifica
-                const preview = latestMsg.text.substring(0, 50) + (latestMsg.text.length > 50 ? '...' : '');
-                showNotification(senderName, preview, senderIcon);
+                // Mostra notifica (solo se abilitate)
+                if (notificationsEnabled) {
+                    const preview = latestMsg.text.substring(0, 50) + (latestMsg.text.length > 50 ? '...' : '');
+                    showNotification(senderName, preview, senderIcon);
+                }
 
                 // Aggiorna ultimo messaggio visto
                 lastSeenMessages[roomId] = latestMsg.timestamp;
@@ -1394,7 +1396,9 @@
             console.log('🔔 Avvio polling globale messaggi...');
             
             globalPollingInterval = setInterval(async () => {
-                if (!currentUser || !notificationsEnabled) return;
+                if (!currentUser) return; // Controlla solo se c'è utente loggato
+                
+                console.log('🔔 [Polling] Check messaggi per:', currentUser.name);
                 
                 try {
                     // Lista di tutte le room da controllare
@@ -1404,6 +1408,8 @@
                         // 2. Conversando Official (se non sei tu)
                         currentUser.id !== 'admin_conversando_official' ? [currentUser.id, 'admin_conversando_official'].sort().join('_') : null,
                     ].filter(Boolean);
+                    
+                    console.log('🔔 [Polling] Rooms da controllare:', roomsToCheck.length);
                     
                     // 3. Aggiungi room degli amici
                     if (!currentUser.isAdmin) {
@@ -1434,12 +1440,15 @@
                         
                         if (!snapshot.empty) {
                             const latestMsg = snapshot.docs[0].data();
+                            console.log('🔔 [Polling] Messaggio trovato in', roomId, '- Da:', latestMsg.senderId);
                             
                             // Se è un messaggio nuovo e non è tuo
                             if (latestMsg.senderId !== currentUser.id) {
                                 const lastSeen = lastSeenMessages[roomId];
+                                console.log('🔔 [Polling] Last seen:', lastSeen, '| Nuovo:', latestMsg.timestamp.seconds);
                                 
                                 if (!lastSeen || latestMsg.timestamp.seconds > lastSeen.seconds) {
+                                    console.log('✅ [Polling] NUOVO MESSAGGIO! Aggiorno UI...');
                                     // Nuovo messaggio! Mostra notifica
                                     checkForNewMessages(roomId, [latestMsg]);
                                     
