@@ -1873,34 +1873,30 @@
             `;
 
             try {
-                // Carica lista amici
-                const friendsSnapshot = await db.collection('friends')
-                    .where('userId', '==', currentUser.id)
-                    .get();
-                
-                if (!friendsSnapshot.empty) {
-                    // Aggiungi separatore
-                    html += `
-                        <div style="padding: 16px 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">
-                            Amici
-                        </div>
-                    `;
+                // 👑 ADMIN: Mostra TUTTI gli utenti invece che solo amici
+                if (currentUser?.isAdmin) {
+                    const usersSnapshot = await db.collection('users')
+                        .orderBy('createdAt', 'desc')
+                        .get();
                     
-                    // Carica dati di ogni amico
-                    for (const doc of friendsSnapshot.docs) {
-                        const friendData = doc.data();
-                        const friendId = friendData.friendId;
+                    if (!usersSnapshot.empty) {
+                        html += `
+                            <div style="padding: 16px 20px; font-size: 13px; font-weight: 600; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.5px;">
+                                👑 Tutti gli Utenti (${usersSnapshot.size})
+                            </div>
+                        `;
                         
-                        // Carica info amico
-                        const friendUserDoc = await db.collection('users').doc(friendId).get();
-                        if (friendUserDoc.exists) {
-                            const friendUser = friendUserDoc.data();
-                            const friendName = friendUser.name || 'Amico';
-                            const friendAvatar = friendName[0].toUpperCase();
+                        for (const doc of usersSnapshot.docs) {
+                            // Salta se stesso
+                            if (doc.id === currentUser.id) continue;
+                            
+                            const userData = doc.data();
+                            const userName = userData.name || 'Utente';
+                            const userAvatar = userName[0].toUpperCase();
+                            const roomId = [currentUser.id, doc.id].sort().join('_');
                             
                             // Carica ultimo messaggio (opzionale)
-                            const roomId = [currentUser.id, friendId].sort().join('_');
-                            let lastMessage = 'Inizia una conversazione';
+                            let lastMessage = '💬 Inizia conversazione';
                             let lastTime = '';
                             
                             try {
@@ -1912,7 +1908,7 @@
                                 
                                 if (!lastMsgSnapshot.empty) {
                                     const lastMsg = lastMsgSnapshot.docs[0].data();
-                                    lastMessage = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
+                                    lastMessage = lastMsg.text.substring(0, 35) + (lastMsg.text.length > 35 ? '...' : '');
                                     if (lastMsg.timestamp) {
                                         const date = new Date(lastMsg.timestamp.seconds * 1000);
                                         const now = new Date();
@@ -1926,14 +1922,15 @@
                                     }
                                 }
                             } catch (e) {
-                                console.log('Nessun messaggio precedente');
+                                // Nessun messaggio
                             }
                             
                             html += `
-                                <div class="contact-item" onclick="selectChatMobile('${friendId}', '${friendName}', '${friendAvatar}', false)">
-                                    <div class="contact-avatar online">${friendAvatar}</div>
+                                <div class="contact-item" onclick="selectChatMobile('${doc.id}', '${userName}', '${userAvatar}', false)">
+                                    <div class="contact-avatar online">${userAvatar}</div>
                                     <div class="contact-info">
-                                        <div class="contact-name">${friendName}</div>
+                                        <div class="contact-name">${userName}</div>
+                                        <div class="contact-preview" style="font-size: 12px; color: var(--text-muted);">${userData.email}</div>
                                         <div class="contact-preview">${lastMessage}</div>
                                     </div>
                                     <div class="contact-meta">
@@ -1941,6 +1938,74 @@
                                     </div>
                                 </div>
                             `;
+                        }
+                    }
+                } else {
+                    // UTENTE NORMALE: Mostra solo amici
+                    const friendsSnapshot = await db.collection('friends')
+                        .where('userId', '==', currentUser.id)
+                        .get();
+                    
+                    if (!friendsSnapshot.empty) {
+                        html += `
+                            <div style="padding: 16px 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">
+                                Amici
+                            </div>
+                        `;
+                        
+                        for (const doc of friendsSnapshot.docs) {
+                            const friendData = doc.data();
+                            const friendId = friendData.friendId;
+                            
+                            const friendUserDoc = await db.collection('users').doc(friendId).get();
+                            if (friendUserDoc.exists) {
+                                const friendUser = friendUserDoc.data();
+                                const friendName = friendUser.name || 'Amico';
+                                const friendAvatar = friendName[0].toUpperCase();
+                                
+                                const roomId = [currentUser.id, friendId].sort().join('_');
+                                let lastMessage = 'Inizia una conversazione';
+                                let lastTime = '';
+                                
+                                try {
+                                    const lastMsgSnapshot = await db.collection('messages')
+                                        .where('roomId', '==', roomId)
+                                        .orderBy('timestamp', 'desc')
+                                        .limit(1)
+                                        .get();
+                                    
+                                    if (!lastMsgSnapshot.empty) {
+                                        const lastMsg = lastMsgSnapshot.docs[0].data();
+                                        lastMessage = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
+                                        if (lastMsg.timestamp) {
+                                            const date = new Date(lastMsg.timestamp.seconds * 1000);
+                                            const now = new Date();
+                                            const diffHours = (now - date) / (1000 * 60 * 60);
+                                            
+                                            if (diffHours < 24) {
+                                                lastTime = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                                            } else {
+                                                lastTime = date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.log('Nessun messaggio precedente');
+                                }
+                                
+                                html += `
+                                    <div class="contact-item" onclick="selectChatMobile('${friendId}', '${friendName}', '${friendAvatar}', false)">
+                                        <div class="contact-avatar online">${friendAvatar}</div>
+                                        <div class="contact-info">
+                                            <div class="contact-name">${friendName}</div>
+                                            <div class="contact-preview">${lastMessage}</div>
+                                        </div>
+                                        <div class="contact-meta">
+                                            <div class="contact-time">${lastTime}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
                         }
                     }
                 }
