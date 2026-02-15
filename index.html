@@ -1012,7 +1012,7 @@
                 </button>
                 <h1 id="chatHeaderTitle" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1; display: none;">Conversando</h1>
                 <div class="chat-user-info" id="chatUserInfo" style="display: none;">
-                    <div class="chat-avatar" id="chatAvatar">C</div>
+                    <div class="chat-avatar" id="chatAvatar" onclick="openContactProfile()" style="cursor: pointer;" title="Vedi profilo">C</div>
                     <div class="chat-user-details">
                         <h2 id="chatUserName">Conversina</h2>
                         <div class="chat-user-status">
@@ -1103,6 +1103,29 @@
             
             <div class="profile-actions" style="margin-top: 20px;">
                 <button class="profile-button profile-button-secondary" onclick="closeFriends()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User/Contact Profile Modal -->
+    <div class="profile-modal" id="contactProfileModal" onclick="closeContactProfile(event)">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <div class="profile-header">
+                <div class="profile-avatar" id="contactProfileAvatar">U</div>
+                <div class="profile-info">
+                    <h2 class="profile-name" id="contactProfileName">Nome Utente</h2>
+                    <div id="contactProfileCodeSection" style="margin-top: 8px;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Codice Amico</div>
+                        <div style="font-family: monospace; color: var(--accent-primary); font-weight: 600;" id="contactProfileCode">CHILL-XXXXXX</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="profile-actions">
+                <button class="profile-button profile-button-secondary" onclick="clearChatHistory()" style="color: #ff6b6b;">
+                    🗑️ Svuota Chat
+                </button>
+                <button class="profile-button profile-button-primary" onclick="closeContactProfile()">Chiudi</button>
             </div>
         </div>
     </div>
@@ -1465,6 +1488,97 @@
                 document.getElementById('friendsModal').classList.remove('visible');
                 document.getElementById('navFriends').classList.remove('active');
                 document.getElementById('navHome').classList.add('active');
+            }
+        }
+
+        // Contact Profile Modal
+        async function openContactProfile() {
+            if (!activeChat) return;
+            
+            const modal = document.getElementById('contactProfileModal');
+            const avatar = document.getElementById('contactProfileAvatar');
+            const name = document.getElementById('contactProfileName');
+            const code = document.getElementById('contactProfileCode');
+            const codeSection = document.getElementById('contactProfileCodeSection');
+            
+            // Popola con i dati del contatto attivo
+            avatar.textContent = activeChat.avatar;
+            name.textContent = activeChat.name;
+            
+            // Se è Conversina, mostra info AI
+            if (activeChat.isAI) {
+                codeSection.style.display = 'none';
+            } else {
+                // Carica il codice amico dell'utente
+                try {
+                    const userDoc = await db.collection('users').doc(activeChat.id).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        code.textContent = userData.friendCode || 'Non disponibile';
+                        codeSection.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Errore caricamento dati utente:', error);
+                    code.textContent = 'Non disponibile';
+                    codeSection.style.display = 'block';
+                }
+            }
+            
+            modal.classList.add('visible');
+        }
+
+        function closeContactProfile(event) {
+            if (!event || event.target.id === 'contactProfileModal') {
+                document.getElementById('contactProfileModal').classList.remove('visible');
+            }
+        }
+
+        async function clearChatHistory() {
+            if (!activeChat) return;
+            
+            // Conferma
+            if (!confirm(`Vuoi davvero svuotare la chat con ${activeChat.name}? Questa azione non può essere annullata.`)) {
+                return;
+            }
+            
+            try {
+                const roomId = [currentUser.id, activeChat.id].sort().join('_');
+                
+                // Cancella tutti i messaggi della chat
+                const messagesSnapshot = await db.collection('messages')
+                    .where('roomId', '==', roomId)
+                    .get();
+                
+                // Usa batch per cancellare efficacemente
+                const batch = db.batch();
+                let deleteCount = 0;
+                
+                messagesSnapshot.forEach((doc) => {
+                    batch.delete(doc.ref);
+                    deleteCount++;
+                });
+                
+                if (deleteCount > 0) {
+                    await batch.commit();
+                    console.log(`🗑️ Cancellati ${deleteCount} messaggi`);
+                    
+                    // Ricarica i messaggi (mostrerà vuoto)
+                    if (window.reloadMessages) {
+                        window.reloadMessages();
+                    }
+                    
+                    // Chiudi il modal
+                    closeContactProfile();
+                    
+                    // Feedback
+                    alert('Chat svuotata con successo!');
+                } else {
+                    alert('La chat è già vuota!');
+                }
+                
+            } catch (error) {
+                console.error('Errore svuotamento chat:', error);
+                alert('Errore durante lo svuotamento della chat');
             }
         }
 
