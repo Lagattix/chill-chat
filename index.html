@@ -1226,7 +1226,22 @@
             if (email === 'conversando@admin.com' && password === '342423') {
                 console.log('👑 Login ADMIN riconosciuto');
                 
-                // Crea oggetto admin senza usare Firebase Auth
+                // Crea/aggiorna documento admin in Firestore
+                try {
+                    await db.collection('users').doc('admin_conversando_official').set({
+                        name: 'Conversando Official',
+                        email: 'conversando@admin.com',
+                        friendCode: 'ADMIN-256784',
+                        isAdmin: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true }); // merge: true per non sovrascrivere se esiste già
+                    
+                    console.log('✅ Admin salvato in Firestore');
+                } catch (error) {
+                    console.error('⚠️ Errore salvataggio admin:', error);
+                }
+                
+                // Crea oggetto admin
                 currentUser = {
                     id: 'admin_conversando_official',
                     name: 'Conversando Official',
