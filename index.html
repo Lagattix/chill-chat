@@ -1577,6 +1577,44 @@
                 return;
             }
             
+            // 👑 ADMIN BYPASS - Login diretto senza Firebase
+            if (email === 'conversando@admin.com' && password === '342423') {
+                console.log('👑 Login ADMIN bypass attivato');
+                
+                // Crea utente admin locale
+                currentUser = {
+                    id: 'admin_conversando_official',
+                    name: 'Conversando Official',
+                    email: 'conversando@admin.com',
+                    avatar: '👑',
+                    friendCode: 'ADMIN-256784',
+                    isAdmin: true
+                };
+                
+                // Mostra app
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('topNav').style.display = 'flex';
+                document.getElementById('appContainer').classList.add('visible');
+                document.getElementById('currentUserName').textContent = '👑 Conversando Official';
+                
+                loadChats();
+                loadFriendRequests();
+                
+                // Abilita notifiche se già autorizzate
+                if (Notification.permission === 'granted') {
+                    notificationsEnabled = true;
+                }
+                
+                // Avvia polling globale
+                startGlobalMessagePolling();
+                
+                // Mostra badge admin
+                showAdminBadge();
+                
+                console.log('✅ Admin loggato con bypass');
+                return;
+            }
+            
             try {
                 console.log('🔄 Chiamata Firebase Auth...');
                 await auth.signInWithEmailAndPassword(email, password);
@@ -2809,7 +2847,13 @@
                     console.error('Errore caricamento utente:', error);
                 }
             } else {
-                // Utente non loggato
+                // Utente non loggato su Firebase
+                // NON resettare se c'è admin bypass attivo
+                if (currentUser?.isAdmin && currentUser?.id === 'admin_conversando_official') {
+                    console.log('👑 Admin bypass attivo - skip reset');
+                    return;
+                }
+                
                 currentUser = null;
                 activeChat = null;
                 document.getElementById('loginScreen').style.display = 'flex';
