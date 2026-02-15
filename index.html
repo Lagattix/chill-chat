@@ -6,6 +6,8 @@
     <meta name="description" content="Conversando - Chat in tempo reale con amici e Conversina AI">
     <meta name="theme-color" content="#0a0a0f">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Conversando">
@@ -961,6 +963,7 @@
     <!-- Login Screen -->
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
+            <img src="logo.png" alt="Conversando Logo" style="width: 120px; height: auto; margin: 0 auto 24px; display: block; border-radius: 20px;">
             <h1 class="login-title">Conversando</h1>
             
             <!-- Login Form -->
@@ -1368,6 +1371,9 @@
                 if (latestMsg.senderId === CONVERSINA_ID) {
                     senderName = 'Conversina AI';
                     senderIcon = '🤖';
+                } else if (latestMsg.senderId === 'admin_conversando_official') {
+                    senderName = 'Conversando Official';
+                    senderIcon = '👑';
                 }
 
                 // Mostra notifica
@@ -1376,6 +1382,99 @@
 
                 // Aggiorna ultimo messaggio visto
                 lastSeenMessages[roomId] = latestMsg.timestamp;
+            }
+        }
+
+        // 🔔 POLLING GLOBALE - Controlla TUTTE le chat per nuovi messaggi
+        let globalPollingInterval = null;
+        
+        function startGlobalMessagePolling() {
+            if (globalPollingInterval) return; // Già attivo
+            
+            console.log('🔔 Avvio polling globale messaggi...');
+            
+            globalPollingInterval = setInterval(async () => {
+                if (!currentUser || !notificationsEnabled) return;
+                
+                try {
+                    // Lista di tutte le room da controllare
+                    const roomsToCheck = [
+                        // 1. Conversina
+                        [currentUser.id, CONVERSINA_ID].sort().join('_'),
+                        // 2. Conversando Official (se non sei tu)
+                        currentUser.id !== 'admin_conversando_official' ? [currentUser.id, 'admin_conversando_official'].sort().join('_') : null,
+                    ].filter(Boolean);
+                    
+                    // 3. Aggiungi room degli amici
+                    if (!currentUser.isAdmin) {
+                        const friendsSnapshot = await db.collection('friends')
+                            .where('userId', '==', currentUser.id)
+                            .get();
+                        
+                        friendsSnapshot.forEach(doc => {
+                            const friendId = doc.data().friendId;
+                            const roomId = [currentUser.id, friendId].sort().join('_');
+                            roomsToCheck.push(roomId);
+                        });
+                    }
+                    
+                    // Controlla ogni room per nuovi messaggi
+                    for (const roomId of roomsToCheck) {
+                        // Salta la chat attiva (già gestita dal polling locale)
+                        if (activeChat && roomId === [currentUser.id, activeChat.id].sort().join('_')) {
+                            continue;
+                        }
+                        
+                        // Controlla ultimi messaggi
+                        const snapshot = await db.collection('messages')
+                            .where('roomId', '==', roomId)
+                            .orderBy('timestamp', 'desc')
+                            .limit(1)
+                            .get();
+                        
+                        if (!snapshot.empty) {
+                            const latestMsg = snapshot.docs[0].data();
+                            
+                            // Se è un messaggio nuovo e non è tuo
+                            if (latestMsg.senderId !== currentUser.id) {
+                                const lastSeen = lastSeenMessages[roomId];
+                                
+                                if (!lastSeen || latestMsg.timestamp.seconds > lastSeen.seconds) {
+                                    // Nuovo messaggio! Mostra notifica
+                                    checkForNewMessages(roomId, [latestMsg]);
+                                    
+                                    // 📝 Aggiorna preview nella sidebar
+                                    const senderId = latestMsg.senderId;
+                                    const previewElement = document.getElementById(`preview-${senderId}`);
+                                    const timeElement = document.getElementById(`time-${senderId}`);
+                                    
+                                    if (previewElement) {
+                                        const preview = latestMsg.text.substring(0, 40) + (latestMsg.text.length > 40 ? '...' : '');
+                                        previewElement.textContent = preview;
+                                        previewElement.style.fontWeight = '600'; // Bold per messaggio non letto
+                                        previewElement.style.color = 'var(--text-primary)';
+                                    }
+                                    
+                                    if (timeElement) {
+                                        const time = new Date(latestMsg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                                        timeElement.textContent = time;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Errore polling globale:', error);
+                }
+            }, 10000); // Ogni 10 secondi (meno frequente del polling locale)
+        }
+        
+        function stopGlobalMessagePolling() {
+            if (globalPollingInterval) {
+                clearInterval(globalPollingInterval);
+                globalPollingInterval = null;
+                console.log('🔕 Polling globale fermato');
             }
         }
 
@@ -1564,6 +1663,9 @@
             if (unsubscribeMessages) {
                 unsubscribeMessages();
             }
+            
+            // Ferma polling globale
+            stopGlobalMessagePolling();
             
             // Se è admin, non usa Firebase Auth
             if (currentUser?.isAdmin) {
@@ -2125,14 +2227,14 @@
             // 2️⃣ Mostra sempre Conversando Official per TUTTI (eccetto se sei tu)
             if (currentUser?.id !== 'admin_conversando_official') {
                 html += `
-                    <div class="contact-item" onclick="selectChatMobile('admin_conversando_official', 'Conversando Official', '👑', false)">
+                    <div class="contact-item" id="contact-admin_conversando_official" onclick="selectChatMobile('admin_conversando_official', 'Conversando Official', '👑', false)">
                         <div class="contact-avatar online" style="background: linear-gradient(135deg, #c9a961, #d4af37); color: #0a0a0f;">👑</div>
                         <div class="contact-info">
                             <div class="contact-name" style="color: var(--accent-primary);">Conversando Official</div>
-                            <div class="contact-preview">Account ufficiale • Supporto & News</div>
+                            <div class="contact-preview" id="preview-admin_conversando_official">Account ufficiale • Supporto & News</div>
                         </div>
                         <div class="contact-meta">
-                            <div class="contact-time">🔔</div>
+                            <div class="contact-time" id="time-admin_conversando_official">🔔</div>
                         </div>
                     </div>
                 `;
@@ -2695,6 +2797,9 @@
                         notificationsEnabled = true;
                         console.log('🔔 Notifiche già autorizzate');
                     }
+                    
+                    // 🔔 Avvia polling globale per controllare messaggi in TUTTE le chat
+                    startGlobalMessagePolling();
                     
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
