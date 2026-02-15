@@ -1934,11 +1934,17 @@
             statusElement.innerHTML = '<span class="typing-indicator">Sta scrivendo...</span>';
 
             try {
-                // Get conversation history
+                // Get conversation history degli ultimi 30 giorni
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                
                 const historySnapshot = await db.collection('messages')
                     .where('roomId', '==', roomId)
+                    .where('timestamp', '>', firebase.firestore.Timestamp.fromDate(thirtyDaysAgo))
                     .orderBy('timestamp', 'asc')
                     .get();
+                
+                console.log(`📚 Caricati ${historySnapshot.size} messaggi degli ultimi 30 giorni`);
                 
                 // Build conversation history
                 const history = [];
@@ -1953,7 +1959,7 @@
                 // Backend URL - Sostituito con il tuo deployment Vercel
                 const BACKEND_URL = 'https://conversina-backend-ijue.vercel.app/api/chat';
                 
-                // Call backend API
+                // Call backend API - invia TUTTA la storia degli ultimi 30 giorni
                 const response = await fetch(BACKEND_URL, {
                     method: 'POST',
                     headers: {
@@ -1961,7 +1967,7 @@
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        history: history.slice(-20) // Send last 20 messages for better context
+                        history: history // Invia TUTTA la storia (il backend prenderà gli ultimi 20)
                     })
                 });
 
