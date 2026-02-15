@@ -1369,8 +1369,8 @@
                 <div style="font-size: 14px; font-weight: 600; color: var(--accent-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                     👑 Pannello Admin
                 </div>
-                <button onclick="showFriendsEmails()" style="width: 100%; padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); cursor: pointer; margin-bottom: 8px; font-size: 13px;">
-                    📧 Email Amici
+                <button onclick="showAllUsersEmails()" style="width: 100%; padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); cursor: pointer; margin-bottom: 8px; font-size: 13px;">
+                    📧 Email Utenti
                 </button>
                 <button onclick="showSystemStats()" style="width: 100%; padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); cursor: pointer; font-size: 13px;">
                     📊 Statistiche Sistema
@@ -1383,39 +1383,39 @@
         }
 
         // Admin Functions
-        async function showFriendsEmails() {
+        async function showAllUsersEmails() {
             if (!currentUser?.isAdmin) return;
             
             try {
-                // Carica lista amici
-                const friendsSnapshot = await db.collection('friends')
-                    .where('userId', '==', currentUser.id)
+                // Carica TUTTI gli utenti
+                const usersSnapshot = await db.collection('users')
+                    .orderBy('createdAt', 'desc')
                     .get();
                 
-                if (friendsSnapshot.empty) {
-                    alert('📧 NESSUN AMICO\n\nAggiungi qualche amico per vedere le loro email!');
+                if (usersSnapshot.empty) {
+                    alert('📧 NESSUN UTENTE\n\nNon ci sono utenti registrati.');
                     return;
                 }
                 
-                let emailsList = `📧 EMAIL AMICI:\n\n`;
+                let emailsList = `📧 EMAIL TUTTI GLI UTENTI (${usersSnapshot.size}):\n\n`;
                 
-                for (const doc of friendsSnapshot.docs) {
-                    const friendData = doc.data();
-                    const friendId = friendData.friendId;
+                usersSnapshot.forEach(doc => {
+                    // Salta se stesso
+                    if (doc.id === currentUser.id) return;
                     
-                    // Carica dati amico
-                    const friendUserDoc = await db.collection('users').doc(friendId).get();
-                    if (friendUserDoc.exists) {
-                        const friendUser = friendUserDoc.data();
-                        emailsList += `👤 ${friendUser.name}\n`;
-                        emailsList += `   📧 ${friendUser.email}\n`;
-                        emailsList += `   🎫 ${friendUser.friendCode}\n\n`;
+                    const user = doc.data();
+                    emailsList += `👤 ${user.name}\n`;
+                    emailsList += `   📧 ${user.email}\n`;
+                    emailsList += `   🎫 ${user.friendCode}\n`;
+                    if (user.createdAt) {
+                        emailsList += `   📅 ${new Date(user.createdAt.seconds * 1000).toLocaleDateString('it-IT')}\n`;
                     }
-                }
+                    emailsList += `\n`;
+                });
                 
                 alert(emailsList);
             } catch (error) {
-                console.error('Errore caricamento email amici:', error);
+                console.error('Errore caricamento email utenti:', error);
                 alert('Errore nel caricamento delle email');
             }
         }
