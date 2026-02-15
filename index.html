@@ -1080,7 +1080,7 @@
             
             <!-- Notifiche Toggle -->
             <div style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin: 16px 0;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                     <div>
                         <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🔔 Notifiche Push</div>
                         <div style="font-size: 12px; color: var(--text-muted);">Ricevi notifiche per nuovi messaggi</div>
@@ -1089,6 +1089,10 @@
                         Attiva
                     </button>
                 </div>
+                <!-- Diagnostica -->
+                <button onclick="runNotificationDiagnostic()" style="width: 100%; padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 11px; margin-top: 8px;">
+                    🔍 Diagnostica Notifiche
+                </button>
             </div>
             
             <div class="profile-actions">
@@ -1391,14 +1395,31 @@
         let globalPollingInterval = null;
         
         function startGlobalMessagePolling() {
-            if (globalPollingInterval) return; // Già attivo
+            if (globalPollingInterval) {
+                console.log('⚠️ Polling già attivo');
+                return; // Già attivo
+            }
             
             console.log('🔔 Avvio polling globale messaggi...');
+            console.log('📍 Utente:', currentUser?.name, '- ID:', currentUser?.id);
+            
+            // Alert solo in debug
+            if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+                alert('🔔 Polling globale avviato per ' + currentUser?.name);
+            }
             
             globalPollingInterval = setInterval(async () => {
                 if (!currentUser) return; // Controlla solo se c'è utente loggato
                 
                 console.log('🔔 [Polling] Check messaggi per:', currentUser.name);
+                
+                // Aggiorna indicatore visivo
+                const statusEl = document.getElementById('pollingStatus');
+                if (statusEl) {
+                    const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    statusEl.innerHTML = `✅ Attivo - ${now}`;
+                    statusEl.style.color = '#4ecca3';
+                }
                 
                 try {
                     // Lista di tutte le room da controllare
@@ -1445,8 +1466,10 @@
                             // Se è un messaggio nuovo e non è tuo
                             if (latestMsg.senderId !== currentUser.id) {
                                 const lastSeen = lastSeenMessages[roomId];
-                                console.log('🔔 [Polling] Last seen:', lastSeen, '| Nuovo:', latestMsg.timestamp.seconds);
+                                console.log('🔔 [Polling] Last seen:', lastSeen ? new Date(lastSeen.seconds * 1000).toLocaleString() : 'MAI VISTO');
+                                console.log('🔔 [Polling] Nuovo msg:', new Date(latestMsg.timestamp.seconds * 1000).toLocaleString());
                                 
+                                // Se non hai mai visto messaggi in questa room, O se è più recente
                                 if (!lastSeen || latestMsg.timestamp.seconds > lastSeen.seconds) {
                                     console.log('✅ [Polling] NUOVO MESSAGGIO! Aggiorno UI...');
                                     // Nuovo messaggio! Mostra notifica
@@ -1484,6 +1507,56 @@
                 clearInterval(globalPollingInterval);
                 globalPollingInterval = null;
                 console.log('🔕 Polling globale fermato');
+            }
+        }
+
+        // 🔍 TEST POLLING MANUALE
+        async function testPollingNow() {
+            console.log('🔍 TEST POLLING MANUALE AVVIATO');
+            
+            if (!currentUser) {
+                alert('❌ Nessun utente loggato');
+                return;
+            }
+            
+            console.log('✅ Utente:', currentUser.name, '- ID:', currentUser.id);
+            
+            try {
+                const roomId = [currentUser.id, 'admin_conversando_official'].sort().join('_');
+                console.log('🔍 Controllo room:', roomId);
+                
+                const snapshot = await db.collection('messages')
+                    .where('roomId', '==', roomId)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+                
+                if (snapshot.empty) {
+                    console.log('📭 Nessun messaggio nella room');
+                    alert('📭 Nessun messaggio da Conversando Official');
+                } else {
+                    const latestMsg = snapshot.docs[0].data();
+                    console.log('📨 Ultimo messaggio trovato:', latestMsg);
+                    console.log('   Da:', latestMsg.senderId);
+                    console.log('   Testo:', latestMsg.text);
+                    console.log('   Timestamp:', new Date(latestMsg.timestamp.seconds * 1000).toLocaleString());
+                    
+                    // Mostra nel preview
+                    const previewElement = document.getElementById('preview-admin_conversando_official');
+                    if (previewElement) {
+                        const preview = latestMsg.text.substring(0, 40) + (latestMsg.text.length > 40 ? '...' : '');
+                        previewElement.textContent = preview;
+                        previewElement.style.fontWeight = '600';
+                        previewElement.style.color = 'var(--text-primary)';
+                        console.log('✅ Preview aggiornato!');
+                    }
+                    
+                    alert('✅ Messaggio trovato!\n\n' + latestMsg.text.substring(0, 100));
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore test polling:', error);
+                alert('❌ Errore: ' + error.message);
             }
         }
 
@@ -1956,6 +2029,52 @@
             }
         }
 
+        // 🔍 DIAGNOSTICA NOTIFICHE COMPLETA
+        async function runNotificationDiagnostic() {
+            let report = '📊 DIAGNOSTICA NOTIFICHE\n\n';
+            
+            // Browser/OS
+            const ua = navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(ua);
+            const isAndroid = /Android/.test(ua);
+            report += `📱 ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}\n\n`;
+            
+            // API Support
+            report += `Notification API: ${('Notification' in window) ? '✅' : '❌'}\n`;
+            report += `Service Worker: ${('serviceWorker' in navigator) ? '✅' : '❌'}\n\n`;
+            
+            // Permessi
+            if ('Notification' in window) {
+                const perm = Notification.permission;
+                report += `Permesso: ${perm === 'granted' ? '✅ OK' : perm === 'denied' ? '❌ BLOCCATO' : '⏳ Da richiedere'}\n\n`;
+            }
+            
+            // Service Worker
+            if ('serviceWorker' in navigator) {
+                const reg = await navigator.serviceWorker.getRegistration();
+                report += `SW Registrato: ${reg ? '✅' : '❌'}\n\n`;
+            }
+            
+            // Suggerimenti
+            report += '💡 SOLUZIONE:\n';
+            if (Notification.permission === 'denied') {
+                if (isAndroid) report += 'Impostazioni → App → Chrome → Notifiche\n';
+                else if (isIOS) report += 'iOS: Installa come PWA\n';
+                else report += 'Clicca lucchetto → Autorizzazioni\n';
+            } else if (Notification.permission === 'granted') {
+                report += 'Tutto OK! ✅\n';
+                try {
+                    await showNotification('Test', 'Notifica funzionante! ✅', '🔔');
+                } catch (e) {
+                    report += '\n❌ Errore: ' + e.message;
+                }
+            } else {
+                report += 'Clicca "Attiva" sopra\n';
+            }
+            
+            alert(report);
+        }
+
         function closeProfile(event) {
             // Close only if clicking on overlay or close button
             if (!event || event.target.id === 'profileModal') {
@@ -2285,6 +2404,18 @@
                         </div>
                     </div>
                 `;
+                
+                // 🔍 DEBUG: Pulsante test polling
+                html += `
+                    <div style="padding: 12px 20px;">
+                        <button onclick="testPollingNow()" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--accent-primary); border-radius: 8px; color: var(--accent-primary); cursor: pointer; font-size: 12px; margin-bottom: 8px;">
+                            🔍 Test Polling (Debug)
+                        </button>
+                        <div id="pollingStatus" style="text-align: center; font-size: 11px; color: var(--text-muted); padding: 4px;">
+                            ⏳ Checking...
+                        </div>
+                    </div>
+                `;
             }
 
             try {
@@ -2506,12 +2637,17 @@
 
             // Polling invisibile - aggiunge solo nuovi messaggi senza ricaricare tutto
             let lastMessageId = null;
+            console.log('🔄 Avvio polling chat per:', chatId);
+            
             const intervalId = setInterval(async () => {
                 // Controlla se sei ancora nella stessa chat
                 if (!activeChat || activeChat.id !== chatId) {
+                    console.log('⏹️ Polling chat fermato - chat cambiata');
                     clearInterval(intervalId);
                     return;
                 }
+                
+                console.log('🔄 [Chat Polling] Check nuovi messaggi...', chatId);
                 
                 try {
                     // Prendi solo messaggi dopo l'ultimo ID conosciuto
@@ -2584,9 +2720,11 @@
                     }
                     
                 } catch (error) {
-                    console.error('Errore polling:', error);
+                    console.error('❌ Errore polling chat:', error);
                 }
-            }, 3000); // Ogni 3 secondi, ma invisibile!
+            }, 5000); // Ogni 5 secondi
+            
+            console.log('✅ Polling chat attivo ogni 5 secondi');
             
             // Cleanup function
             unsubscribeMessages = () => {
