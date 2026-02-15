@@ -1066,6 +1066,19 @@
                 <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Condividi questo codice con i tuoi amici!</div>
             </div>
             
+            <!-- Notifiche Toggle -->
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin: 16px 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🔔 Notifiche Push</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Ricevi notifiche per nuovi messaggi</div>
+                    </div>
+                    <button onclick="toggleNotifications()" id="notificationsToggle" style="padding: 8px 16px; background: var(--accent-primary); color: var(--bg-primary); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                        Attiva
+                    </button>
+                </div>
+            </div>
+            
             <div class="profile-actions">
                 <button class="profile-button profile-button-secondary" onclick="closeProfile()">Chiudi</button>
                 <button class="profile-button profile-button-primary" onclick="logout()">Esci</button>
@@ -1145,8 +1158,96 @@
         let unsubscribeMessages = null;
         let db = null;
         let auth = null;
+        let notificationsEnabled = false;
+        let lastSeenMessages = {}; // Traccia ultimi messaggi visti per chat
         
         const CONVERSINA_ID = 'conversina_ai_bot';
+
+        // 🔔 Sistema Notifiche Push
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log('❌ Browser non supporta notifiche');
+                return false;
+            }
+
+            if (Notification.permission === 'granted') {
+                notificationsEnabled = true;
+                console.log('✅ Notifiche già abilitate');
+                return true;
+            }
+
+            if (Notification.permission !== 'denied') {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    notificationsEnabled = true;
+                    console.log('✅ Notifiche abilitate');
+                    showNotification('Conversando', 'Notifiche attivate! 🔔', '🎉');
+                    return true;
+                }
+            }
+
+            console.log('❌ Notifiche rifiutate');
+            return false;
+        }
+
+        function showNotification(title, body, icon = '💬') {
+            if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+            // Non mostrare notifica se la finestra è attiva e stai guardando la chat
+            if (!document.hidden && activeChat) return;
+
+            const notification = new Notification(title, {
+                body: body,
+                icon: icon === '💬' ? '' : icon, // Browser usa emoji se non c'è icon URL
+                badge: '/favicon.ico',
+                tag: 'conversando-message', // Raggruppa notifiche
+                requireInteraction: false,
+                silent: false
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+
+            // Auto-chiudi dopo 5 secondi
+            setTimeout(() => notification.close(), 5000);
+        }
+
+        // Monitora nuovi messaggi per notifiche
+        function checkForNewMessages(roomId, messages) {
+            if (!notificationsEnabled || !currentUser) return;
+
+            const lastSeenId = lastSeenMessages[roomId];
+            
+            // Filtra solo messaggi nuovi non inviati da te
+            const newMessages = messages.filter(msg => {
+                const isNew = !lastSeenId || msg.timestamp > lastSeenMessages[roomId];
+                const isFromOther = msg.senderId !== currentUser.id;
+                return isNew && isFromOther;
+            });
+
+            if (newMessages.length > 0) {
+                // Prendi l'ultimo messaggio nuovo
+                const latestMsg = newMessages[newMessages.length - 1];
+                
+                // Trova il nome del mittente
+                let senderName = latestMsg.senderName || 'Qualcuno';
+                let senderIcon = '💬';
+                
+                if (latestMsg.senderId === CONVERSINA_ID) {
+                    senderName = 'Conversina AI';
+                    senderIcon = '🤖';
+                }
+
+                // Mostra notifica
+                const preview = latestMsg.text.substring(0, 50) + (latestMsg.text.length > 50 ? '...' : '');
+                showNotification(senderName, preview, senderIcon);
+
+                // Aggiorna ultimo messaggio visto
+                lastSeenMessages[roomId] = latestMsg.timestamp;
+            }
+        }
 
         // Firebase Configuration
         const firebaseConfig = {
@@ -1495,6 +1596,9 @@
                 document.getElementById('profileFriendCode').textContent = currentUser.friendCode || 'CHILL-XXXXXX';
             }
             
+            // Aggiorna stato notifiche
+            updateNotificationsUI();
+            
             // Show profile modal
             document.getElementById('profileModal').classList.add('visible');
         }
@@ -1514,6 +1618,39 @@
                     console.error('Errore copia:', err);
                     alert('Codice: ' + friendCode);
                 });
+            }
+        }
+
+        async function toggleNotifications() {
+            const btn = document.getElementById('notificationsToggle');
+            
+            if (notificationsEnabled) {
+                // Disabilita notifiche
+                notificationsEnabled = false;
+                btn.textContent = 'Attiva';
+                btn.style.background = 'var(--accent-primary)';
+                console.log('🔕 Notifiche disabilitate');
+            } else {
+                // Richiedi permesso e abilita
+                const granted = await requestNotificationPermission();
+                if (granted) {
+                    btn.textContent = '✅ Attive';
+                    btn.style.background = '#4ecca3';
+                } else {
+                    alert('Per attivare le notifiche, dai il permesso nelle impostazioni del browser');
+                }
+            }
+        }
+
+        // Aggiorna UI notifiche quando apri profilo
+        function updateNotificationsUI() {
+            const btn = document.getElementById('notificationsToggle');
+            if (notificationsEnabled && Notification.permission === 'granted') {
+                btn.textContent = '✅ Attive';
+                btn.style.background = '#4ecca3';
+            } else {
+                btn.textContent = 'Attiva';
+                btn.style.background = 'var(--accent-primary)';
             }
         }
 
@@ -2116,6 +2253,9 @@
                             messagesContainer.appendChild(messageDiv);
                         });
                         
+                        // 🔔 Controlla se mostrare notifiche per nuovi messaggi
+                        checkForNewMessages(roomId, newMessages);
+                        
                         // Aggiorna ultimo ID
                         lastMessageId = allMessages[allMessages.length - 1].id;
                         
@@ -2378,6 +2518,9 @@
                     
                     loadChats();
                     loadFriendRequests(); // Carica richieste d'amicizia
+                    
+                    // 🔔 Richiedi permesso notifiche
+                    setTimeout(() => requestNotificationPermission(), 2000); // Aspetta 2 sec dopo login
                     
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
