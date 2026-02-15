@@ -1222,6 +1222,35 @@
                 return;
             }
             
+            // 🔑 ADMIN ACCESS - Account speciale
+            if (email === 'conversando@admin.com' && password === '342423') {
+                console.log('👑 Login ADMIN riconosciuto');
+                
+                // Crea oggetto admin senza usare Firebase Auth
+                currentUser = {
+                    id: 'admin_conversando_official',
+                    name: 'Conversando Official',
+                    email: 'conversando@admin.com',
+                    avatar: '👑',
+                    friendCode: 'ADMIN-256784',
+                    isAdmin: true
+                };
+                
+                // Nascondi login e mostra app
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('topNav').style.display = 'flex';
+                document.getElementById('appContainer').classList.add('visible');
+                document.getElementById('currentUserName').textContent = '👑 Admin';
+                
+                loadChats();
+                loadFriendRequests();
+                
+                // Mostra badge admin
+                showAdminBadge();
+                
+                return;
+            }
+            
             try {
                 console.log('🔄 Chiamata Firebase Auth...');
                 await auth.signInWithEmailAndPassword(email, password);
@@ -1307,7 +1336,144 @@
             if (unsubscribeMessages) {
                 unsubscribeMessages();
             }
-            auth.signOut();
+            
+            // Se è admin, non usa Firebase Auth
+            if (currentUser?.isAdmin) {
+                currentUser = null;
+                activeChat = null;
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('topNav').style.display = 'none';
+                document.getElementById('appContainer').classList.remove('visible');
+                hideAdminBadge();
+            } else {
+                auth.signOut();
+            }
+        }
+
+        // Admin Badge
+        function showAdminBadge() {
+            const topNav = document.querySelector('.top-nav-left');
+            const badge = document.createElement('div');
+            badge.id = 'adminBadge';
+            badge.style.cssText = `
+                background: linear-gradient(135deg, #c9a961, #d4af37);
+                color: #0a0a0f;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-left: 12px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            `;
+            badge.innerHTML = '👑 ADMIN';
+            topNav.appendChild(badge);
+            
+            // Aggiungi pannello admin nella sidebar
+            addAdminPanel();
+        }
+
+        function hideAdminBadge() {
+            const badge = document.getElementById('adminBadge');
+            if (badge) badge.remove();
+            
+            const panel = document.getElementById('adminPanel');
+            if (panel) panel.remove();
+        }
+
+        function addAdminPanel() {
+            const sidebar = document.querySelector('.sidebar');
+            const panel = document.createElement('div');
+            panel.id = 'adminPanel';
+            panel.style.cssText = `
+                margin: 16px;
+                padding: 16px;
+                background: linear-gradient(135deg, rgba(201, 169, 97, 0.1), rgba(212, 175, 55, 0.1));
+                border: 1px solid var(--accent-primary);
+                border-radius: 12px;
+            `;
+            panel.innerHTML = `
+                <div style="font-size: 14px; font-weight: 600; color: var(--accent-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    👑 Pannello Admin
+                </div>
+                <button onclick="showFriendsEmails()" style="width: 100%; padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); cursor: pointer; margin-bottom: 8px; font-size: 13px;">
+                    📧 Email Amici
+                </button>
+                <button onclick="showSystemStats()" style="width: 100%; padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); cursor: pointer; font-size: 13px;">
+                    📊 Statistiche Sistema
+                </button>
+            `;
+            
+            // Inserisci dopo user-info
+            const userInfo = sidebar.querySelector('.user-info');
+            userInfo.parentNode.insertBefore(panel, userInfo.nextSibling);
+        }
+
+        // Admin Functions
+        async function showFriendsEmails() {
+            if (!currentUser?.isAdmin) return;
+            
+            try {
+                // Carica lista amici
+                const friendsSnapshot = await db.collection('friends')
+                    .where('userId', '==', currentUser.id)
+                    .get();
+                
+                if (friendsSnapshot.empty) {
+                    alert('📧 NESSUN AMICO\n\nAggiungi qualche amico per vedere le loro email!');
+                    return;
+                }
+                
+                let emailsList = `📧 EMAIL AMICI:\n\n`;
+                
+                for (const doc of friendsSnapshot.docs) {
+                    const friendData = doc.data();
+                    const friendId = friendData.friendId;
+                    
+                    // Carica dati amico
+                    const friendUserDoc = await db.collection('users').doc(friendId).get();
+                    if (friendUserDoc.exists) {
+                        const friendUser = friendUserDoc.data();
+                        emailsList += `👤 ${friendUser.name}\n`;
+                        emailsList += `   📧 ${friendUser.email}\n`;
+                        emailsList += `   🎫 ${friendUser.friendCode}\n\n`;
+                    }
+                }
+                
+                alert(emailsList);
+            } catch (error) {
+                console.error('Errore caricamento email amici:', error);
+                alert('Errore nel caricamento delle email');
+            }
+        }
+
+        async function showSystemStats() {
+            try {
+                const [usersSnap, messagesSnap, requestsSnap, friendsSnap] = await Promise.all([
+                    db.collection('users').get(),
+                    db.collection('messages').get(),
+                    db.collection('friendRequests').get(),
+                    db.collection('friends').get()
+                ]);
+                
+                const stats = `
+📊 STATISTICHE SISTEMA
+
+👥 Utenti Registrati: ${usersSnap.size}
+💬 Messaggi Totali: ${messagesSnap.size}
+📨 Richieste Amicizia: ${requestsSnap.size}
+🤝 Amicizie Attive: ${friendsSnap.size / 2}
+
+---
+📅 Data: ${new Date().toLocaleString('it-IT')}
+                `.trim();
+                
+                alert(stats);
+            } catch (error) {
+                console.error('Errore caricamento statistiche:', error);
+                alert('Errore nel caricamento delle statistiche');
+            }
         }
 
         // Toggle mobile sidebar
