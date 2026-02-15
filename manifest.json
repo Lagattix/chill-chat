@@ -1,0 +1,26 @@
+{
+  "name": "Conversando",
+  "short_name": "Conversando",
+  "description": "Chat in tempo reale con amici e Conversina AI",
+  "start_url": "/chill-chat/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/chill-chat/logo.png",
+      "sizes": "1024x924",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/chill-chat/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["social", "communication"],
+  "screenshots": []
+}
