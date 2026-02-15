@@ -1222,55 +1222,12 @@
                 return;
             }
             
-            // 🔑 ADMIN ACCESS - Account speciale
-            if (email === 'conversando@admin.com' && password === '342423') {
-                console.log('👑 Login ADMIN riconosciuto');
-                
-                // Crea/aggiorna documento admin in Firestore
-                try {
-                    await db.collection('users').doc('admin_conversando_official').set({
-                        name: 'Conversando Official',
-                        email: 'conversando@admin.com',
-                        friendCode: 'ADMIN-256784',
-                        isAdmin: true,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true }); // merge: true per non sovrascrivere se esiste già
-                    
-                    console.log('✅ Admin salvato in Firestore');
-                } catch (error) {
-                    console.error('⚠️ Errore salvataggio admin:', error);
-                }
-                
-                // Crea oggetto admin
-                currentUser = {
-                    id: 'admin_conversando_official',
-                    name: 'Conversando Official',
-                    email: 'conversando@admin.com',
-                    avatar: '👑',
-                    friendCode: 'ADMIN-256784',
-                    isAdmin: true
-                };
-                
-                // Nascondi login e mostra app
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('topNav').style.display = 'flex';
-                document.getElementById('appContainer').classList.add('visible');
-                document.getElementById('currentUserName').textContent = '👑 Admin';
-                
-                loadChats();
-                loadFriendRequests();
-                
-                // Mostra badge admin
-                showAdminBadge();
-                
-                return;
-            }
-            
             try {
                 console.log('🔄 Chiamata Firebase Auth...');
                 await auth.signInWithEmailAndPassword(email, password);
                 console.log('✅ Login riuscito!');
                 // L'app si caricherà automaticamente tramite onAuthStateChanged
+                // che controllerà se isAdmin = true
             } catch (error) {
                 console.error('❌ Errore login:', error);
                 if (error.code === 'auth/user-not-found') {
@@ -2401,16 +2358,28 @@
                         name: userData?.name || user.email.split('@')[0],
                         email: user.email,
                         avatar: (userData?.name || user.email)[0].toUpperCase(),
-                        friendCode: userData?.friendCode
+                        friendCode: userData?.friendCode,
+                        isAdmin: userData?.isAdmin || false  // 👑 Carica flag admin
                     };
+                    
+                    // Se è admin, cambia avatar in corona
+                    if (currentUser.isAdmin) {
+                        currentUser.avatar = '👑';
+                        console.log('👑 Admin riconosciuto:', currentUser.name);
+                    }
                     
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('topNav').style.display = 'flex';
                     document.getElementById('appContainer').classList.add('visible');
-                    document.getElementById('currentUserName').textContent = currentUser.name;
+                    document.getElementById('currentUserName').textContent = currentUser.isAdmin ? '👑 ' + currentUser.name : currentUser.name;
                     
                     loadChats();
                     loadFriendRequests(); // Carica richieste d'amicizia
+                    
+                    // 👑 Mostra badge e pannello admin se è admin
+                    if (currentUser.isAdmin) {
+                        showAdminBadge();
+                    }
                 } catch (error) {
                     console.error('Errore caricamento utente:', error);
                 }
