@@ -1770,12 +1770,18 @@
                         const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
                         
                         newMessages.forEach(msg => {
+                            // CONTROLLO DUPLICATI: Se il messaggio esiste già, salta
+                            if (document.querySelector(`[data-message-id="${msg.id}"]`)) {
+                                return;
+                            }
+                            
                             const isSent = msg.senderId === currentUser.id;
                             const isAI = msg.senderId === CONVERSINA_ID;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}`;
+                            messageDiv.setAttribute('data-message-id', msg.id); // Aggiungi ID per controllo duplicati
                             messageDiv.innerHTML = `
                                 <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
                                 <div class="message-content">
@@ -1805,6 +1811,7 @@
             // Cleanup function
             unsubscribeMessages = () => {
                 clearInterval(intervalId);
+                lastMessageId = null; // Reset
             };
         }
 
@@ -1834,7 +1841,7 @@
                 const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                 
                 return `
-                    <div class="message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}">
+                    <div class="message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}" data-message-id="${msg.id}">
                         <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
                         <div class="message-content">
                             ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
