@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Conversando - Chat in tempo reale con amici e Conversina AI">
     <meta name="theme-color" content="#0a0a0f">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Conversando">
     <title>Conversando</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=League+Spartan:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -1158,60 +1162,146 @@
         let unsubscribeMessages = null;
         let db = null;
         let auth = null;
-        let notificationsEnabled = false;
+        let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
         let lastSeenMessages = {}; // Traccia ultimi messaggi visti per chat
         
         const CONVERSINA_ID = 'conversina_ai_bot';
 
+        // Ripristina stato notifiche da localStorage
+        if (notificationsEnabled && Notification.permission === 'granted') {
+            console.log('🔔 Notifiche ripristinate da localStorage');
+        }
+
         // 🔔 Sistema Notifiche Push
         async function requestNotificationPermission() {
+            console.log('🔔 [DEBUG] Inizio richiesta notifiche');
+            console.log('🔔 [DEBUG] User Agent:', navigator.userAgent);
+            console.log('🔔 [DEBUG] Platform:', navigator.platform);
+            
+            // Controlla supporto base
             if (!('Notification' in window)) {
-                console.log('❌ Browser non supporta notifiche');
+                console.log('❌ [DEBUG] Notification API non disponibile');
+                alert('Il tuo browser non supporta le notifiche push. Prova Chrome o Firefox.');
                 return false;
+            }
+
+            console.log('🔔 [DEBUG] Notification API disponibile');
+            console.log('🔔 [DEBUG] Permission stato attuale:', Notification.permission);
+
+            // iOS Safari ha restrizioni speciali
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isChrome = /Chrome/i.test(navigator.userAgent);
+            
+            console.log('🔔 [DEBUG] isIOS:', isIOS, '| isSafari:', isSafari, '| isAndroid:', isAndroid, '| isChrome:', isChrome);
+            
+            if (isIOS && isSafari) {
+                console.log('⚠️ [DEBUG] iOS Safari - notifiche limitate');
+                // iOS Safari 16.4+ supporta notifiche ma solo con PWA installata
+                if (!window.navigator.standalone && !window.matchMedia('(display-mode: standalone)').matches) {
+                    alert('Su iOS Safari, installa l\'app come PWA per ricevere notifiche:\n\n1. Tocca il pulsante Condividi\n2. Scorri e tocca "Aggiungi a Home"\n3. Apri l\'app dalla Home');
+                    return false;
+                }
             }
 
             if (Notification.permission === 'granted') {
                 notificationsEnabled = true;
-                console.log('✅ Notifiche già abilitate');
+                localStorage.setItem('notificationsEnabled', 'true');
+                console.log('✅ [DEBUG] Notifiche già abilitate');
                 return true;
             }
 
-            if (Notification.permission !== 'denied') {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    notificationsEnabled = true;
-                    console.log('✅ Notifiche abilitate');
-                    showNotification('Conversando', 'Notifiche attivate! 🔔', '🎉');
-                    return true;
+            if (Notification.permission === 'denied') {
+                console.log('❌ [DEBUG] Notifiche bloccate dall\'utente');
+                alert('Le notifiche sono bloccate. Vai nelle impostazioni del browser/app:\n\nChrome Android:\nImpostazioni → Siti web → Notifiche → Trova conversando');
+                return false;
+            }
+
+            if (Notification.permission === 'default') {
+                console.log('🔔 [DEBUG] Richiesta permesso all\'utente...');
+                try {
+                    const permission = await Notification.requestPermission();
+                    console.log('🔔 [DEBUG] Risposta utente:', permission);
+                    
+                    if (permission === 'granted') {
+                        notificationsEnabled = true;
+                        localStorage.setItem('notificationsEnabled', 'true');
+                        console.log('✅ [DEBUG] Notifiche abilitate');
+                        
+                        // Test notifica
+                        setTimeout(() => {
+                            console.log('🔔 [DEBUG] Invio notifica di test...');
+                            showNotification('Conversando', 'Notifiche attivate! 🔔', '🎉');
+                        }, 500);
+                        
+                        return true;
+                    } else {
+                        console.log('❌ [DEBUG] Permesso notifiche rifiutato');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('❌ [DEBUG] Errore richiesta notifiche:', error);
+                    alert('Errore richiesta notifiche: ' + error.message);
+                    return false;
                 }
             }
 
-            console.log('❌ Notifiche rifiutate');
+            console.log('❌ [DEBUG] Stato permesso sconosciuto:', Notification.permission);
             return false;
         }
 
         function showNotification(title, body, icon = '💬') {
-            if (!notificationsEnabled || Notification.permission !== 'granted') return;
+            console.log('🔔 [DEBUG] Tentativo creazione notifica:', { title, body, icon, enabled: notificationsEnabled, permission: Notification.permission });
+            
+            if (!notificationsEnabled || Notification.permission !== 'granted') {
+                console.log('❌ [DEBUG] Notifica bloccata - enabled:', notificationsEnabled, 'permission:', Notification.permission);
+                return;
+            }
 
             // Non mostrare notifica se la finestra è attiva e stai guardando la chat
-            if (!document.hidden && activeChat) return;
+            if (!document.hidden && activeChat) {
+                console.log('⏭️ [DEBUG] Notifica saltata - finestra attiva');
+                return;
+            }
 
-            const notification = new Notification(title, {
-                body: body,
-                icon: icon === '💬' ? '' : icon, // Browser usa emoji se non c'è icon URL
-                badge: '/favicon.ico',
-                tag: 'conversando-message', // Raggruppa notifiche
-                requireInteraction: false,
-                silent: false
-            });
+            try {
+                console.log('🔔 [DEBUG] Creazione oggetto Notification...');
+                const notification = new Notification(title, {
+                    body: body,
+                    icon: icon === '💬' ? '/favicon.ico' : icon,
+                    badge: '/favicon.ico',
+                    tag: 'conversando-message-' + Date.now(), // Tag unico per non raggruppare
+                    requireInteraction: false,
+                    silent: false,
+                    vibrate: [200, 100, 200] // Vibrazione su mobile
+                });
 
-            notification.onclick = () => {
-                window.focus();
-                notification.close();
-            };
+                console.log('✅ [DEBUG] Notifica creata con successo');
 
-            // Auto-chiudi dopo 5 secondi
-            setTimeout(() => notification.close(), 5000);
+                notification.onclick = () => {
+                    console.log('🔔 [DEBUG] Notifica cliccata');
+                    window.focus();
+                    notification.close();
+                };
+
+                notification.onerror = (error) => {
+                    console.error('❌ [DEBUG] Errore notifica:', error);
+                };
+
+                // Auto-chiudi dopo 5 secondi
+                setTimeout(() => {
+                    try {
+                        notification.close();
+                        console.log('🔔 [DEBUG] Notifica chiusa automaticamente');
+                    } catch (e) {
+                        console.log('🔔 [DEBUG] Notifica già chiusa');
+                    }
+                }, 5000);
+            } catch (error) {
+                console.error('❌ [DEBUG] Errore creazione notifica:', error);
+                alert('Errore notifica: ' + error.message);
+            }
         }
 
         // Monitora nuovi messaggi per notifiche
@@ -1267,9 +1357,31 @@
             
             db = firebase.firestore();
             
-            // Initialize Firebase Auth
+            // Initialize Firebase Auth con persistenza locale
             auth = firebase.auth();
+            
+            // 🔐 IMPORTANTE: Imposta persistenza LOCAL (rimane anche dopo chiusura browser)
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    console.log('✅ Firebase Auth - Persistenza LOCAL attivata');
+                })
+                .catch((error) => {
+                    console.error('⚠️ Errore impostazione persistenza:', error);
+                });
+            
             console.log('✅ Firebase Auth inizializzato');
+            
+            // 🔔 Attiva notifiche subito se già loggato
+            // Il check viene fatto dopo che onAuthStateChanged rileva l'utente
+            setTimeout(() => {
+                if (auth.currentUser && Notification.permission === 'default') {
+                    console.log('🔔 Utente già loggato - richiesta notifiche automatica');
+                    requestNotificationPermission();
+                } else if (auth.currentUser && Notification.permission === 'granted') {
+                    notificationsEnabled = true;
+                    console.log('🔔 Utente già loggato - notifiche già attive');
+                }
+            }, 1000);
             
             // Disable network persistence to avoid WebChannel issues in restricted environments
             db.settings({
@@ -1627,6 +1739,7 @@
             if (notificationsEnabled) {
                 // Disabilita notifiche
                 notificationsEnabled = false;
+                localStorage.setItem('notificationsEnabled', 'false');
                 btn.textContent = 'Attiva';
                 btn.style.background = 'var(--accent-primary)';
                 console.log('🔕 Notifiche disabilitate');
@@ -2519,8 +2632,13 @@
                     loadChats();
                     loadFriendRequests(); // Carica richieste d'amicizia
                     
-                    // 🔔 Richiedi permesso notifiche
-                    setTimeout(() => requestNotificationPermission(), 2000); // Aspetta 2 sec dopo login
+                    // 🔔 Richiedi permesso notifiche immediatamente
+                    if (Notification.permission === 'default') {
+                        requestNotificationPermission();
+                    } else if (Notification.permission === 'granted') {
+                        notificationsEnabled = true;
+                        console.log('🔔 Notifiche già autorizzate');
+                    }
                     
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
