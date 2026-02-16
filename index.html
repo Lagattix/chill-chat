@@ -906,6 +906,7 @@
             .chat-area {
                 width: 100%;
                 height: 100vh;
+                padding-top: 49px; /* Spazio per top-nav */
             }
 
             .messages-container {
@@ -3014,13 +3015,39 @@
         function listenForIncomingCalls() {
             if (!currentUser) return;
             
+            console.log('📞 Avvio listener chiamate per:', currentUser.name);
+            
+            // Timestamp per evitare chiamate vecchie
+            const startTime = firebase.firestore.Timestamp.now();
+            
             db.collection('calls')
                 .where('to', '==', currentUser.id)
-                .where('status', '==', 'ringing')
                 .onSnapshot(snapshot => {
                     snapshot.docChanges().forEach(change => {
                         if (change.type === 'added') {
                             const callData = change.doc.data();
+                            
+                            console.log('📞 Nuova chiamata rilevata:', callData);
+                            
+                            // Ignora chiamate vecchie (prima del login)
+                            if (callData.createdAt && callData.createdAt < startTime) {
+                                console.log('⏭️ Chiamata vecchia, skip');
+                                return;
+                            }
+                            
+                            // Solo se status è ringing
+                            if (callData.status !== 'ringing') {
+                                console.log('⏭️ Status non ringing:', callData.status);
+                                return;
+                            }
+                            
+                            // Non mostrare se già in chiamata
+                            if (currentCall) {
+                                console.log('⏭️ Già in chiamata');
+                                return;
+                            }
+                            
+                            console.log('✅ Mostrando chiamata in arrivo');
                             
                             // Mostra notifica chiamata in arrivo
                             currentCall = {
@@ -3037,9 +3064,14 @@
                                 callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
                             document.getElementById('incomingCallModal').style.display = 'block';
                             
-                            // Riproduci suono (opzionale)
-                            // const audio = new Audio('/ringtone.mp3');
-                            // audio.play();
+                            // Mostra anche notifica push
+                            if (notificationsEnabled) {
+                                showNotification(
+                                    callData.fromName, 
+                                    callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata in arrivo',
+                                    '📞'
+                                );
+                            }
                         }
                     });
                 });
@@ -3373,6 +3405,9 @@
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
             const chatAvatar = document.getElementById('chatAvatar');
+            
+            // Pulisci background image (per gruppi)
+            chatAvatar.style.backgroundImage = '';
             chatAvatar.textContent = isAI ? '🤖' : avatar;
             if (isAI) chatAvatar.classList.add('ai');
             else chatAvatar.classList.remove('ai');
