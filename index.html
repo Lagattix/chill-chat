@@ -865,6 +865,11 @@
             .mobile-menu-btn {
                 display: flex !important;
             }
+            
+            /* Mostra pulsante menu fisso su mobile */
+            #mobileMenuBtnFixed {
+                display: flex !important;
+            }
 
             .chat-header {
                 padding-left: 80px;
@@ -948,6 +953,15 @@
     </style>
 </head>
 <body>
+    <!-- Mobile Menu Button (Always Visible) -->
+    <button id="mobileMenuBtnFixed" onclick="toggleMobileSidebar()" style="display: none; position: fixed; top: 12px; left: 12px; z-index: 999; width: 44px; height: 44px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
     <!-- Top Navigation -->
     <div class="top-nav" id="topNav" style="display: none;">
         <div class="top-nav-left">
@@ -2000,6 +2014,7 @@
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.getElementById('mobileOverlay');
             const topNav = document.querySelector('.top-nav');
+            const fixedMenuBtn = document.getElementById('mobileMenuBtnFixed');
             
             sidebar.classList.toggle('mobile-visible');
             overlay.classList.toggle('visible');
@@ -2007,6 +2022,13 @@
             // Mostra/nascondi top-nav insieme alla sidebar su mobile
             if (window.innerWidth <= 768) {
                 topNav.classList.toggle('mobile-visible');
+                
+                // Nascondi pulsante fisso quando sidebar è aperta (evita duplicazione)
+                if (sidebar.classList.contains('mobile-visible')) {
+                    fixedMenuBtn.style.display = 'none';
+                } else {
+                    fixedMenuBtn.style.display = 'flex';
+                }
             }
         }
 
@@ -2018,10 +2040,12 @@
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.getElementById('mobileOverlay');
                 const topNav = document.querySelector('.top-nav');
+                const fixedMenuBtn = document.getElementById('mobileMenuBtnFixed');
                 
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
                 topNav.classList.remove('mobile-visible'); // Nascondi anche top-nav
+                fixedMenuBtn.style.display = 'flex'; // Ri-mostra pulsante fisso
             }
         }
 
@@ -2067,10 +2091,12 @@
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.getElementById('mobileOverlay');
                 const topNav = document.querySelector('.top-nav');
+                const fixedMenuBtn = document.getElementById('mobileMenuBtnFixed');
                 
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
                 topNav.classList.remove('mobile-visible'); // Nascondi anche top-nav
+                fixedMenuBtn.style.display = 'flex'; // Ri-mostra pulsante fisso
             }
         }
 
