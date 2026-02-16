@@ -1109,10 +1109,24 @@
     <div class="profile-modal" id="profileModal" onclick="closeProfile(event)">
         <div class="profile-card" onclick="event.stopPropagation()">
             <div class="profile-header">
-                <div class="profile-avatar" id="profileAvatar">U</div>
+                <div style="position: relative;">
+                    <div class="profile-avatar" id="profileAvatar">U</div>
+                    <button onclick="changeAvatar()" style="position: absolute; bottom: 0; right: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-primary); border: 2px solid var(--bg-primary); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Cambia avatar">
+                        ✏️
+                    </button>
+                    <input type="file" id="avatarInput" accept="image/*" style="display: none;" onchange="uploadAvatar(event)">
+                </div>
                 <div class="profile-info">
-                    <h2 class="profile-name" id="profileName">Nome Utente</h2>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h2 class="profile-name" id="profileName">Nome Utente</h2>
+                        <button onclick="changeName()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px;" title="Modifica nome">
+                            ✏️
+                        </button>
+                    </div>
                     <p class="profile-email" id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="cca9a1ada5a08ca9b4ada1bca0a9e2afa3a1">[email&#160;protected]</a></p>
+                    <div id="nameChangeInfo" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: none;">
+                        Prossimo cambio disponibile: <span id="nextNameChange"></span>
+                    </div>
                 </div>
             </div>
             
@@ -2129,7 +2143,19 @@
             
             // Update profile info
             if (currentUser) {
-                document.getElementById('profileAvatar').textContent = currentUser.avatar;
+                const avatarEl = document.getElementById('profileAvatar');
+                
+                // Se ha avatar custom (base64), mostralo
+                if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
+                    avatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
+                    avatarEl.style.backgroundSize = 'cover';
+                    avatarEl.style.backgroundPosition = 'center';
+                    avatarEl.textContent = '';
+                } else {
+                    avatarEl.style.backgroundImage = '';
+                    avatarEl.textContent = currentUser.avatar || currentUser.name[0].toUpperCase();
+                }
+                
                 document.getElementById('profileName').textContent = currentUser.name;
                 document.getElementById('profileEmail').textContent = currentUser.email || '';
                 document.getElementById('profileFriendCode').textContent = currentUser.friendCode || 'CHILL-XXXXXX';
@@ -2137,6 +2163,9 @@
             
             // Aggiorna stato notifiche
             updateNotificationsUI();
+            
+            // Aggiorna info cambio nome
+            updateNameChangeInfo();
             
             // Show profile modal
             document.getElementById('profileModal').classList.add('visible');
@@ -2246,6 +2275,142 @@
                 document.getElementById('profileModal').classList.remove('visible');
                 document.getElementById('navProfile').classList.remove('active');
                 document.getElementById('navHome').classList.add('active');
+            }
+        }
+
+        // ✏️ MODIFICA AVATAR
+        function changeAvatar() {
+            document.getElementById('avatarInput').click();
+        }
+
+        async function uploadAvatar(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validazione
+            if (!file.type.startsWith('image/')) {
+                alert('Seleziona un\'immagine valida');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB max
+                alert('Immagine troppo grande. Max 5MB');
+                return;
+            }
+            
+            try {
+                // Converti in base64
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const avatarBase64 = e.target.result;
+                    
+                    // Salva su Firestore
+                    await db.collection('users').doc(currentUser.id).update({
+                        avatar: avatarBase64,
+                        avatarUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Aggiorna UI
+                    currentUser.avatar = avatarBase64;
+                    const avatarEl = document.getElementById('profileAvatar');
+                    avatarEl.style.backgroundImage = `url(${avatarBase64})`;
+                    avatarEl.style.backgroundSize = 'cover';
+                    avatarEl.style.backgroundPosition = 'center';
+                    avatarEl.textContent = '';
+                    
+                    alert('Avatar aggiornato con successo! ✅');
+                    
+                    // Ricarica chat per aggiornare avatar ovunque
+                    loadChats();
+                };
+                reader.readAsDataURL(file);
+                
+            } catch (error) {
+                console.error('Errore upload avatar:', error);
+                alert('Errore durante il caricamento dell\'avatar');
+            }
+        }
+
+        // ✏️ MODIFICA NOME
+        async function changeName() {
+            // Controlla ultima modifica
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.id).get();
+                const userData = userDoc.data();
+                const lastNameChange = userData.lastNameChange;
+                
+                if (lastNameChange) {
+                    const daysSinceChange = (Date.now() - lastNameChange.toMillis()) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysSinceChange < 14) {
+                        const daysLeft = Math.ceil(14 - daysSinceChange);
+                        alert(`⏳ Puoi cambiare il nome tra ${daysLeft} giorni`);
+                        return;
+                    }
+                }
+                
+                // Richiedi nuovo nome
+                const newName = prompt('Inserisci il nuovo nome:', currentUser.name);
+                
+                if (!newName || newName.trim() === '') {
+                    return;
+                }
+                
+                const trimmedName = newName.trim();
+                
+                if (trimmedName.length < 2) {
+                    alert('Il nome deve essere almeno 2 caratteri');
+                    return;
+                }
+                
+                if (trimmedName.length > 30) {
+                    alert('Il nome deve essere massimo 30 caratteri');
+                    return;
+                }
+                
+                // Salva su Firestore
+                await db.collection('users').doc(currentUser.id).update({
+                    name: trimmedName,
+                    lastNameChange: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Aggiorna UI
+                currentUser.name = trimmedName;
+                document.getElementById('profileName').textContent = trimmedName;
+                document.getElementById('currentUserName').textContent = trimmedName;
+                
+                alert('Nome aggiornato con successo! ✅\n\nPotrai cambiarlo di nuovo tra 14 giorni.');
+                
+                // Mostra info prossimo cambio
+                updateNameChangeInfo();
+                
+            } catch (error) {
+                console.error('Errore cambio nome:', error);
+                alert('Errore durante il cambio nome');
+            }
+        }
+
+        async function updateNameChangeInfo() {
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.id).get();
+                const userData = userDoc.data();
+                const lastNameChange = userData.lastNameChange;
+                
+                if (lastNameChange) {
+                    const nextChangeDate = new Date(lastNameChange.toMillis() + (14 * 24 * 60 * 60 * 1000));
+                    const daysSinceChange = (Date.now() - lastNameChange.toMillis()) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysSinceChange < 14) {
+                        document.getElementById('nameChangeInfo').style.display = 'block';
+                        document.getElementById('nextNameChange').textContent = nextChangeDate.toLocaleDateString('it-IT');
+                    } else {
+                        document.getElementById('nameChangeInfo').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('nameChangeInfo').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Errore caricamento info nome:', error);
             }
         }
 
@@ -4064,13 +4229,13 @@
                         id: user.uid,
                         name: userData?.name || user.email.split('@')[0],
                         email: user.email,
-                        avatar: (userData?.name || user.email)[0].toUpperCase(),
+                        avatar: userData?.avatar || (userData?.name || user.email)[0].toUpperCase(),
                         friendCode: userData?.friendCode,
                         isAdmin: userData?.isAdmin || false  // 👑 Carica flag admin
                     };
                     
-                    // Se è admin, cambia avatar in corona
-                    if (currentUser.isAdmin) {
+                    // Se è admin, cambia avatar in corona (solo se non ha custom avatar)
+                    if (currentUser.isAdmin && !userData?.avatar) {
                         currentUser.avatar = '👑';
                         console.log('👑 Admin riconosciuto:', currentUser.name);
                     }
