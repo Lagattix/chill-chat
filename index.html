@@ -2759,6 +2759,13 @@
                 
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
                 console.log('✅ Stream locale ottenuto');
+                console.log('📊 Tracce audio:', localStream.getAudioTracks().length);
+                console.log('📊 Tracce video:', localStream.getVideoTracks().length);
+                
+                // Verifica che le tracce siano enabled
+                localStream.getAudioTracks().forEach(track => {
+                    console.log('🎤 Audio track:', track.label, 'enabled:', track.enabled, 'muted:', track.muted);
+                });
                 
                 // Mostra video locale
                 document.getElementById('localVideo').srcObject = localStream;
@@ -2773,8 +2780,11 @@
                 peerConnection = new RTCPeerConnection(iceServers);
                 
                 // Aggiungi stream locale
+                console.log('➕ Aggiunta tracce al PeerConnection (startCall)');
                 localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
+                    console.log('  -', track.kind, track.label, 'enabled:', track.enabled);
+                    const sender = peerConnection.addTrack(track, localStream);
+                    console.log('  ✅ Sender creato:', sender);
                 });
                 
                 // Gestisci stream remoto
@@ -2893,6 +2903,14 @@
                 };
                 
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Stream locale ottenuto (acceptCall)');
+                console.log('📊 Tracce audio:', localStream.getAudioTracks().length);
+                console.log('📊 Tracce video:', localStream.getVideoTracks().length);
+                
+                localStream.getAudioTracks().forEach(track => {
+                    console.log('🎤 Audio track:', track.label, 'enabled:', track.enabled);
+                });
+                
                 document.getElementById('localVideo').srcObject = localStream;
                 
                 if (currentCall.type === 'audio') {
@@ -2909,8 +2927,11 @@
                 peerConnection = new RTCPeerConnection(iceServers);
                 
                 // Aggiungi stream locale
+                console.log('➕ Aggiunta tracce al PeerConnection (acceptCall)');
                 localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
+                    console.log('  -', track.kind, track.label, 'enabled:', track.enabled);
+                    const sender = peerConnection.addTrack(track, localStream);
+                    console.log('  ✅ Sender creato:', sender);
                 });
                 
                 // Gestisci stream remoto
