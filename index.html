@@ -858,7 +858,7 @@
         @media (max-width: 768px) {
             .app-container {
                 grid-template-columns: 1fr;
-                height: calc(100vh - 49px);
+                height: 100vh; /* Altezza piena - top-nav non più sempre visibile */
             }
 
             .mobile-menu-btn {
@@ -869,9 +869,20 @@
                 padding-left: 80px;
             }
             
-            /* Nascondi icone su mobile nella top nav quando non serve */
+            /* Top Nav - nascosta di default su mobile */
             .top-nav {
-                padding: 8px 12px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1002;
+                display: none; /* Nascosta di default su mobile */
+                transition: all 0.3s ease;
+            }
+            
+            /* Classe per mostrare top-nav quando sidebar è aperta */
+            .top-nav.mobile-visible {
+                display: flex;
             }
 
             .top-nav-title {
@@ -906,7 +917,6 @@
             .chat-area {
                 width: 100%;
                 height: 100vh;
-                padding-top: 49px; /* Spazio per top-nav */
             }
 
             .messages-container {
@@ -1987,9 +1997,15 @@
         function toggleMobileSidebar() {
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.getElementById('mobileOverlay');
+            const topNav = document.querySelector('.top-nav');
             
             sidebar.classList.toggle('mobile-visible');
             overlay.classList.toggle('visible');
+            
+            // Mostra/nascondi top-nav insieme alla sidebar su mobile
+            if (window.innerWidth <= 768) {
+                topNav.classList.toggle('mobile-visible');
+            }
         }
 
         // Wrapper per selectChat che chiude sidebar su mobile
@@ -1999,8 +2015,11 @@
             if (window.innerWidth <= 768) {
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.getElementById('mobileOverlay');
+                const topNav = document.querySelector('.top-nav');
+                
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
+                topNav.classList.remove('mobile-visible'); // Nascondi anche top-nav
             }
         }
 
@@ -2045,8 +2064,11 @@
             if (window.innerWidth <= 768) {
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.getElementById('mobileOverlay');
+                const topNav = document.querySelector('.top-nav');
+                
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
+                topNav.classList.remove('mobile-visible'); // Nascondi anche top-nav
             }
         }
 
