@@ -3583,7 +3583,16 @@
                             
                             const userData = doc.data();
                             const userName = userData.name || 'Utente';
-                            const userAvatar = userName[0].toUpperCase();
+                            const userAvatar = userData.avatar || userName[0].toUpperCase();
+                            
+                            // HTML per avatar (custom o lettera)
+                            let avatarHTML;
+                            if (userData.avatar && userData.avatar.startsWith('data:image')) {
+                                avatarHTML = `<div class="contact-avatar online" style="background-image: url(${userData.avatar}); background-size: cover; background-position: center;"></div>`;
+                            } else {
+                                avatarHTML = `<div class="contact-avatar online">${userAvatar}</div>`;
+                            }
+                            
                             const roomId = [currentUser.id, doc.id].sort().join('_');
                             
                             // Carica ultimo messaggio (opzionale)
@@ -3618,7 +3627,7 @@
                             
                             html += `
                                 <div class="contact-item" onclick="selectChatMobile('${doc.id}', '${userName}', '${userAvatar}', false)">
-                                    <div class="contact-avatar online">${userAvatar}</div>
+                                    ${avatarHTML}
                                     <div class="contact-info">
                                         <div class="contact-name">${userName}</div>
                                         <div class="contact-preview" style="font-size: 12px; color: var(--text-muted);">${userData.email}</div>
@@ -3652,7 +3661,15 @@
                             if (friendUserDoc.exists) {
                                 const friendUser = friendUserDoc.data();
                                 const friendName = friendUser.name || 'Amico';
-                                const friendAvatar = friendName[0].toUpperCase();
+                                const friendAvatar = friendUser.avatar || friendName[0].toUpperCase();
+                                
+                                // HTML per avatar (custom o lettera)
+                                let avatarHTML;
+                                if (friendUser.avatar && friendUser.avatar.startsWith('data:image')) {
+                                    avatarHTML = `<div class="contact-avatar online" style="background-image: url(${friendUser.avatar}); background-size: cover; background-position: center;"></div>`;
+                                } else {
+                                    avatarHTML = `<div class="contact-avatar online">${friendAvatar}</div>`;
+                                }
                                 
                                 const roomId = [currentUser.id, friendId].sort().join('_');
                                 let lastMessage = 'Inizia una conversazione';
@@ -3686,7 +3703,7 @@
                                 
                                 html += `
                                     <div class="contact-item" onclick="selectChatMobile('${friendId}', '${friendName}', '${friendAvatar}', false)">
-                                        <div class="contact-avatar online">${friendAvatar}</div>
+                                        ${avatarHTML}
                                         <div class="contact-info">
                                             <div class="contact-name">${friendName}</div>
                                             <div class="contact-preview">${lastMessage}</div>
@@ -3724,9 +3741,19 @@
             document.getElementById('inputArea').style.display = 'block';
             const chatAvatar = document.getElementById('chatAvatar');
             
-            // Pulisci background image (per gruppi)
-            chatAvatar.style.backgroundImage = '';
-            chatAvatar.textContent = isAI ? '🤖' : avatar;
+            // Gestisci avatar (custom image o emoji/lettera)
+            if (avatar && avatar.startsWith('data:image')) {
+                // Avatar custom
+                chatAvatar.style.backgroundImage = `url(${avatar})`;
+                chatAvatar.style.backgroundSize = 'cover';
+                chatAvatar.style.backgroundPosition = 'center';
+                chatAvatar.textContent = '';
+            } else {
+                // Avatar normale (emoji o lettera)
+                chatAvatar.style.backgroundImage = '';
+                chatAvatar.textContent = isAI ? '🤖' : avatar;
+            }
+            
             if (isAI) chatAvatar.classList.add('ai');
             else chatAvatar.classList.remove('ai');
             document.getElementById('chatUserName').textContent = name;
