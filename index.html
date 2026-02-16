@@ -1038,6 +1038,16 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Call Buttons -->
+                <div id="callButtons" style="display: none; margin-left: auto; gap: 12px;">
+                    <button onclick="startCall('audio')" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;" title="Chiamata Audio">
+                        📞
+                    </button>
+                    <button onclick="startCall('video')" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;" title="Videochiamata">
+                        📹
+                    </button>
+                </div>
             </div>
 
             <div class="messages-container" id="messagesContainer">
@@ -1214,6 +1224,54 @@
         </div>
     </div>
 
+    <!-- Call Modal -->
+    <div id="callModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
+        <!-- Video Container -->
+        <div style="position: relative; width: 100%; max-width: 900px; aspect-ratio: 16/9; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 20px;">
+            <!-- Remote Video (principale) -->
+            <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+            
+            <!-- Local Video (PiP) -->
+            <video id="localVideo" autoplay muted playsinline style="position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid var(--accent-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.3);"></video>
+            
+            <!-- Call Info -->
+            <div id="callInfo" style="position: absolute; top: 20px; left: 20px; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                <div id="callContactName" style="font-size: 24px; font-weight: 600; margin-bottom: 4px;">Nome Contatto</div>
+                <div id="callStatus" style="font-size: 14px; opacity: 0.9;">Chiamata in corso...</div>
+                <div id="callDuration" style="font-size: 14px; opacity: 0.8; margin-top: 4px;">00:00</div>
+            </div>
+        </div>
+        
+        <!-- Call Controls -->
+        <div style="display: flex; gap: 16px; align-items: center;">
+            <button id="toggleMicBtn" onclick="toggleMic()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s;">
+                🎤
+            </button>
+            <button id="toggleVideoBtn" onclick="toggleVideo()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s; display: none;">
+                📹
+            </button>
+            <button onclick="endCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #ff4444; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 12px rgba(255,68,68,0.4);">
+                📵
+            </button>
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div id="incomingCallModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 32px; z-index: 10001; box-shadow: 0 8px 32px rgba(0,0,0,0.4); text-align: center; min-width: 300px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">📞</div>
+        <div id="incomingCallName" style="font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Nome Contatto</div>
+        <div id="incomingCallType" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">Chiamata in arrivo...</div>
+        
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button onclick="declineCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #ff4444; border: none; color: white; cursor: pointer; font-size: 28px;">
+                ❌
+            </button>
+            <button onclick="acceptCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #44ff44; border: none; color: white; cursor: pointer; font-size: 28px;">
+                ✅
+            </button>
+        </div>
+    </div>
+
     <!-- Firebase SDK v8 (compat mode) from cdnjs -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
@@ -1236,6 +1294,23 @@
         if (notificationsEnabled && Notification.permission === 'granted') {
             console.log('🔔 Notifiche ripristinate da localStorage');
         }
+
+        // 📞 WEBRTC VARIABLES
+        let localStream = null;
+        let remoteStream = null;
+        let peerConnection = null;
+        let currentCall = null;
+        let callDurationInterval = null;
+        let isMuted = false;
+        let isVideoOff = false;
+        
+        // STUN servers for ICE
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
 
         // Registra Service Worker per notifiche
         if ('serviceWorker' in navigator) {
@@ -1956,6 +2031,9 @@
             chatAvatar.classList.remove('ai');
             document.getElementById('chatUserName').textContent = groupName;
 
+            // Nascondi pulsanti chiamata per gruppi
+            document.getElementById('callButtons').style.display = 'none';
+
             // Load messages
             loadGroupMessages(groupId);
 
@@ -2582,6 +2660,391 @@
             }
         }
 
+        // 📞 ========== WEBRTC CALLS ==========
+        
+        async function startCall(type) {
+            if (!activeChat || activeChat.isAI || activeChat.isGroup) {
+                alert('Le chiamate sono disponibili solo per chat 1-1');
+                return;
+            }
+            
+            console.log('📞 Avvio chiamata', type);
+            
+            try {
+                // Richiedi permessi media
+                const constraints = {
+                    audio: true,
+                    video: type === 'video'
+                };
+                
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Stream locale ottenuto');
+                
+                // Mostra video locale
+                document.getElementById('localVideo').srcObject = localStream;
+                if (type === 'audio') {
+                    document.getElementById('localVideo').style.display = 'none';
+                    document.getElementById('toggleVideoBtn').style.display = 'none';
+                } else {
+                    document.getElementById('toggleVideoBtn').style.display = 'block';
+                }
+                
+                // Crea PeerConnection
+                peerConnection = new RTCPeerConnection(iceServers);
+                
+                // Aggiungi stream locale
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                // Gestisci stream remoto
+                remoteStream = new MediaStream();
+                document.getElementById('remoteVideo').srcObject = remoteStream;
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('📹 Track remoto ricevuto');
+                    event.streams[0].getTracks().forEach(track => {
+                        remoteStream.addTrack(track);
+                    });
+                };
+                
+                // Gestisci ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 Nuovo ICE candidate');
+                        // Invia candidate al peer tramite Firestore
+                        db.collection('calls').doc(currentCall.id).collection('candidates').add({
+                            candidate: event.candidate.toJSON(),
+                            from: currentUser.id
+                        });
+                    }
+                };
+                
+                // Crea offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                // Salva chiamata su Firestore
+                const callDoc = await db.collection('calls').add({
+                    from: currentUser.id,
+                    fromName: currentUser.name,
+                    to: activeChat.id,
+                    toName: activeChat.name,
+                    type: type,
+                    offer: {
+                        sdp: offer.sdp,
+                        type: offer.type
+                    },
+                    status: 'ringing',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                currentCall = {
+                    id: callDoc.id,
+                    type: type,
+                    isInitiator: true
+                };
+                
+                console.log('📞 Chiamata creata:', callDoc.id);
+                
+                // Mostra UI chiamata
+                showCallUI();
+                
+                // Ascolta answer
+                listenForAnswer();
+                
+            } catch (error) {
+                console.error('❌ Errore avvio chiamata:', error);
+                alert('Errore avvio chiamata: ' + error.message);
+                endCall();
+            }
+        }
+
+        async function listenForAnswer() {
+            const callDoc = db.collection('calls').doc(currentCall.id);
+            
+            // Ascolta answer
+            const unsubscribe = callDoc.onSnapshot(async (snapshot) => {
+                const data = snapshot.data();
+                
+                if (data?.answer && !peerConnection.currentRemoteDescription) {
+                    console.log('📞 Answer ricevuta');
+                    const answer = new RTCSessionDescription(data.answer);
+                    await peerConnection.setRemoteDescription(answer);
+                    
+                    // Avvia timer durata
+                    startCallDuration();
+                }
+                
+                if (data?.status === 'ended') {
+                    console.log('📞 Chiamata terminata dall\'altro utente');
+                    endCall();
+                    unsubscribe();
+                }
+            });
+            
+            // Ascolta ICE candidates
+            callDoc.collection('candidates').onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const data = change.doc.data();
+                        if (data.from !== currentUser.id) {
+                            console.log('🧊 ICE candidate ricevuto');
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        }
+                    }
+                });
+            });
+        }
+
+        async function acceptCall() {
+            if (!currentCall) return;
+            
+            console.log('✅ Accettazione chiamata');
+            
+            try {
+                // Richiedi permessi media
+                const constraints = {
+                    audio: true,
+                    video: currentCall.type === 'video'
+                };
+                
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                document.getElementById('localVideo').srcObject = localStream;
+                
+                if (currentCall.type === 'audio') {
+                    document.getElementById('localVideo').style.display = 'none';
+                    document.getElementById('toggleVideoBtn').style.display = 'none';
+                } else {
+                    document.getElementById('toggleVideoBtn').style.display = 'block';
+                }
+                
+                // Nascondi modal chiamata in arrivo
+                document.getElementById('incomingCallModal').style.display = 'none';
+                
+                // Crea PeerConnection
+                peerConnection = new RTCPeerConnection(iceServers);
+                
+                // Aggiungi stream locale
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                // Gestisci stream remoto
+                remoteStream = new MediaStream();
+                document.getElementById('remoteVideo').srcObject = remoteStream;
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('📹 Track remoto ricevuto');
+                    event.streams[0].getTracks().forEach(track => {
+                        remoteStream.addTrack(track);
+                    });
+                };
+                
+                // Gestisci ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        db.collection('calls').doc(currentCall.id).collection('candidates').add({
+                            candidate: event.candidate.toJSON(),
+                            from: currentUser.id
+                        });
+                    }
+                };
+                
+                // Set remote description (offer)
+                const offer = new RTCSessionDescription(currentCall.offer);
+                await peerConnection.setRemoteDescription(offer);
+                
+                // Crea answer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                // Invia answer
+                await db.collection('calls').doc(currentCall.id).update({
+                    answer: {
+                        sdp: answer.sdp,
+                        type: answer.type
+                    },
+                    status: 'active'
+                });
+                
+                // Mostra UI
+                showCallUI();
+                startCallDuration();
+                
+                // Ascolta ICE candidates
+                db.collection('calls').doc(currentCall.id).collection('candidates').onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(async (change) => {
+                        if (change.type === 'added') {
+                            const data = change.doc.data();
+                            if (data.from !== currentUser.id) {
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                            }
+                        }
+                    });
+                });
+                
+            } catch (error) {
+                console.error('❌ Errore accettazione chiamata:', error);
+                alert('Errore: ' + error.message);
+                endCall();
+            }
+        }
+
+        function declineCall() {
+            if (!currentCall) return;
+            
+            // Segna chiamata come rifiutata
+            db.collection('calls').doc(currentCall.id).update({
+                status: 'declined'
+            });
+            
+            // Chiudi modal
+            document.getElementById('incomingCallModal').style.display = 'none';
+            currentCall = null;
+        }
+
+        async function endCall() {
+            console.log('📵 Terminazione chiamata');
+            
+            // Ferma stream
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (remoteStream) {
+                remoteStream.getTracks().forEach(track => track.stop());
+                remoteStream = null;
+            }
+            
+            // Chiudi peer connection
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            // Aggiorna stato su Firestore
+            if (currentCall) {
+                try {
+                    await db.collection('calls').doc(currentCall.id).update({
+                        status: 'ended',
+                        endedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Errore aggiornamento stato:', error);
+                }
+            }
+            
+            // Nascondi UI
+            document.getElementById('callModal').style.display = 'none';
+            document.getElementById('incomingCallModal').style.display = 'none';
+            
+            // Ferma timer
+            if (callDurationInterval) {
+                clearInterval(callDurationInterval);
+                callDurationInterval = null;
+            }
+            
+            // Reset stato
+            currentCall = null;
+            isMuted = false;
+            isVideoOff = false;
+        }
+
+        function showCallUI() {
+            document.getElementById('callModal').style.display = 'flex';
+            document.getElementById('callContactName').textContent = activeChat.name;
+            document.getElementById('callStatus').textContent = currentCall.isInitiator ? 'Chiamata in corso...' : 'Connesso';
+            document.getElementById('callDuration').textContent = '00:00';
+        }
+
+        function startCallDuration() {
+            let seconds = 0;
+            callDurationInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('callDuration').textContent = 
+                    `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }, 1000);
+            
+            document.getElementById('callStatus').textContent = 'Connesso';
+        }
+
+        function toggleMic() {
+            if (!localStream) return;
+            
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                isMuted = !audioTrack.enabled;
+                
+                const btn = document.getElementById('toggleMicBtn');
+                if (isMuted) {
+                    btn.textContent = '🔇';
+                    btn.style.background = '#ff4444';
+                } else {
+                    btn.textContent = '🎤';
+                    btn.style.background = 'var(--bg-secondary)';
+                }
+            }
+        }
+
+        function toggleVideo() {
+            if (!localStream) return;
+            
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                isVideoOff = !videoTrack.enabled;
+                
+                const btn = document.getElementById('toggleVideoBtn');
+                if (isVideoOff) {
+                    btn.textContent = '📹❌';
+                    btn.style.background = '#ff4444';
+                } else {
+                    btn.textContent = '📹';
+                    btn.style.background = 'var(--bg-secondary)';
+                }
+            }
+        }
+
+        // Ascolta chiamate in arrivo
+        function listenForIncomingCalls() {
+            if (!currentUser) return;
+            
+            db.collection('calls')
+                .where('to', '==', currentUser.id)
+                .where('status', '==', 'ringing')
+                .onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const callData = change.doc.data();
+                            
+                            // Mostra notifica chiamata in arrivo
+                            currentCall = {
+                                id: change.doc.id,
+                                from: callData.from,
+                                fromName: callData.fromName,
+                                type: callData.type,
+                                offer: callData.offer,
+                                isInitiator: false
+                            };
+                            
+                            document.getElementById('incomingCallName').textContent = callData.fromName;
+                            document.getElementById('incomingCallType').textContent = 
+                                callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
+                            document.getElementById('incomingCallModal').style.display = 'block';
+                            
+                            // Riproduci suono (opzionale)
+                            // const audio = new Audio('/ringtone.mp3');
+                            // audio.play();
+                        }
+                    });
+                });
+        }
+
         async function loadFriendRequests() {
             const container = document.getElementById('friendRequestsList');
             
@@ -2914,6 +3377,14 @@
             if (isAI) chatAvatar.classList.add('ai');
             else chatAvatar.classList.remove('ai');
             document.getElementById('chatUserName').textContent = name;
+
+            // Mostra pulsanti chiamata solo per chat 1-1 (non AI, non gruppi)
+            const callButtons = document.getElementById('callButtons');
+            if (!isAI && !activeChat.isGroup) {
+                callButtons.style.display = 'flex';
+            } else {
+                callButtons.style.display = 'none';
+            }
 
             // Update active state
             document.querySelectorAll('.contact-item').forEach(item => {
@@ -3434,6 +3905,9 @@
                     
                     // 🔔 Avvia polling globale per controllare messaggi in TUTTE le chat
                     startGlobalMessagePolling();
+                    
+                    // 📞 Avvia listener per chiamate in arrivo
+                    listenForIncomingCalls();
                     
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
