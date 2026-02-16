@@ -1423,8 +1423,22 @@
                     
                     console.log('🔔 [Polling] Rooms da controllare:', roomsToCheck.length);
                     
-                    // 3. Aggiungi room degli amici
-                    if (!currentUser.isAdmin) {
+                    // 3. Aggiungi room degli amici O tutti gli utenti se admin
+                    if (currentUser.isAdmin) {
+                        // ADMIN: Controlla TUTTI gli utenti
+                        console.log('👑 Admin - carico TUTTI gli utenti');
+                        const usersSnapshot = await db.collection('users')
+                            .get();
+                        
+                        usersSnapshot.forEach(doc => {
+                            // Salta se stesso
+                            if (doc.id === currentUser.id) return;
+                            
+                            const roomId = [currentUser.id, doc.id].sort().join('_');
+                            roomsToCheck.push(roomId);
+                        });
+                    } else {
+                        // UTENTE NORMALE: Controlla solo amici
                         const friendsSnapshot = await db.collection('friends')
                             .where('userId', '==', currentUser.id)
                             .get();
@@ -1435,6 +1449,8 @@
                             roomsToCheck.push(roomId);
                         });
                     }
+                    
+                    console.log('🔔 [Polling] Totale rooms:', roomsToCheck.length);
                     
                     // Controlla ogni room per nuovi messaggi
                     for (const roomId of roomsToCheck) {
