@@ -13,12 +13,6 @@
       "sizes": "1024x924",
       "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/chill-chat/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ],
   "categories": ["social", "communication"],
