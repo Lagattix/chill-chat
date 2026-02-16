@@ -963,7 +963,6 @@
     <!-- Login Screen -->
     <div class="login-screen" id="loginScreen">
         <div class="login-card">
-            <img src="logo.png" alt="Conversando Logo" style="width: 120px; height: auto; margin: 0 auto 24px; display: block; border-radius: 20px;">
             <h1 class="login-title">Conversando</h1>
             
             <!-- Login Form -->
@@ -1413,14 +1412,6 @@
                 
                 console.log('🔔 [Polling] Check messaggi per:', currentUser.name);
                 
-                // Aggiorna indicatore visivo
-                const statusEl = document.getElementById('pollingStatus');
-                if (statusEl) {
-                    const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    statusEl.innerHTML = `✅ Attivo - ${now}`;
-                    statusEl.style.color = '#4ecca3';
-                }
-                
                 try {
                     // Lista di tutte le room da controllare
                     const roomsToCheck = [
@@ -1511,55 +1502,6 @@
         }
 
         // 🔍 TEST POLLING MANUALE
-        async function testPollingNow() {
-            console.log('🔍 TEST POLLING MANUALE AVVIATO');
-            
-            if (!currentUser) {
-                alert('❌ Nessun utente loggato');
-                return;
-            }
-            
-            console.log('✅ Utente:', currentUser.name, '- ID:', currentUser.id);
-            
-            try {
-                const roomId = [currentUser.id, 'admin_conversando_official'].sort().join('_');
-                console.log('🔍 Controllo room:', roomId);
-                
-                const snapshot = await db.collection('messages')
-                    .where('roomId', '==', roomId)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
-                
-                if (snapshot.empty) {
-                    console.log('📭 Nessun messaggio nella room');
-                    alert('📭 Nessun messaggio da Conversando Official');
-                } else {
-                    const latestMsg = snapshot.docs[0].data();
-                    console.log('📨 Ultimo messaggio trovato:', latestMsg);
-                    console.log('   Da:', latestMsg.senderId);
-                    console.log('   Testo:', latestMsg.text);
-                    console.log('   Timestamp:', new Date(latestMsg.timestamp.seconds * 1000).toLocaleString());
-                    
-                    // Mostra nel preview
-                    const previewElement = document.getElementById('preview-admin_conversando_official');
-                    if (previewElement) {
-                        const preview = latestMsg.text.substring(0, 40) + (latestMsg.text.length > 40 ? '...' : '');
-                        previewElement.textContent = preview;
-                        previewElement.style.fontWeight = '600';
-                        previewElement.style.color = 'var(--text-primary)';
-                        console.log('✅ Preview aggiornato!');
-                    }
-                    
-                    alert('✅ Messaggio trovato!\n\n' + latestMsg.text.substring(0, 100));
-                }
-                
-            } catch (error) {
-                console.error('❌ Errore test polling:', error);
-                alert('❌ Errore: ' + error.message);
-            }
-        }
-
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCp2SjlW-JX9FeW1csVslhJm4qW51kzSKg",
@@ -2358,17 +2300,6 @@
                     </div>
                 `;
                 
-                // 🔍 DEBUG: Pulsante test polling
-                html += `
-                    <div style="padding: 12px 20px;">
-                        <button onclick="testPollingNow()" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--accent-primary); border-radius: 8px; color: var(--accent-primary); cursor: pointer; font-size: 12px; margin-bottom: 8px;">
-                            🔍 Test Polling (Debug)
-                        </button>
-                        <div id="pollingStatus" style="text-align: center; font-size: 11px; color: var(--text-muted); padding: 4px;">
-                            ⏳ Checking...
-                        </div>
-                    </div>
-                `;
             }
 
             try {
