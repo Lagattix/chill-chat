@@ -485,6 +485,7 @@
             font-size: 14px;
             color: var(--bg-primary);
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .message-avatar.ai {
@@ -3999,11 +4000,29 @@
                             const isSent = msg.senderId === currentUser.id;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
+                            // Usa cache avatar
+                            let avatarContent = '';
+                            let avatarStyle = '';
+                            if (isSent) {
+                                if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
+                                    avatarStyle = `style="background-image: url('${currentUser.avatar}'); background-size: cover;"`;
+                                } else {
+                                    avatarContent = currentUser.avatar;
+                                }
+                            } else {
+                                const cachedAvatar = userAvatarsCache[msg.senderId] || msg.senderAvatar || msg.senderName[0].toUpperCase();
+                                if (cachedAvatar && cachedAvatar.startsWith('data:image')) {
+                                    avatarStyle = `style="background-image: url('${cachedAvatar}'); background-size: cover;"`;
+                                } else {
+                                    avatarContent = cachedAvatar;
+                                }
+                            }
+                            
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
                             messageDiv.setAttribute('data-message-id', msg.id);
                             messageDiv.innerHTML = `
-                                <div class="message-avatar">${isSent ? currentUser.avatar : msg.senderAvatar}</div>
+                                <div class="message-avatar" ${avatarStyle}>${avatarContent}</div>
                                 <div class="message-content">
                                     ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                                     <div class="message-bubble">${formatMessage(msg.text)}</div>
@@ -4034,9 +4053,28 @@
             };
         }
 
+        // Cache avatar utenti (evita di salvare base64 in ogni messaggio)
+        const userAvatarsCache = {};
+        
         // Render messages
-        function renderMessages(messages) {
+        async function renderMessages(messages) {
             const messagesContainer = document.getElementById('messagesContainer');
+            
+            // Carica avatar degli utenti presenti nei messaggi
+            const userIds = [...new Set(messages.map(m => m.senderId))];
+            for (const userId of userIds) {
+                if (!userAvatarsCache[userId] && userId !== CONVERSINA_ID) {
+                    try {
+                        const userDoc = await db.collection('users').doc(userId).get();
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            userAvatarsCache[userId] = userData.avatar || userData.name[0].toUpperCase();
+                        }
+                    } catch (err) {
+                        console.error('Errore caricamento avatar:', err);
+                    }
+                }
+            }
             
             // Salva la posizione di scroll corrente
             const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
@@ -4059,9 +4097,34 @@
                 const isAI = msg.senderId === CONVERSINA_ID;
                 const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                 
+                // Gestione avatar: usa cache invece di msg.senderAvatar
+                let avatarContent = '';
+                let avatarStyle = '';
+                if (isSent) {
+                    // Utente corrente
+                    if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
+                        avatarStyle = `style="background-image: url('${currentUser.avatar}'); background-size: cover;"`;
+                        avatarContent = '';
+                    } else {
+                        avatarContent = currentUser.avatar;
+                    }
+                } else if (isAI) {
+                    // Conversina AI
+                    avatarContent = '🤖';
+                } else {
+                    // Altri utenti - usa cache
+                    const cachedAvatar = userAvatarsCache[msg.senderId] || msg.senderAvatar || msg.senderName[0].toUpperCase();
+                    if (cachedAvatar && cachedAvatar.startsWith('data:image')) {
+                        avatarStyle = `style="background-image: url('${cachedAvatar}'); background-size: cover;"`;
+                        avatarContent = '';
+                    } else {
+                        avatarContent = cachedAvatar;
+                    }
+                }
+                
                 return `
                     <div class="message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}" data-message-id="${msg.id}">
-                        <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
+                        <div class="message-avatar ${isAI ? 'ai' : ''}" ${avatarStyle}>${avatarContent}</div>
                         <div class="message-content">
                             ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                             <div class="message-bubble">${formatMessage(msg.text)}</div>
@@ -4113,11 +4176,15 @@
             try {
                 // Add message to Firestore
                 console.log('💾 Salvataggio messaggio su Firestore...');
+                
+                // Salva solo l'iniziale, non l'avatar completo (risparmio spazio)
+                const avatarInitial = currentUser.name ? currentUser.name[0].toUpperCase() : '👤';
+                
                 await db.collection('messages').add({
                     roomId: roomId,
                     senderId: currentUser.id,
                     senderName: currentUser.name,
-                    senderAvatar: currentUser.avatar,
+                    senderAvatar: avatarInitial,
                     text: text,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     isGroup: activeChat.isGroup || false
