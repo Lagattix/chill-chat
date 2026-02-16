@@ -9,6 +9,7 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Conversando">
     <title>Conversando</title>
@@ -871,11 +872,7 @@
             
             /* Top Nav - nascosta di default su mobile */
             .top-nav {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 1002;
+                position: relative; /* Non fixed di default */
                 display: none; /* Nascosta di default su mobile */
                 transition: all 0.3s ease;
             }
@@ -883,6 +880,11 @@
             /* Classe per mostrare top-nav quando sidebar è aperta */
             .top-nav.mobile-visible {
                 display: flex;
+                position: fixed; /* Fixed solo quando visibile */
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1002;
             }
 
             .top-nav-title {
