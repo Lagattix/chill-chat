@@ -870,6 +870,11 @@
             #mobileMenuBtnFixed {
                 display: flex !important;
             }
+            
+            /* Nascondi il pulsante menu nella top-nav (usiamo quello fisso) */
+            .mobile-menu-btn {
+                display: none !important;
+            }
 
             .chat-header {
                 padding-left: 80px;
@@ -930,7 +935,7 @@
 
             .messages-container {
                 padding: 16px;
-                padding-bottom: 100px; /* Spazio per input area su mobile */
+                padding-bottom: 20px; /* Spazio ridotto */
                 flex: 1;
                 overflow-y: auto;
             }
@@ -942,10 +947,8 @@
 
             .input-area {
                 padding: 12px;
-                position: sticky;
-                bottom: 0;
                 background: var(--bg-primary);
-                z-index: 10;
+                border-top: 1px solid var(--border-subtle);
             }
 
             .login-card {
@@ -2722,12 +2725,30 @@
         // 📞 ========== WEBRTC CALLS ==========
         
         async function startCall(type) {
-            if (!activeChat || activeChat.isAI || activeChat.isGroup) {
+            console.log('📞 startCall chiamato, type:', type);
+            console.log('📞 activeChat:', activeChat);
+            
+            if (!activeChat) {
+                alert('Nessuna chat selezionata. Apri una chat prima di chiamare.');
+                return;
+            }
+            
+            if (activeChat.isAI || activeChat.isGroup) {
                 alert('Le chiamate sono disponibili solo per chat 1-1');
                 return;
             }
             
-            console.log('📞 Avvio chiamata', type);
+            // Salva valori activeChat localmente (può cambiare durante async)
+            const chatId = activeChat.id;
+            const chatName = activeChat.name;
+            
+            if (!chatId || !chatName) {
+                console.error('❌ activeChat manca id o name:', activeChat);
+                alert('Errore: dati chat non validi');
+                return;
+            }
+            
+            console.log('📞 Avvio chiamata', type, 'con', chatName, '(ID:', chatId, ')');
             
             try {
                 // Richiedi permessi media
@@ -2775,8 +2796,8 @@
                 const callDoc = await db.collection('calls').add({
                     from: currentUser.id,
                     fromName: currentUser.name,
-                    to: activeChat.id,
-                    toName: activeChat.name,
+                    to: chatId,
+                    toName: chatName,
                     type: type,
                     offer: {
                         sdp: offer.sdp,
@@ -2791,7 +2812,8 @@
                 currentCall = {
                     id: callId,
                     type: type,
-                    isInitiator: true
+                    isInitiator: true,
+                    name: chatName  // Salva il nome per showCallUI
                 };
                 
                 // IMPORTANTE: Imposta handler ICE DOPO aver salvato callId
@@ -3015,7 +3037,7 @@
 
         function showCallUI() {
             document.getElementById('callModal').style.display = 'flex';
-            document.getElementById('callContactName').textContent = activeChat.name;
+            document.getElementById('callContactName').textContent = currentCall?.name || 'Chiamata';
             document.getElementById('callStatus').textContent = currentCall.isInitiator ? 'Chiamata in corso...' : 'Connesso';
             document.getElementById('callDuration').textContent = '00:00';
         }
