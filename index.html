@@ -2731,18 +2731,6 @@
                     });
                 };
                 
-                // Gestisci ICE candidates
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        console.log('🧊 Nuovo ICE candidate');
-                        // Invia candidate al peer tramite Firestore
-                        db.collection('calls').doc(currentCall.id).collection('candidates').add({
-                            candidate: event.candidate.toJSON(),
-                            from: currentUser.id
-                        });
-                    }
-                };
-                
                 // Crea offer
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
@@ -2762,13 +2750,27 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
+                const callId = callDoc.id;
+                
                 currentCall = {
-                    id: callDoc.id,
+                    id: callId,
                     type: type,
                     isInitiator: true
                 };
                 
-                console.log('📞 Chiamata creata:', callDoc.id);
+                // IMPORTANTE: Imposta handler ICE DOPO aver salvato callId
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 Nuovo ICE candidate');
+                        // Invia candidate al peer tramite Firestore
+                        db.collection('calls').doc(callId).collection('candidates').add({
+                            candidate: event.candidate.toJSON(),
+                            from: currentUser.id
+                        }).catch(err => console.error('Errore invio ICE:', err));
+                    }
+                };
+                
+                console.log('📞 Chiamata creata:', callId);
                 
                 // Mostra UI chiamata
                 showCallUI();
@@ -2866,11 +2868,11 @@
                 
                 // Gestisci ICE candidates
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
+                    if (event.candidate && currentCall) {
                         db.collection('calls').doc(currentCall.id).collection('candidates').add({
                             candidate: event.candidate.toJSON(),
                             from: currentUser.id
-                        });
+                        }).catch(err => console.error('Errore invio ICE:', err));
                     }
                 };
                 
