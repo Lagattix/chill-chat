@@ -6,8 +6,9 @@
     <meta name="description" content="Conversando - Chat in tempo reale con amici e Conversina AI">
     <meta name="theme-color" content="#0a0a0f">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="logo.png">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="/chill-chat/logo.png">
+    <link rel="shortcut icon" type="image/png" href="/chill-chat/logo.png">
+    <link rel="apple-touch-icon" href="/chill-chat/logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2751,6 +2752,14 @@
             console.log('📞 Avvio chiamata', type, 'con', chatName, '(ID:', chatId, ')');
             
             try {
+                // Lista dispositivi audio disponibili
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                console.log('🎤 Microfoni disponibili:');
+                audioInputs.forEach((device, i) => {
+                    console.log(`  ${i}: ${device.label} (${device.deviceId})`);
+                });
+                
                 // Richiedi permessi media
                 const constraints = {
                     audio: true,
@@ -2779,6 +2788,17 @@
                 // Crea PeerConnection
                 peerConnection = new RTCPeerConnection(iceServers);
                 
+                // Buffer per ICE candidates (prima che callId esista)
+                const iceCandidatesBuffer = [];
+                
+                // Imposta handler ICE SUBITO (prima di createOffer)
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 ICE candidate generato (buffered)');
+                        iceCandidatesBuffer.push(event.candidate);
+                    }
+                };
+                
                 // Aggiungi stream locale
                 console.log('➕ Aggiunta tracce al PeerConnection (startCall)');
                 localStream.getTracks().forEach(track => {
@@ -2792,8 +2812,11 @@
                 document.getElementById('remoteVideo').srcObject = remoteStream;
                 
                 peerConnection.ontrack = (event) => {
-                    console.log('📹 Track remoto ricevuto');
+                    console.log('📹 Track remoto ricevuto (startCall)');
+                    console.log('  - Tipo:', event.track.kind);
+                    console.log('  - Streams:', event.streams.length);
                     event.streams[0].getTracks().forEach(track => {
+                        console.log('  - Aggiunta track remota:', track.kind, track.label);
                         remoteStream.addTrack(track);
                     });
                 };
@@ -2826,11 +2849,19 @@
                     name: chatName  // Salva il nome per showCallUI
                 };
                 
-                // IMPORTANTE: Imposta handler ICE DOPO aver salvato callId
+                // Invia tutti gli ICE candidates bufferizzati
+                console.log('📤 Invio', iceCandidatesBuffer.length, 'ICE candidates bufferizzati');
+                for (const candidate of iceCandidatesBuffer) {
+                    await db.collection('calls').doc(callId).collection('candidates').add({
+                        candidate: candidate.toJSON(),
+                        from: currentUser.id
+                    }).catch(err => console.error('Errore invio ICE:', err));
+                }
+                
+                // Ora imposta handler per nuovi ICE (dopo buffer)
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate) {
-                        console.log('🧊 Nuovo ICE candidate');
-                        // Invia candidate al peer tramite Firestore
+                        console.log('🧊 Nuovo ICE candidate (live)');
                         db.collection('calls').doc(callId).collection('candidates').add({
                             candidate: event.candidate.toJSON(),
                             from: currentUser.id
@@ -2896,6 +2927,14 @@
             console.log('✅ Accettazione chiamata');
             
             try {
+                // Lista dispositivi audio disponibili
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                console.log('🎤 Microfoni disponibili (acceptCall):');
+                audioInputs.forEach((device, i) => {
+                    console.log(`  ${i}: ${device.label} (${device.deviceId})`);
+                });
+                
                 // Richiedi permessi media
                 const constraints = {
                     audio: true,
@@ -2939,8 +2978,11 @@
                 document.getElementById('remoteVideo').srcObject = remoteStream;
                 
                 peerConnection.ontrack = (event) => {
-                    console.log('📹 Track remoto ricevuto');
+                    console.log('📹 Track remoto ricevuto (acceptCall)');
+                    console.log('  - Tipo:', event.track.kind);
+                    console.log('  - Streams:', event.streams.length);
                     event.streams[0].getTracks().forEach(track => {
+                        console.log('  - Aggiunta track remota:', track.kind, track.label);
                         remoteStream.addTrack(track);
                     });
                 };
@@ -2948,6 +2990,7 @@
                 // Gestisci ICE candidates
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate && currentCall) {
+                        console.log('🧊 Invio ICE candidate (acceptCall)');
                         db.collection('calls').doc(currentCall.id).collection('candidates').add({
                             candidate: event.candidate.toJSON(),
                             from: currentUser.id
@@ -2955,15 +2998,32 @@
                     }
                 };
                 
+                // Ascolta ICE candidates SUBITO (prima di answer)
+                console.log('👂 Inizio ascolto ICE candidates...');
+                db.collection('calls').doc(currentCall.id).collection('candidates').onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(async (change) => {
+                        if (change.type === 'added') {
+                            const data = change.doc.data();
+                            if (data.from !== currentUser.id) {
+                                console.log('🧊 ICE candidate ricevuto (acceptCall)');
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                            }
+                        }
+                    });
+                });
+                
                 // Set remote description (offer)
+                console.log('📥 Setting remote description (offer)');
                 const offer = new RTCSessionDescription(currentCall.offer);
                 await peerConnection.setRemoteDescription(offer);
                 
                 // Crea answer
+                console.log('📤 Creazione answer...');
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 
                 // Invia answer
+                console.log('📤 Invio answer...');
                 await db.collection('calls').doc(currentCall.id).update({
                     answer: {
                         sdp: answer.sdp,
@@ -2972,21 +3032,11 @@
                     status: 'active'
                 });
                 
+                console.log('✅ Answer inviata, chiamata attiva');
+                
                 // Mostra UI
                 showCallUI();
                 startCallDuration();
-                
-                // Ascolta ICE candidates
-                db.collection('calls').doc(currentCall.id).collection('candidates').onSnapshot(snapshot => {
-                    snapshot.docChanges().forEach(async (change) => {
-                        if (change.type === 'added') {
-                            const data = change.doc.data();
-                            if (data.from !== currentUser.id) {
-                                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                            }
-                        }
-                    });
-                });
                 
             } catch (error) {
                 console.error('❌ Errore accettazione chiamata:', error);
