@@ -1156,7 +1156,60 @@
                 <button class="profile-button profile-button-secondary" onclick="clearChatHistory()" style="color: #ff6b6b;">
                     🗑️ Svuota Chat
                 </button>
+                <button class="profile-button profile-button-primary" onclick="openCreateGroup()" style="background: var(--accent-primary);">
+                    👥 Crea Gruppo con...
+                </button>
                 <button class="profile-button profile-button-primary" onclick="closeContactProfile()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div class="profile-modal" id="createGroupModal" onclick="closeCreateGroup(event)">
+        <div class="profile-card" onclick="event.stopPropagation()" style="max-width: 500px;">
+            <h2 style="margin: 0 0 20px 0; font-size: 22px; color: var(--text-primary);">👥 Crea Gruppo</h2>
+            
+            <!-- Nome Gruppo -->
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Nome Gruppo</label>
+                <input type="text" id="groupNameInput" placeholder="Es: Amici, Famiglia, Lavoro..." style="width: 100%; padding: 12px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); font-size: 16px;" maxlength="50" />
+            </div>
+            
+            <!-- Icona Gruppo -->
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Icona Gruppo</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div id="groupIconPreview" style="width: 60px; height: 60px; border-radius: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden;">
+                        👥
+                    </div>
+                    <input type="file" id="groupIconInput" accept="image/*" style="display: none;" onchange="previewGroupIcon(event)">
+                    <button onclick="document.getElementById('groupIconInput').click()" style="padding: 10px 16px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); cursor: pointer; font-size: 14px;">
+                        📷 Scegli Immagine
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Membri già selezionati -->
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Membri</label>
+                <div id="selectedMembers" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; padding: 8px; background: var(--bg-tertiary); border-radius: 8px;">
+                    <!-- Membri selezionati appariranno qui -->
+                </div>
+            </div>
+            
+            <!-- Aggiungi altri membri -->
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Aggiungi Membri</label>
+                <div id="availableMembers" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 8px;">
+                    <!-- Lista amici disponibili -->
+                </div>
+            </div>
+            
+            <div id="createGroupError" style="display: none; padding: 12px; background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.3); border-radius: 8px; color: #ff6b6b; font-size: 13px; margin-bottom: 16px;"></div>
+            
+            <div class="profile-actions">
+                <button class="profile-button profile-button-secondary" onclick="closeCreateGroup()">Annulla</button>
+                <button class="profile-button profile-button-primary" onclick="createGroup()">Crea Gruppo</button>
             </div>
         </div>
     </div>
@@ -1452,10 +1505,27 @@
                     
                     console.log('🔔 [Polling] Totale rooms:', roomsToCheck.length);
                     
+                    // 4. Aggiungi GRUPPI
+                    const groupsSnapshot = await db.collection('groups')
+                        .where('members', 'array-contains', currentUser.id)
+                        .get();
+                    
+                    groupsSnapshot.forEach(doc => {
+                        const groupRoomId = `group_${doc.id}`;
+                        roomsToCheck.push(groupRoomId);
+                    });
+                    
+                    console.log('🔔 [Polling] Totale con gruppi:', roomsToCheck.length);
+                    
                     // Controlla ogni room per nuovi messaggi
                     for (const roomId of roomsToCheck) {
                         // Salta la chat attiva (già gestita dal polling locale)
-                        if (activeChat && roomId === [currentUser.id, activeChat.id].sort().join('_')) {
+                        const isActiveChat = activeChat && (
+                            roomId === [currentUser.id, activeChat.id].sort().join('_') ||
+                            (activeChat.isGroup && roomId === `group_${activeChat.id}`)
+                        );
+                        
+                        if (isActiveChat) {
                             continue;
                         }
                         
@@ -1858,6 +1928,49 @@
             }
         }
 
+        // Seleziona chat di gruppo
+        function selectGroupChat(groupId, groupName, groupIcon) {
+            activeChat = {
+                id: groupId,
+                name: groupName,
+                avatar: groupIcon || '👥',
+                isAI: false,
+                isGroup: true
+            };
+
+            // Update UI
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('chatUserInfo').style.display = 'flex';
+            document.getElementById('inputArea').style.display = 'block';
+            const chatAvatar = document.getElementById('chatAvatar');
+            
+            if (groupIcon) {
+                chatAvatar.style.backgroundImage = `url(${groupIcon})`;
+                chatAvatar.style.backgroundSize = 'cover';
+                chatAvatar.style.backgroundPosition = 'center';
+                chatAvatar.textContent = '';
+            } else {
+                chatAvatar.style.backgroundImage = '';
+                chatAvatar.textContent = '👥';
+            }
+            chatAvatar.classList.remove('ai');
+            document.getElementById('chatUserName').textContent = groupName;
+
+            // Load messages
+            loadGroupMessages(groupId);
+
+            // Focus input
+            document.getElementById('messageInput').focus();
+            
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.getElementById('mobileOverlay');
+                sidebar.classList.remove('mobile-visible');
+                overlay.classList.remove('visible');
+            }
+        }
+
         // Bottom Nav Functions
         function showHome() {
             // Update active state
@@ -2105,6 +2218,12 @@
         async function openContactProfile() {
             if (!activeChat) return;
             
+            // Se è un gruppo, apri modal gruppo diverso
+            if (activeChat.isGroup) {
+                openGroupProfile();
+                return;
+            }
+            
             const modal = document.getElementById('contactProfileModal');
             const avatar = document.getElementById('contactProfileAvatar');
             const name = document.getElementById('contactProfileName');
@@ -2112,7 +2231,16 @@
             const codeSection = document.getElementById('contactProfileCodeSection');
             
             // Popola con i dati del contatto attivo
-            avatar.textContent = activeChat.avatar;
+            if (activeChat.avatar && activeChat.avatar.startsWith('data:image')) {
+                avatar.style.backgroundImage = `url(${activeChat.avatar})`;
+                avatar.style.backgroundSize = 'cover';
+                avatar.style.backgroundPosition = 'center';
+                avatar.textContent = '';
+            } else {
+                avatar.style.backgroundImage = '';
+                avatar.textContent = activeChat.avatar;
+            }
+            
             name.textContent = activeChat.name;
             
             // Se è Conversina, mostra info AI
@@ -2135,6 +2263,44 @@
             }
             
             modal.classList.add('visible');
+        }
+
+        async function openGroupProfile() {
+            // TODO: Crea modal profilo gruppo con lista membri
+            if (!activeChat || !activeChat.isGroup) return;
+            
+            try {
+                const groupDoc = await db.collection('groups').doc(activeChat.id).get();
+                if (!groupDoc.exists) return;
+                
+                const groupData = groupDoc.data();
+                const members = groupData.members || [];
+                
+                let membersHTML = '';
+                for (const memberId of members) {
+                    const userDoc = await db.collection('users').doc(memberId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        const isYou = memberId === currentUser.id;
+                        membersHTML += `
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 8px;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; font-weight: 600;">
+                                    ${userData.name[0].toUpperCase()}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500;">${userData.name} ${isYou ? '(Tu)' : ''}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                alert(`👥 ${activeChat.name}\n\n${members.length} membri:\n\n(Per ora usa il modal per vedere i membri)`);
+                
+            } catch (error) {
+                console.error('Errore caricamento gruppo:', error);
+                alert('Errore caricamento info gruppo');
+            }
         }
 
         function closeContactProfile(event) {
@@ -2189,6 +2355,230 @@
             } catch (error) {
                 console.error('Errore svuotamento chat:', error);
                 alert('Errore durante lo svuotamento della chat');
+            }
+        }
+
+        // 👥 GRUPPI
+        let groupIconBase64 = null;
+        let selectedGroupMembers = [];
+
+        async function openCreateGroup() {
+            if (!activeChat || activeChat.isAI) return;
+            
+            // Reset
+            document.getElementById('groupNameInput').value = '';
+            document.getElementById('groupIconPreview').innerHTML = '👥';
+            document.getElementById('groupIconPreview').style.backgroundImage = '';
+            groupIconBase64 = null;
+            selectedGroupMembers = [activeChat.id]; // Già include la persona corrente
+            
+            // Chiudi profilo contatto
+            closeContactProfile();
+            
+            // Carica amici disponibili
+            await loadAvailableMembersForGroup();
+            
+            // Mostra membri già selezionati
+            updateSelectedMembersUI();
+            
+            // Apri modal
+            document.getElementById('createGroupModal').classList.add('visible');
+        }
+
+        function closeCreateGroup(event) {
+            if (!event || event.target.id === 'createGroupModal') {
+                document.getElementById('createGroupModal').classList.remove('visible');
+            }
+        }
+
+        function previewGroupIcon(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validazione
+            if (!file.type.startsWith('image/')) {
+                alert('Seleziona un\'immagine valida');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB max
+                alert('Immagine troppo grande. Max 5MB');
+                return;
+            }
+            
+            // Preview e converti in base64
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('groupIconPreview');
+                preview.style.backgroundImage = `url(${e.target.result})`;
+                preview.style.backgroundSize = 'cover';
+                preview.style.backgroundPosition = 'center';
+                preview.innerHTML = '';
+                groupIconBase64 = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function loadAvailableMembersForGroup() {
+            const container = document.getElementById('availableMembers');
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Caricamento...</div>';
+            
+            try {
+                let friendsList = [];
+                
+                if (currentUser.isAdmin) {
+                    // Admin vede tutti
+                    const usersSnapshot = await db.collection('users').get();
+                    usersSnapshot.forEach(doc => {
+                        if (doc.id !== currentUser.id) {
+                            friendsList.push({
+                                id: doc.id,
+                                name: doc.data().name,
+                                avatar: (doc.data().name || 'U')[0].toUpperCase()
+                            });
+                        }
+                    });
+                } else {
+                    // Utente normale vede solo amici
+                    const friendsSnapshot = await db.collection('friends')
+                        .where('userId', '==', currentUser.id)
+                        .get();
+                    
+                    for (const doc of friendsSnapshot.docs) {
+                        const friendId = doc.data().friendId;
+                        const friendDoc = await db.collection('users').doc(friendId).get();
+                        if (friendDoc.exists) {
+                            const friendData = friendDoc.data();
+                            friendsList.push({
+                                id: friendId,
+                                name: friendData.name,
+                                avatar: (friendData.name || 'U')[0].toUpperCase()
+                            });
+                        }
+                    }
+                }
+                
+                // Mostra lista
+                if (friendsList.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">Nessun amico disponibile</div>';
+                    return;
+                }
+                
+                container.innerHTML = friendsList.map(friend => `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer; ${selectedGroupMembers.includes(friend.id) ? 'background: var(--accent-primary); opacity: 0.6;' : 'background: var(--bg-secondary);'}" 
+                         onclick="toggleGroupMember('${friend.id}', '${friend.name}', '${friend.avatar}')"
+                         id="member-${friend.id}">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-weight: 600;">
+                            ${friend.avatar}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: var(--text-primary);">${friend.name}</div>
+                        </div>
+                        <div id="check-${friend.id}" style="display: ${selectedGroupMembers.includes(friend.id) ? 'block' : 'none'};">✅</div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Errore caricamento membri:', error);
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff6b6b;">Errore caricamento</div>';
+            }
+        }
+
+        function toggleGroupMember(id, name, avatar) {
+            const index = selectedGroupMembers.indexOf(id);
+            
+            if (index > -1) {
+                // Rimuovi
+                selectedGroupMembers.splice(index, 1);
+            } else {
+                // Aggiungi
+                selectedGroupMembers.push(id);
+            }
+            
+            // Aggiorna UI
+            updateSelectedMembersUI();
+            
+            // Aggiorna checkbox
+            const memberDiv = document.getElementById(`member-${id}`);
+            const checkDiv = document.getElementById(`check-${id}`);
+            
+            if (selectedGroupMembers.includes(id)) {
+                memberDiv.style.background = 'var(--accent-primary)';
+                memberDiv.style.opacity = '0.6';
+                checkDiv.style.display = 'block';
+            } else {
+                memberDiv.style.background = 'var(--bg-secondary)';
+                memberDiv.style.opacity = '1';
+                checkDiv.style.display = 'none';
+            }
+        }
+
+        function updateSelectedMembersUI() {
+            const container = document.getElementById('selectedMembers');
+            
+            if (selectedGroupMembers.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">Nessun membro selezionato</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-primary); border-radius: 20px; font-size: 13px;">
+                    <span style="font-weight: 600;">Tu</span>
+                </div>
+                ${selectedGroupMembers.map(() => `
+                    <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-primary); border-radius: 20px; font-size: 13px;">
+                        <span>👤 +${selectedGroupMembers.length}</span>
+                    </div>
+                `).slice(0, 1).join('')}
+            `;
+        }
+
+        async function createGroup() {
+            const groupName = document.getElementById('groupNameInput').value.trim();
+            const errorDiv = document.getElementById('createGroupError');
+            
+            errorDiv.style.display = 'none';
+            
+            // Validazioni
+            if (!groupName) {
+                errorDiv.textContent = 'Inserisci un nome per il gruppo';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (selectedGroupMembers.length < 1) {
+                errorDiv.textContent = 'Seleziona almeno 1 membro oltre a te';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            try {
+                // Crea gruppo in Firestore
+                const groupData = {
+                    name: groupName,
+                    icon: groupIconBase64 || null,
+                    members: [currentUser.id, ...selectedGroupMembers],
+                    createdBy: currentUser.id,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastMessage: null,
+                    lastMessageTime: null
+                };
+                
+                const groupRef = await db.collection('groups').add(groupData);
+                console.log('✅ Gruppo creato:', groupRef.id);
+                
+                // Chiudi modal
+                closeCreateGroup();
+                
+                // Ricarica chat per mostrare il gruppo
+                loadChats();
+                
+                alert(`Gruppo "${groupName}" creato con successo!`);
+                
+            } catch (error) {
+                console.error('Errore creazione gruppo:', error);
+                errorDiv.textContent = 'Errore durante la creazione del gruppo';
+                errorDiv.style.display = 'block';
             }
         }
 
@@ -2319,7 +2709,49 @@
             }
 
             try {
-                // 👑 ADMIN: Mostra TUTTI gli utenti invece che solo amici
+                // 3️⃣ GRUPPI - Mostra i gruppi di cui fai parte
+                const groupsSnapshot = await db.collection('groups')
+                    .where('members', 'array-contains', currentUser.id)
+                    .get();
+                
+                if (!groupsSnapshot.empty) {
+                    html += `
+                        <div style="padding: 16px 20px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">
+                            Gruppi
+                        </div>
+                    `;
+                    
+                    for (const doc of groupsSnapshot.docs) {
+                        const groupData = doc.data();
+                        const groupId = doc.id;
+                        const groupName = groupData.name || 'Gruppo';
+                        const groupIcon = groupData.icon;
+                        const membersCount = groupData.members?.length || 0;
+                        
+                        // Avatar gruppo
+                        let avatarHTML;
+                        if (groupIcon) {
+                            avatarHTML = `<div class="contact-avatar" style="background-image: url(${groupIcon}); background-size: cover; background-position: center;"></div>`;
+                        } else {
+                            avatarHTML = `<div class="contact-avatar">👥</div>`;
+                        }
+                        
+                        html += `
+                            <div class="contact-item" onclick="selectGroupChat('${groupId}', '${groupName.replace(/'/g, "\\'")}', ${groupIcon ? `'${groupIcon.replace(/'/g, "\\'")}'` : 'null'})">
+                                ${avatarHTML}
+                                <div class="contact-info">
+                                    <div class="contact-name">${groupName}</div>
+                                    <div class="contact-preview">${membersCount} membri</div>
+                                </div>
+                                <div class="contact-meta">
+                                    <div class="contact-time"></div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // 4️⃣ ADMIN: Mostra TUTTI gli utenti invece che solo amici
                 if (currentUser?.isAdmin) {
                     const usersSnapshot = await db.collection('users')
                         .orderBy('createdAt', 'desc')
@@ -2633,6 +3065,121 @@
             };
         }
 
+        // Load GROUP messages
+        function loadGroupMessages(groupId) {
+            console.log('📨 Caricamento messaggi gruppo:', groupId);
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            // Unsubscribe from previous chat
+            if (unsubscribeMessages) {
+                unsubscribeMessages();
+            }
+
+            const roomId = `group_${groupId}`;
+            console.log('🔑 Room ID gruppo:', roomId);
+
+            // Funzione per caricare i messaggi
+            window.reloadMessages = async function() {
+                try {
+                    const snapshot = await db.collection('messages')
+                        .where('roomId', '==', roomId)
+                        .orderBy('timestamp', 'asc')
+                        .get();
+                    
+                    console.log('📬 Messaggi gruppo ricevuti:', snapshot.size);
+                    const messages = [];
+                    snapshot.forEach((doc) => {
+                        messages.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    renderMessages(messages);
+                } catch (error) {
+                    console.error('❌ Errore caricamento messaggi gruppo:', error);
+                }
+            }
+
+            // Carica subito
+            window.reloadMessages();
+
+            // Polling
+            console.log('🔄 Avvio polling gruppo per:', groupId);
+            
+            let lastMessageId = null;
+            const intervalId = setInterval(async () => {
+                if (!activeChat || activeChat.id !== groupId || !activeChat.isGroup) {
+                    console.log('⏹️ Polling gruppo fermato - chat cambiata');
+                    clearInterval(intervalId);
+                    return;
+                }
+                
+                console.log('🔄 [Group Polling] Check nuovi messaggi...', groupId);
+                
+                try {
+                    const snapshot = await db.collection('messages')
+                        .where('roomId', '==', roomId)
+                        .orderBy('timestamp', 'asc')
+                        .get();
+                    
+                    if (snapshot.empty) return;
+                    
+                    const allMessages = [];
+                    snapshot.forEach(doc => {
+                        allMessages.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    if (!lastMessageId && allMessages.length > 0) {
+                        lastMessageId = allMessages[allMessages.length - 1].id;
+                        return;
+                    }
+                    
+                    const lastIndex = allMessages.findIndex(msg => msg.id === lastMessageId);
+                    
+                    if (lastIndex !== -1 && lastIndex < allMessages.length - 1) {
+                        const newMessages = allMessages.slice(lastIndex + 1);
+                        const messagesContainer = document.getElementById('messagesContainer');
+                        const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
+                        
+                        newMessages.forEach(msg => {
+                            if (document.querySelector(`[data-message-id="${msg.id}"]`)) return;
+                            
+                            const isSent = msg.senderId === currentUser.id;
+                            const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
+                            
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+                            messageDiv.setAttribute('data-message-id', msg.id);
+                            messageDiv.innerHTML = `
+                                <div class="message-avatar">${isSent ? currentUser.avatar : msg.senderAvatar}</div>
+                                <div class="message-content">
+                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
+                                    <div class="message-bubble">${formatMessage(msg.text)}</div>
+                                    <div class="message-time">${time}</div>
+                                </div>
+                            `;
+                            
+                            messagesContainer.appendChild(messageDiv);
+                        });
+                        
+                        lastMessageId = allMessages[allMessages.length - 1].id;
+                        
+                        if (wasAtBottom) {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Errore polling gruppo:', error);
+                }
+            }, 5000);
+            
+            console.log('✅ Polling gruppo attivo ogni 5 secondi');
+            
+            unsubscribeMessages = () => {
+                clearInterval(intervalId);
+                lastMessageId = null;
+            };
+        }
+
         // Render messages
         function renderMessages(messages) {
             const messagesContainer = document.getElementById('messagesContainer');
@@ -2705,7 +3252,8 @@
                 return;
             }
 
-            const roomId = [currentUser.id, activeChat.id].sort().join('_');
+            // Determina roomId: gruppo o chat 1-1
+            const roomId = activeChat.isGroup ? `group_${activeChat.id}` : [currentUser.id, activeChat.id].sort().join('_');
             console.log('🔑 Invio a room:', roomId);
 
             try {
@@ -2717,7 +3265,8 @@
                     senderName: currentUser.name,
                     senderAvatar: currentUser.avatar,
                     text: text,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    isGroup: activeChat.isGroup || false
                 });
 
                 console.log('✅ Messaggio salvato!');
