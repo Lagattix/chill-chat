@@ -470,6 +470,11 @@
             }
         }
 
+        @keyframes callPulse {
+            from { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 0 rgba(52,199,89,0.3); }
+            to   { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 16px rgba(52,199,89,0); }
+        }
+
         .message.sent {
             flex-direction: row-reverse;
         }
@@ -1314,18 +1319,32 @@
     </div>
 
     <!-- Incoming Call Modal -->
-    <div id="incomingCallModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 32px; z-index: 10001; box-shadow: 0 8px 32px rgba(0,0,0,0.4); text-align: center; min-width: 300px;">
-        <div style="font-size: 48px; margin-bottom: 16px;">📞</div>
-        <div id="incomingCallName" style="font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Nome Contatto</div>
-        <div id="incomingCallType" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">Chiamata in arrivo...</div>
-        
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <button onclick="declineCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #ff4444; border: none; color: white; cursor: pointer; font-size: 28px;">
-                ❌
-            </button>
-            <button onclick="acceptCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #44ff44; border: none; color: white; cursor: pointer; font-size: 28px;">
-                ✅
-            </button>
+    <!-- Modal chiamata in arrivo -->
+    <div id="incomingCallModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div style="background: var(--bg-primary); border-radius: 24px; padding: 40px 32px; text-align: center; min-width: 300px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: callPulse 1s ease-in-out infinite alternate;">
+            <!-- Avatar chiamante -->
+            <div id="incomingCallAvatar" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 16px; overflow: hidden; border: 3px solid var(--accent-primary); box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.2);">
+                <span id="incomingCallAvatarText">👤</span>
+            </div>
+            <!-- Nome -->
+            <div id="incomingCallName" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Nome Contatto</div>
+            <!-- Tipo chiamata -->
+            <div id="incomingCallType" style="font-size: 15px; color: var(--text-secondary); margin-bottom: 32px;">Chiamata in arrivo...</div>
+            <!-- Bottoni -->
+            <div style="display: flex; gap: 32px; justify-content: center; align-items: center;">
+                <div style="text-align: center;">
+                    <button onclick="declineCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #ff3b30; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(255,59,48,0.4); transition: transform 0.15s;">
+                        📵
+                    </button>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Rifiuta</div>
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="acceptCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #34c759; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(52,199,89,0.4); transition: transform 0.15s;">
+                        📞
+                    </button>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Accetta</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2998,6 +3017,7 @@
                 const callDoc = await db.collection('calls').add({
                     from: currentUser.id,
                     fromName: currentUser.name,
+                    fromAvatar: currentUser.avatar || currentUser.name[0].toUpperCase(),
                     to: chatId,
                     toName: chatName,
                     type: type,
@@ -3130,6 +3150,7 @@
                 
                 // Nascondi modal chiamata in arrivo
                 document.getElementById('incomingCallModal').style.display = 'none';
+                stopRingtone();
                 
                 // Crea PeerConnection
                 peerConnection = new RTCPeerConnection(iceServers);
@@ -3224,6 +3245,7 @@
             
             // Chiudi modal
             document.getElementById('incomingCallModal').style.display = 'none';
+                stopRingtone();
             currentCall = null;
         }
 
@@ -3262,6 +3284,7 @@
             // Nascondi UI
             document.getElementById('callModal').style.display = 'none';
             document.getElementById('incomingCallModal').style.display = 'none';
+                stopRingtone();
             
             // Ferma timer
             if (callDurationInterval) {
@@ -3334,6 +3357,53 @@
         }
 
         // Ascolta chiamate in arrivo
+
+        // 🔔 Suoneria chiamata
+        let ringtoneInterval = null;
+        let audioCtx = null;
+        
+        function startRingtone() {
+            stopRingtone(); // Ferma eventuale suoneria precedente
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                let count = 0;
+                
+                function ring() {
+                    if (!audioCtx) return;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }
+                
+                ring();
+                ringtoneInterval = setInterval(() => {
+                    ring();
+                    count++;
+                    if (count > 30) stopRingtone(); // Smetti dopo ~30 secondi
+                }, 1500);
+            } catch(e) {
+                console.log('Audio non disponibile:', e.message);
+            }
+        }
+        
+        function stopRingtone() {
+            if (ringtoneInterval) {
+                clearInterval(ringtoneInterval);
+                ringtoneInterval = null;
+            }
+            if (audioCtx) {
+                audioCtx.close().catch(() => {});
+                audioCtx = null;
+            }
+        }
+
         function listenForIncomingCalls() {
             if (!currentUser) return;
             
@@ -3384,7 +3454,23 @@
                             document.getElementById('incomingCallName').textContent = callData.fromName;
                             document.getElementById('incomingCallType').textContent = 
                                 callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
-                            document.getElementById('incomingCallModal').style.display = 'block';
+                            
+                            // Mostra avatar chiamante
+                            const avatarEl = document.getElementById('incomingCallAvatar');
+                            const avatarText = document.getElementById('incomingCallAvatarText');
+                            if (callData.fromAvatar && callData.fromAvatar.startsWith('data:image')) {
+                                avatarEl.style.backgroundImage = `url('${callData.fromAvatar}')`;
+                                avatarEl.style.backgroundSize = 'cover';
+                                avatarText.textContent = '';
+                            } else {
+                                avatarEl.style.backgroundImage = '';
+                                avatarText.textContent = callData.fromAvatar || callData.fromName[0].toUpperCase();
+                            }
+                            
+                            document.getElementById('incomingCallModal').style.display = 'flex';
+                            
+                            // Suona con Audio API (suoneria)
+                            startRingtone();
                             
                             // Mostra anche notifica push
                             if (notificationsEnabled) {
@@ -4358,6 +4444,46 @@
                     
                     // 📞 Avvia listener per chiamate in arrivo
                     listenForIncomingCalls();
+                    
+                    // 🔔 Inizializza Service Worker con config Firebase per notifiche background
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'INIT',
+                            config: { 
+                                apiKey: firebaseConfig.apiKey,
+                                projectId: firebaseConfig.projectId
+                            },
+                            userId: currentUser.id
+                        });
+                    }
+                    
+                    // 📞 Gestisci risposta chiamata da notifica SW (quando app era chiusa)
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data?.type === 'ACCEPT_CALL') {
+                            const { callId, fromId, fromName, callType } = event.data;
+                            currentCall = { id: callId, from: fromId, fromName, type: callType, isInitiator: false };
+                            acceptCall();
+                        }
+                    });
+                    
+                    // 📞 Controlla se l'app è stata aperta da una notifica chiamata
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const acceptCallId = urlParams.get('acceptCall');
+                    if (acceptCallId) {
+                        const fromId = urlParams.get('from');
+                        const fromName = decodeURIComponent(urlParams.get('fromName') || '');
+                        const callType = urlParams.get('type') || 'audio';
+                        currentCall = { id: acceptCallId, from: fromId, fromName, type: callType, isInitiator: false };
+                        // Carica l'offer da Firestore e accetta
+                        db.collection('calls').doc(acceptCallId).get().then(doc => {
+                            if (doc.exists && doc.data().status === 'ringing') {
+                                currentCall.offer = doc.data().offer;
+                                acceptCall();
+                            }
+                        });
+                        // Pulisci URL
+                        window.history.replaceState({}, '', window.location.pathname);
+                    }
                     
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
