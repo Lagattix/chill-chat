@@ -1288,33 +1288,51 @@
 
     <!-- Call Modal -->
     <div id="callModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
-        <!-- Video Container -->
-        <div style="position: relative; width: 100%; max-width: 900px; aspect-ratio: 16/9; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 20px;">
-            <!-- Remote Video (principale) -->
-            <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-            
-            <!-- Local Video (PiP) -->
-            <video id="localVideo" autoplay muted playsinline style="position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid var(--accent-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.3);"></video>
-            
-            <!-- Call Info -->
-            <div id="callInfo" style="position: absolute; top: 20px; left: 20px; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                <div id="callContactName" style="font-size: 24px; font-weight: 600; margin-bottom: 4px;">Nome Contatto</div>
-                <div id="callStatus" style="font-size: 14px; opacity: 0.9;">Chiamata in corso...</div>
-                <div id="callDuration" style="font-size: 14px; opacity: 0.8; margin-top: 4px;">00:00</div>
-            </div>
-        </div>
         
-        <!-- Call Controls -->
-        <div style="display: flex; gap: 16px; align-items: center;">
-            <button id="toggleMicBtn" onclick="toggleMic()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s;">
-                🎤
-            </button>
-            <button id="toggleVideoBtn" onclick="toggleVideo()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s; display: none;">
-                📹
-            </button>
-            <button onclick="endCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #ff4444; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 12px rgba(255,68,68,0.4);">
+        <!-- Schermata "Chiamata in corso..." (quando chiami TU) -->
+        <div id="callWaitingScreen" style="display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; animation: callPulse 1.5s ease-in-out infinite alternate;">
+            <!-- Avatar grande -->
+            <div id="callContactAvatar" style="width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display: flex; align-items: center; justify-content: center; font-size: 56px; margin-bottom: 32px; overflow: hidden; border: 4px solid var(--accent-primary); box-shadow: 0 0 0 8px rgba(52,199,89,0.2);">
+                <span id="callContactAvatarText">👤</span>
+            </div>
+            <!-- Nome -->
+            <div id="callContactName" style="font-size: 32px; font-weight: 700; color: white; margin-bottom: 12px;">Nome Contatto</div>
+            <!-- Status -->
+            <div id="callStatus" style="font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 60px;">Chiamata in corso...</div>
+            <!-- Pulsante riaggancia -->
+            <button onclick="endCall()" style="width: 72px; height: 72px; border-radius: 50%; background: #ff3b30; border: none; color: white; cursor: pointer; font-size: 32px; box-shadow: 0 6px 20px rgba(255,59,48,0.5); transition: transform 0.15s;">
                 📵
             </button>
+        </div>
+        
+        <!-- Video Container (quando la chiamata è connessa) -->
+        <div id="callVideoContainer" style="display: none; flex-direction: column; align-items: center;">
+            <div style="position: relative; width: 100%; max-width: 900px; aspect-ratio: 16/9; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 20px;">
+                <!-- Remote Video (principale) -->
+                <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                
+                <!-- Local Video (PiP) -->
+                <video id="localVideo" autoplay muted playsinline style="position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid var(--accent-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.3);"></video>
+                
+                <!-- Call Info -->
+                <div id="callInfo" style="position: absolute; top: 20px; left: 20px; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 4px;" id="callContactName2">Connesso</div>
+                    <div id="callDuration" style="font-size: 14px; opacity: 0.8;">00:00</div>
+                </div>
+            </div>
+            
+            <!-- Call Controls -->
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <button id="toggleMicBtn" onclick="toggleMic()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s;">
+                    🎤
+                </button>
+                <button id="toggleVideoBtn" onclick="toggleVideo()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s; display: none;">
+                    📹
+                </button>
+                <button onclick="endCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #ff4444; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 12px rgba(255,68,68,0.4);">
+                    📵
+                </button>
+            </div>
         </div>
     </div>
 
@@ -3060,6 +3078,9 @@
                 
                 console.log('📞 Chiamata creata:', callId);
                 
+                // Avvia ringtone (squillo mentre aspetti risposta)
+                startRingtone();
+                
                 // Mostra UI chiamata
                 showCallUI();
                 
@@ -3084,6 +3105,12 @@
                     console.log('📞 Answer ricevuta');
                     const answer = new RTCSessionDescription(data.answer);
                     await peerConnection.setRemoteDescription(answer);
+                    
+                    // Passa a modalità connesso: nascondi schermata waiting, mostra video
+                    document.getElementById('callWaitingScreen').style.display = 'none';
+                    document.getElementById('callVideoContainer').style.display = 'block';
+                    document.getElementById('callStatus').textContent = 'Connesso';
+                    stopRingtone(); // Ferma la suoneria
                     
                     // Avvia timer durata
                     startCallDuration();
@@ -3300,9 +3327,38 @@
 
         function showCallUI() {
             document.getElementById('callModal').style.display = 'flex';
-            document.getElementById('callContactName').textContent = currentCall?.name || 'Chiamata';
+            const contactName = currentCall?.fromName || currentCall?.toName || activeChat?.name || 'Sconosciuto';
+            document.getElementById('callContactName').textContent = contactName;
+            if (document.getElementById('callContactName2')) {
+                document.getElementById('callContactName2').textContent = contactName;
+            }
             document.getElementById('callStatus').textContent = currentCall.isInitiator ? 'Chiamata in corso...' : 'Connesso';
             document.getElementById('callDuration').textContent = '00:00';
+            
+            // Mostra avatar del destinatario
+            const avatar = activeChat?.avatar || contactName[0]?.toUpperCase() || '👤';
+            const avatarEl = document.getElementById('callContactAvatar');
+            const avatarText = document.getElementById('callContactAvatarText');
+            if (avatarEl && avatarText) {
+                if (avatar && avatar.startsWith('data:image')) {
+                    avatarEl.style.backgroundImage = `url('${avatar}')`;
+                    avatarEl.style.backgroundSize = 'cover';
+                    avatarText.textContent = '';
+                } else {
+                    avatarEl.style.backgroundImage = '';
+                    avatarText.textContent = avatar;
+                }
+            }
+            
+            // Se stai chiamando TU (isInitiator), mostra schermata "Chiamata in corso"
+            if (currentCall.isInitiator) {
+                document.getElementById('callVideoContainer').style.display = 'none';
+                document.getElementById('callWaitingScreen').style.display = 'flex';
+            } else {
+                // L'altro ha risposto, mostra video
+                document.getElementById('callVideoContainer').style.display = 'block';
+                document.getElementById('callWaitingScreen').style.display = 'none';
+            }
         }
 
         function startCallDuration() {
