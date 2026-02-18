@@ -1299,8 +1299,8 @@
             <div id="callContactName" style="font-size: 32px; font-weight: 700; color: white; margin-bottom: 12px;">Nome Contatto</div>
             <!-- Status -->
             <div id="callStatus" style="font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 60px;">Chiamata in corso...</div>
-            <!-- Pulsante riaggancia -->
-            <button onclick="endCall()" style="width: 72px; height: 72px; border-radius: 50%; background: #ff3b30; border: none; color: white; cursor: pointer; font-size: 32px; box-shadow: 0 6px 20px rgba(255,59,48,0.5); transition: transform 0.15s;">
+            <!-- Pulsante riaggancia/rifiuta -->
+            <button onclick="currentCall && !currentCall.isInitiator ? declineCall() : endCall()" style="width: 72px; height: 72px; border-radius: 50%; background: #ff3b30; border: none; color: white; cursor: pointer; font-size: 32px; box-shadow: 0 6px 20px rgba(255,59,48,0.5); transition: transform 0.15s;">
                 📵
             </button>
         </div>
@@ -1357,7 +1357,7 @@
                     <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Rifiuta</div>
                 </div>
                 <div style="text-align: center;">
-                    <button onclick="acceptCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #34c759; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(52,199,89,0.4); transition: transform 0.15s;">
+                    <button onclick="showFullScreenCallThenAccept()" style="width: 68px; height: 68px; border-radius: 50%; background: #34c759; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(52,199,89,0.4); transition: transform 0.15s;">
                         📞
                     </button>
                     <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Accetta</div>
@@ -3078,9 +3078,6 @@
                 
                 console.log('📞 Chiamata creata:', callId);
                 
-                // Avvia ringtone (squillo mentre aspetti risposta)
-                startRingtone();
-                
                 // Mostra UI chiamata
                 showCallUI();
                 
@@ -3106,13 +3103,7 @@
                     const answer = new RTCSessionDescription(data.answer);
                     await peerConnection.setRemoteDescription(answer);
                     
-                    // Passa a modalità connesso: nascondi schermata waiting, mostra video
-                    document.getElementById('callWaitingScreen').style.display = 'none';
-                    document.getElementById('callVideoContainer').style.display = 'block';
-                    document.getElementById('callStatus').textContent = 'Connesso';
-                    stopRingtone(); // Ferma la suoneria
-                    
-                    // Avvia timer durata
+                    // Avvia timer durata (chi chiama non ha suoneria da fermare)
                     startCallDuration();
                 }
                 
@@ -3135,6 +3126,19 @@
                     }
                 });
             });
+        }
+
+        function showFullScreenCallThenAccept() {
+            // Nascondi modal piccolo
+            document.getElementById('incomingCallModal').style.display = 'none';
+            
+            // Mostra schermata full-screen con avatar (waiting) prima di accettare
+            showCallUI();
+            
+            // Accetta dopo un frame (per mostrare l'UI prima)
+            setTimeout(() => {
+                acceptCall();
+            }, 100);
         }
 
         async function acceptCall() {
@@ -3175,9 +3179,13 @@
                     document.getElementById('toggleVideoBtn').style.display = 'block';
                 }
                 
-                // Nascondi modal chiamata in arrivo
+                // Nascondi modal chiamata in arrivo piccolo
                 document.getElementById('incomingCallModal').style.display = 'none';
                 stopRingtone();
+                
+                // Passa da waiting screen a video screen nel callModal
+                document.getElementById('callWaitingScreen').style.display = 'none';
+                document.getElementById('callVideoContainer').style.display = 'block';
                 
                 // Crea PeerConnection
                 peerConnection = new RTCPeerConnection(iceServers);
@@ -3328,37 +3336,39 @@
         function showCallUI() {
             document.getElementById('callModal').style.display = 'flex';
             const contactName = currentCall?.fromName || currentCall?.toName || activeChat?.name || 'Sconosciuto';
-            document.getElementById('callContactName').textContent = contactName;
-            if (document.getElementById('callContactName2')) {
-                document.getElementById('callContactName2').textContent = contactName;
-            }
-            document.getElementById('callStatus').textContent = currentCall.isInitiator ? 'Chiamata in corso...' : 'Connesso';
-            document.getElementById('callDuration').textContent = '00:00';
             
-            // Mostra avatar del destinatario
-            const avatar = activeChat?.avatar || contactName[0]?.toUpperCase() || '👤';
-            const avatarEl = document.getElementById('callContactAvatar');
-            const avatarText = document.getElementById('callContactAvatarText');
-            if (avatarEl && avatarText) {
-                if (avatar && avatar.startsWith('data:image')) {
-                    avatarEl.style.backgroundImage = `url('${avatar}')`;
-                    avatarEl.style.backgroundSize = 'cover';
-                    avatarText.textContent = '';
-                } else {
-                    avatarEl.style.backgroundImage = '';
-                    avatarText.textContent = avatar;
+            // Chi riceve la chiamata: mostra schermata waiting con avatar grande
+            if (!currentCall.isInitiator) {
+                // Nascondi video, mostra waiting screen
+                document.getElementById('callVideoContainer').style.display = 'none';
+                document.getElementById('callWaitingScreen').style.display = 'flex';
+                
+                // Popola avatar e nome
+                document.getElementById('callContactName').textContent = contactName;
+                const avatar = currentCall.fromAvatar || contactName[0]?.toUpperCase() || '👤';
+                const avatarEl = document.getElementById('callContactAvatar');
+                const avatarText = document.getElementById('callContactAvatarText');
+                if (avatarEl && avatarText) {
+                    if (avatar && avatar.startsWith('data:image')) {
+                        avatarEl.style.backgroundImage = `url('${avatar}')`;
+                        avatarEl.style.backgroundSize = 'cover';
+                        avatarText.textContent = '';
+                    } else {
+                        avatarEl.style.backgroundImage = '';
+                        avatarText.textContent = avatar;
+                    }
+                }
+                document.getElementById('callStatus').textContent = currentCall.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
+            } else {
+                // Chi chiama: mostra video container direttamente (come prima)
+                document.getElementById('callVideoContainer').style.display = 'block';
+                document.getElementById('callWaitingScreen').style.display = 'none';
+                if (document.getElementById('callContactName2')) {
+                    document.getElementById('callContactName2').textContent = contactName;
                 }
             }
             
-            // Se stai chiamando TU (isInitiator), mostra schermata "Chiamata in corso"
-            if (currentCall.isInitiator) {
-                document.getElementById('callVideoContainer').style.display = 'none';
-                document.getElementById('callWaitingScreen').style.display = 'flex';
-            } else {
-                // L'altro ha risposto, mostra video
-                document.getElementById('callVideoContainer').style.display = 'block';
-                document.getElementById('callWaitingScreen').style.display = 'none';
-            }
+            document.getElementById('callDuration').textContent = '00:00';
         }
 
         function startCallDuration() {
