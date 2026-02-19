@@ -4559,14 +4559,19 @@
                     listenForIncomingCalls();
                     
                     // 🔔 Inizializza Service Worker con config Firebase per notifiche background
-                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({
-                            type: 'INIT',
-                            config: { 
-                                apiKey: firebaseConfig.apiKey,
-                                projectId: firebaseConfig.projectId
-                            },
-                            userId: currentUser.id
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.ready.then(registration => {
+                            if (registration.active) {
+                                registration.active.postMessage({
+                                    type: 'INIT',
+                                    config: { 
+                                        apiKey: firebaseConfig.apiKey,
+                                        projectId: firebaseConfig.projectId
+                                    },
+                                    userId: currentUser.id
+                                });
+                                console.log('🔔 Service Worker inizializzato per polling chiamate');
+                            }
                         });
                     }
                     
@@ -4586,14 +4591,46 @@
                         const fromId = urlParams.get('from');
                         const fromName = decodeURIComponent(urlParams.get('fromName') || '');
                         const callType = urlParams.get('type') || 'audio';
-                        currentCall = { id: acceptCallId, from: fromId, fromName, type: callType, isInitiator: false };
-                        // Carica l'offer da Firestore e accetta
+                        
+                        // Carica dati chiamata da Firestore
                         db.collection('calls').doc(acceptCallId).get().then(doc => {
                             if (doc.exists && doc.data().status === 'ringing') {
-                                currentCall.offer = doc.data().offer;
-                                acceptCall();
+                                const callData = doc.data();
+                                currentCall = { 
+                                    id: acceptCallId, 
+                                    from: fromId, 
+                                    fromName, 
+                                    fromAvatar: callData.fromAvatar,
+                                    type: callType, 
+                                    offer: callData.offer,
+                                    isInitiator: false 
+                                };
+                                
+                                // SUONA IMMEDIATAMENTE quando app si apre da notifica
+                                startRingtone();
+                                
+                                // Mostra modal chiamata in arrivo
+                                document.getElementById('incomingCallName').textContent = fromName;
+                                document.getElementById('incomingCallType').textContent = 
+                                    callType === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
+                                
+                                // Avatar
+                                const avatarEl = document.getElementById('incomingCallAvatar');
+                                const avatarText = document.getElementById('incomingCallAvatarText');
+                                const avatar = callData.fromAvatar || fromName[0]?.toUpperCase() || '👤';
+                                if (avatar && avatar.startsWith('data:image')) {
+                                    avatarEl.style.backgroundImage = \`url('\${avatar}')\`;
+                                    avatarEl.style.backgroundSize = 'cover';
+                                    avatarText.textContent = '';
+                                } else {
+                                    avatarEl.style.backgroundImage = '';
+                                    avatarText.textContent = avatar;
+                                }
+                                
+                                document.getElementById('incomingCallModal').style.display = 'flex';
                             }
                         });
+                        
                         // Pulisci URL
                         window.history.replaceState({}, '', window.location.pathname);
                     }
