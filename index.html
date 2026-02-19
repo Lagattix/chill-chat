@@ -4619,7 +4619,7 @@
                                 const avatarText = document.getElementById('incomingCallAvatarText');
                                 const avatar = callData.fromAvatar || fromName[0]?.toUpperCase() || '👤';
                                 if (avatar && avatar.startsWith('data:image')) {
-                                    avatarEl.style.backgroundImage = \`url('\${avatar}')\`;
+                                    avatarEl.style.backgroundImage = `url('${avatar}')`;
                                     avatarEl.style.backgroundSize = 'cover';
                                     avatarText.textContent = '';
                                 } else {
