@@ -117,9 +117,13 @@ self.addEventListener('message', async (event) => {
 // ─── Polling chiamate in arrivo ───
 function startCallPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
-  if (!currentUserId) return;
+  if (!currentUserId) {
+    console.log('❌ startCallPolling: nessun userId, esco');
+    return;
+  }
   
   console.log('🔄 Avvio polling chiamate per:', currentUserId);
+  console.log('🔄 Firebase config:', FIREBASE_CONFIG);
   
   pollingInterval = setInterval(async () => {
     if (!FIREBASE_CONFIG.apiKey || !currentUserId) return;
@@ -133,9 +137,12 @@ function startCallPolling() {
       const data = await response.json();
       const docs = data.documents || [];
       
+      console.log('📞 [SW Polling] Trovati', docs.length, 'documenti in calls');
+      
       for (const doc of docs) {
         const fields = doc.fields || {};
         const callId = doc.name.split('/').pop();
+        console.log('📞 [SW] Esamino chiamata:', callId);
         
         const toUser = fields.to?.stringValue;
         const status = fields.status?.stringValue;
