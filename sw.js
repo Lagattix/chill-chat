@@ -78,9 +78,11 @@ function getUserIdFromDB(db) {
 
 // ─── Ricevi messaggio dall'app ───
 self.addEventListener('message', async (event) => {
+  console.log('📨 [SW] Messaggio ricevuto:', event.data);
   const { type, config, userId } = event.data || {};
 
   if (type === 'INIT') {
+    console.log('📨 [SW] Messaggio INIT ricevuto per userId:', userId);
     currentUserId = userId;
     console.log('📱 SW inizializzato per user:', userId);
     
