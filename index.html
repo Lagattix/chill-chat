@@ -1946,6 +1946,11 @@
             // Ferma polling globale
             stopGlobalMessagePolling();
             
+            // Notifica Service Worker di logout (ferma polling chiamate)
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' });
+            }
+            
             // Logout normale
             auth.signOut();
         }
