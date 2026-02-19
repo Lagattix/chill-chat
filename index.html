@@ -4565,19 +4565,30 @@
                     
                     // 🔔 Inizializza Service Worker con config Firebase per notifiche background
                     if ('serviceWorker' in navigator) {
+                        console.log('🔔 Preparazione init SW...');
                         navigator.serviceWorker.ready.then(registration => {
+                            console.log('🔔 SW ready, registration:', registration);
+                            console.log('🔔 SW active:', !!registration.active);
                             if (registration.active) {
-                                registration.active.postMessage({
+                                const msg = {
                                     type: 'INIT',
                                     config: { 
                                         apiKey: firebaseConfig.apiKey,
                                         projectId: firebaseConfig.projectId
                                     },
                                     userId: currentUser.id
-                                });
-                                console.log('🔔 Service Worker inizializzato per polling chiamate');
+                                };
+                                console.log('🔔 Invio messaggio INIT al SW:', msg);
+                                registration.active.postMessage(msg);
+                                console.log('✅ Messaggio INIT inviato al Service Worker');
+                            } else {
+                                console.log('❌ SW non attivo!');
                             }
+                        }).catch(err => {
+                            console.error('❌ Errore SW ready:', err);
                         });
+                    } else {
+                        console.log('❌ Service Worker non supportato');
                     }
                     
                     // 📞 Gestisci risposta chiamata da notifica SW (quando app era chiusa)
