@@ -1357,7 +1357,7 @@
                     <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Rifiuta</div>
                 </div>
                 <div style="text-align: center;">
-                    <button onclick="showFullScreenCallThenAccept()" style="width: 68px; height: 68px; border-radius: 50%; background: #34c759; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(52,199,89,0.4); transition: transform 0.15s;">
+                    <button onclick="acceptCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #34c759; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(52,199,89,0.4); transition: transform 0.15s;">
                         📞
                     </button>
                     <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Accetta</div>
@@ -1370,6 +1370,7 @@
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-messaging.js"></script>
 
     <script>
         // Global variables
@@ -1416,6 +1417,60 @@
                 .catch((error) => {
                     console.error('❌ Errore registrazione Service Worker:', error);
                 });
+        }
+
+
+        // 🔔 Registra FCM Token per notifiche push
+        async function registerFCMToken() {
+            if (!messaging) {
+                console.log('❌ FCM non disponibile');
+                return;
+            }
+
+            try {
+                // Ottieni FCM token
+                const token = await messaging.getToken({ 
+                    vapidKey: VAPID_PUBLIC_KEY 
+                });
+
+                if (token) {
+                    console.log('✅ FCM Token ottenuto:', token.substring(0, 20) + '...');
+                    
+                    // Salva token in Firestore
+                    await db.collection('users').doc(currentUser.id).update({
+                        fcmToken: token,
+                        fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    console.log('✅ FCM Token salvato in Firestore');
+                }
+
+            } catch (err) {
+                console.error('❌ Errore registrazione FCM:', err);
+            }
+        }
+
+        // Listener FCM quando app è aperta
+        function setupFCMListener() {
+            if (!messaging) return;
+            
+            messaging.onMessage((payload) => {
+                console.log('📞 [FCM] Messaggio ricevuto con app aperta:', payload);
+                
+                const { notification, data } = payload;
+                const callData = data || {};
+                
+                // Mostra notifica in-app se finestra non è attiva
+                if (document.hidden && Notification.permission === 'granted') {
+                    new Notification(notification?.title || '📞 Chiamata in arrivo', {
+                        body: notification?.body || 'Nuova chiamata',
+                        icon: '/chill-chat/icon-192.png',
+                        tag: `call-${callData.callId}`,
+                        requireInteraction: true,
+                        data: callData
+                    });
+                }
+            });
         }
 
         // 🔔 Sistema Notifiche Push
@@ -1788,6 +1843,16 @@
                 });
             
             console.log('✅ Firebase Auth inizializzato');
+            
+            // 🔔 Inizializza Firebase Cloud Messaging
+            let messaging = null;
+            const VAPID_PUBLIC_KEY = 'BElfKXcnUplNpbF2rbVtpWv5cyEGpErqDN01Qbv-UvYfypY';
+            try {
+                messaging = firebase.messaging();
+                console.log('✅ Firebase Messaging inizializzato');
+            } catch (err) {
+                console.log('⚠️ Firebase Messaging non disponibile:', err.message);
+            }
             
             // 🔔 Attiva notifiche subito se già loggato
             // Il check viene fatto dopo che onAuthStateChanged rileva l'utente
@@ -3133,20 +3198,7 @@
             });
         }
 
-        function showFullScreenCallThenAccept() {
-            // Nascondi modal piccolo
-            document.getElementById('incomingCallModal').style.display = 'none';
-            
-            // Mostra schermata full-screen con avatar (waiting) prima di accettare
-            showCallUI();
-            
-            // Accetta dopo un frame (per mostrare l'UI prima)
-            setTimeout(() => {
-                acceptCall();
-            }, 100);
-        }
-
-        async function acceptCall() {
+async function acceptCall() {
             if (!currentCall) return;
             
             console.log('✅ Accettazione chiamata');
@@ -3184,13 +3236,9 @@
                     document.getElementById('toggleVideoBtn').style.display = 'block';
                 }
                 
-                // Nascondi modal chiamata in arrivo piccolo
+                // Nascondi modal chiamata in arrivo
                 document.getElementById('incomingCallModal').style.display = 'none';
                 stopRingtone();
-                
-                // Passa da waiting screen a video screen nel callModal
-                document.getElementById('callWaitingScreen').style.display = 'none';
-                document.getElementById('callVideoContainer').style.display = 'block';
                 
                 // Crea PeerConnection
                 peerConnection = new RTCPeerConnection(iceServers);
@@ -3342,35 +3390,12 @@
             document.getElementById('callModal').style.display = 'flex';
             const contactName = currentCall?.fromName || currentCall?.toName || activeChat?.name || 'Sconosciuto';
             
-            // Chi riceve la chiamata: mostra schermata waiting con avatar grande
-            if (!currentCall.isInitiator) {
-                // Nascondi video, mostra waiting screen
-                document.getElementById('callVideoContainer').style.display = 'none';
-                document.getElementById('callWaitingScreen').style.display = 'flex';
-                
-                // Popola avatar e nome
-                document.getElementById('callContactName').textContent = contactName;
-                const avatar = currentCall.fromAvatar || contactName[0]?.toUpperCase() || '👤';
-                const avatarEl = document.getElementById('callContactAvatar');
-                const avatarText = document.getElementById('callContactAvatarText');
-                if (avatarEl && avatarText) {
-                    if (avatar && avatar.startsWith('data:image')) {
-                        avatarEl.style.backgroundImage = `url('${avatar}')`;
-                        avatarEl.style.backgroundSize = 'cover';
-                        avatarText.textContent = '';
-                    } else {
-                        avatarEl.style.backgroundImage = '';
-                        avatarText.textContent = avatar;
-                    }
-                }
-                document.getElementById('callStatus').textContent = currentCall.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
-            } else {
-                // Chi chiama: mostra video container direttamente (come prima)
-                document.getElementById('callVideoContainer').style.display = 'block';
-                document.getElementById('callWaitingScreen').style.display = 'none';
-                if (document.getElementById('callContactName2')) {
-                    document.getElementById('callContactName2').textContent = contactName;
-                }
+            // Mostra sempre video container direttamente per tutti
+            document.getElementById('callVideoContainer').style.display = 'block';
+            document.getElementById('callWaitingScreen').style.display = 'none';
+            
+            if (document.getElementById('callContactName2')) {
+                document.getElementById('callContactName2').textContent = contactName;
             }
             
             document.getElementById('callDuration').textContent = '00:00';
@@ -4562,6 +4587,10 @@
                     
                     // 📞 Avvia listener per chiamate in arrivo
                     listenForIncomingCalls();
+                    
+                    // 🔔 Setup FCM listener e registra token
+                    setupFCMListener();
+                    registerFCMToken();
                     
                     // 🔔 Inizializza Service Worker con config Firebase per notifiche background
                     if ('serviceWorker' in navigator) {
