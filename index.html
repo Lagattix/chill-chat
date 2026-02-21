@@ -887,7 +887,12 @@
             }
 
             .chat-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
                 padding-left: 80px;
+                z-index: 99;
             }
             
             /* Top Nav - nascosta di default su mobile */
@@ -966,8 +971,9 @@
                 z-index: 100;
             }
             
-            /* Aggiungi padding bottom al container messaggi per compensare input fixed */
+            /* Aggiungi padding per compensare header e input fixed */
             .chat-messages {
+                padding-top: 100px !important;
                 padding-bottom: 80px !important;
             }
 
