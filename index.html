@@ -956,9 +956,19 @@
             }
 
             .input-area {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
                 padding: 7px 12px;
                 background: var(--bg-primary);
                 border-top: 1px solid var(--border-subtle);
+                z-index: 100;
+            }
+            
+            /* Aggiungi padding bottom al container messaggi per compensare input fixed */
+            .chat-messages {
+                padding-bottom: 80px !important;
             }
 
             .login-card {
@@ -4701,6 +4711,20 @@ async function acceptCall() {
         document.getElementById('messageInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
+            }
+        });
+        
+        // Auto-scroll su mobile quando si apre la tastiera
+        document.getElementById('messageInput').addEventListener('focus', () => {
+            if (window.innerWidth <= 768) {
+                setTimeout(() => {
+                    const messagesContainer = document.querySelector('.chat-messages');
+                    if (messagesContainer) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                    // Scroll anche la finestra se necessario
+                    window.scrollTo(0, document.body.scrollHeight);
+                }, 300); // Aspetta che la tastiera si apra
             }
         });
     </script>
