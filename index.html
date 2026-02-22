@@ -1864,6 +1864,18 @@
             // 🔔 Inizializza Firebase Cloud Messaging
             let messaging = null;
             const VAPID_PUBLIC_KEY = 'BElfKXcnUplNpbF2rbVtpWv5cyEGpErqDN01Qbv-UvYfypY';
+            
+            // Registra firebase-messaging-sw.js (richiesto da FCM)
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/chill-chat/firebase-messaging-sw.js')
+                    .then(reg => {
+                        console.log('✅ Firebase Messaging SW registrato');
+                    })
+                    .catch(err => {
+                        console.error('❌ Errore registrazione FCM SW:', err);
+                    });
+            }
+            
             try {
                 messaging = firebase.messaging();
                 console.log('✅ Firebase Messaging inizializzato');
