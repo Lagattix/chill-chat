@@ -3103,6 +3103,14 @@
                 remoteStream = new MediaStream();
                 document.getElementById('remoteVideo').srcObject = remoteStream;
                 
+                // Log ICE connection state
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log('🧊 ICE Connection State (startCall):', peerConnection.iceConnectionState);
+                };
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection State (startCall):', peerConnection.connectionState);
+                };
+                
                 peerConnection.ontrack = (event) => {
                     console.log('📹 Track remoto ricevuto (startCall)');
                     console.log('  - Tipo:', event.track.kind);
@@ -3270,6 +3278,14 @@ async function acceptCall() {
                 // Gestisci stream remoto
                 remoteStream = new MediaStream();
                 document.getElementById('remoteVideo').srcObject = remoteStream;
+                
+                // Log ICE connection state
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log('🧊 ICE Connection State (acceptCall):', peerConnection.iceConnectionState);
+                };
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection State (acceptCall):', peerConnection.connectionState);
+                };
                 
                 peerConnection.ontrack = (event) => {
                     console.log('📹 Track remoto ricevuto (acceptCall)');
