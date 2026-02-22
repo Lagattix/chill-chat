@@ -1390,6 +1390,7 @@
 
     <script>
         // Global variables
+        const PIPEDREAM_WEBHOOK_URL = 'https://eodprhvejk2u9b4.m.pipedream.net';
         let currentUser = null;
         let activeChat = null;
         let unsubscribeMessages = null;
@@ -3119,6 +3120,16 @@
                         console.log('  - Aggiunta track remota:', track.kind, track.label);
                         remoteStream.addTrack(track);
                     });
+                    
+                    // Forza play audio
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    if (remoteVideo && event.track.kind === 'audio') {
+                        remoteVideo.play().then(() => {
+                            console.log('🔊 Audio remoto in play');
+                        }).catch(err => {
+                            console.error('❌ Errore play audio:', err);
+                        });
+                    }
                 };
                 
                 // Crea offer
@@ -3171,6 +3182,23 @@
                 };
                 
                 console.log('📞 Chiamata creata:', callId);
+                
+                // Invia notifica push via Pipedream
+                fetch(PIPEDREAM_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        callId: callId,
+                        from: currentUser.id,
+                        fromName: currentUser.name,
+                        to: chatId,
+                        type: type
+                    })
+                }).then(() => {
+                    console.log('✅ Webhook Pipedream chiamato');
+                }).catch(err => {
+                    console.error('❌ Errore chiamata webhook:', err);
+                });
                 
                 // Mostra UI chiamata
                 showCallUI();
@@ -3295,6 +3323,16 @@ async function acceptCall() {
                         console.log('  - Aggiunta track remota:', track.kind, track.label);
                         remoteStream.addTrack(track);
                     });
+                    
+                    // Forza play audio (fix Chrome autoplay block)
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    if (remoteVideo && event.track.kind === 'audio') {
+                        remoteVideo.play().then(() => {
+                            console.log('🔊 Audio remoto in play');
+                        }).catch(err => {
+                            console.error('❌ Errore play audio:', err);
+                        });
+                    }
                 };
                 
                 // Gestisci ICE candidates
