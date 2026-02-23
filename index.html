@@ -1391,7 +1391,9 @@
     <script>
         // Global variables
         const PIPEDREAM_WEBHOOK_URL = 'https://eodprhvejk2u9b4.m.pipedream.net';
+        const VAPID_PUBLIC_KEY = 'BElfKXcnUplNpbF2rbVtpWv5cyEGpErqDN01Qbv-UvYfypY';
         let currentUser = null;
+        let messaging = null;
         let activeChat = null;
         let unsubscribeMessages = null;
         let db = null;
@@ -1862,9 +1864,6 @@
             console.log('✅ Firebase Auth inizializzato');
             
             // 🔔 Inizializza Firebase Cloud Messaging
-            let messaging = null;
-            const VAPID_PUBLIC_KEY = 'BElfKXcnUplNpbF2rbVtpWv5cyEGpErqDN01Qbv-UvYfypY';
-            
             // Registra firebase-messaging-sw.js (richiesto da FCM)
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/chill-chat/firebase-messaging-sw.js')
