@@ -1864,22 +1864,27 @@
             console.log('✅ Firebase Auth inizializzato');
             
             // 🔔 Inizializza Firebase Cloud Messaging
-            // Registra firebase-messaging-sw.js (richiesto da FCM)
+            // Registra firebase-messaging-sw.js PRIMA di inizializzare messaging
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/chill-chat/firebase-messaging-sw.js')
+                navigator.serviceWorker.register('/chill-chat/firebase-messaging-sw.js', {
+                    scope: '/chill-chat/'
+                })
                     .then(reg => {
-                        console.log('✅ Firebase Messaging SW registrato');
+                        console.log('✅ Firebase Messaging SW registrato:', reg.scope);
+                        
+                        // Inizializza messaging DOPO che SW è registrato
+                        try {
+                            messaging = firebase.messaging();
+                            // Usa il service worker registration appena creato
+                            messaging.useServiceWorker(reg);
+                            console.log('✅ Firebase Messaging inizializzato con SW custom');
+                        } catch (err) {
+                            console.log('⚠️ Firebase Messaging non disponibile:', err.message);
+                        }
                     })
                     .catch(err => {
                         console.error('❌ Errore registrazione FCM SW:', err);
                     });
-            }
-            
-            try {
-                messaging = firebase.messaging();
-                console.log('✅ Firebase Messaging inizializzato');
-            } catch (err) {
-                console.log('⚠️ Firebase Messaging non disponibile:', err.message);
             }
             
             // 🔔 Attiva notifiche subito se già loggato
