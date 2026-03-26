@@ -4114,126 +4114,61 @@ async function acceptCall() {
             const roomId = [currentUser.id, chatId].sort().join('_');
             console.log('🔑 Room ID:', roomId);
 
-            // Funzione per caricare i messaggi
-            window.reloadMessages = async function() {
-                try {
-                    const snapshot = await db.collection('messages')
-                        .where('roomId', '==', roomId)
-                        .orderBy('timestamp', 'asc')
-                        .get();
-                    
-                    console.log('📬 Messaggi ricevuti:', snapshot.size);
+            // Listener in tempo reale per i messaggi
+
+
+            const unsubscribeSnapshot = db.collection('messages')
+
+
+                .where('roomId', '==', roomId)
+
+
+                .orderBy('timestamp', 'asc')
+
+
+                .onSnapshot(snapshot => {
+
+
                     const messages = [];
+
+
                     snapshot.forEach((doc) => {
+
+
                         messages.push({ id: doc.id, ...doc.data() });
+
+
                     });
+
 
                     renderMessages(messages);
-                } catch (error) {
-                    console.error('❌ Errore nel caricamento messaggi:', error);
-                }
-            }
 
-            // Carica subito
-            window.reloadMessages();
 
-            // Polling invisibile - aggiunge solo nuovi messaggi senza ricaricare tutto
-            let lastMessageId = null;
-            console.log('🔄 Avvio polling chat per:', chatId);
+                }, error => {
+
+
+                    console.error('❌ Errore in onSnapshot:', error);
+
+
+                });
+
+
             
-            const intervalId = setInterval(async () => {
-                // Controlla se sei ancora nella stessa chat
-                if (!activeChat || activeChat.id !== chatId) {
-                    console.log('⏹️ Polling chat fermato - chat cambiata');
-                    clearInterval(intervalId);
-                    return;
-                }
-                
-                console.log('🔄 [Chat Polling] Check nuovi messaggi...', chatId);
-                
-                try {
-                    // Prendi solo messaggi dopo l'ultimo ID conosciuto
-                    let query = db.collection('messages')
-                        .where('roomId', '==', roomId)
-                        .orderBy('timestamp', 'asc');
-                    
-                    const snapshot = await query.get();
-                    
-                    // Se non ci sono messaggi, non fare nulla
-                    if (snapshot.empty) return;
-                    
-                    const allMessages = [];
-                    snapshot.forEach(doc => {
-                        allMessages.push({ id: doc.id, ...doc.data() });
-                    });
-                    
-                    // Se è il primo caricamento, salva l'ultimo ID
-                    if (!lastMessageId && allMessages.length > 0) {
-                        lastMessageId = allMessages[allMessages.length - 1].id;
-                        return;
-                    }
-                    
-                    // Trova l'indice dell'ultimo messaggio conosciuto
-                    const lastIndex = allMessages.findIndex(msg => msg.id === lastMessageId);
-                    
-                    // Se ci sono nuovi messaggi dopo l'ultimo conosciuto
-                    if (lastIndex !== -1 && lastIndex < allMessages.length - 1) {
-                        const newMessages = allMessages.slice(lastIndex + 1);
-                        
-                        // Aggiungi solo i nuovi messaggi al DOM senza ricaricare tutto
-                        const messagesContainer = document.getElementById('messagesContainer');
-                        const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
-                        
-                        newMessages.forEach(msg => {
-                            // CONTROLLO DUPLICATI: Se il messaggio esiste già, salta
-                            if (document.querySelector(`[data-message-id="${msg.id}"]`)) {
-                                return;
-                            }
-                            
-                            const isSent = msg.senderId === currentUser.id;
-                            const isAI = msg.senderId === CONVERSINA_ID;
-                            const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
-                            
-                            const messageDiv = document.createElement('div');
-                            messageDiv.className = `message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}`;
-                            messageDiv.setAttribute('data-message-id', msg.id); // Aggiungi ID per controllo duplicati
-                            messageDiv.innerHTML = `
-                                <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
-                                <div class="message-content">
-                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
-                                    <div class="message-bubble">${formatMessage(msg.text)}</div>
-                                    <div class="message-time">${time}</div>
-                                </div>
-                            `;
-                            
-                            messagesContainer.appendChild(messageDiv);
-                        });
-                        
-                        // 🔔 Controlla se mostrare notifiche per nuovi messaggi
-                        checkForNewMessages(roomId, newMessages);
-                        
-                        // Aggiorna ultimo ID
-                        lastMessageId = allMessages[allMessages.length - 1].id;
-                        
-                        // Scroll in basso solo se eri già in fondo
-                        if (wasAtBottom) {
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        }
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Errore polling chat:', error);
-                }
-            }, 5000); // Ogni 5 secondi
-            
-            console.log('✅ Polling chat attivo ogni 5 secondi');
-            
+
+
             // Cleanup function
+
+
             unsubscribeMessages = () => {
-                clearInterval(intervalId);
-                lastMessageId = null; // Reset
+
+
+                unsubscribeSnapshot();
+
+
             };
-        }
+
+
+            }
 
         // Load GROUP messages
         function loadGroupMessages(groupId) {
@@ -4248,125 +4183,61 @@ async function acceptCall() {
             const roomId = `group_${groupId}`;
             console.log('🔑 Room ID gruppo:', roomId);
 
-            // Funzione per caricare i messaggi
-            window.reloadMessages = async function() {
-                try {
-                    const snapshot = await db.collection('messages')
-                        .where('roomId', '==', roomId)
-                        .orderBy('timestamp', 'asc')
-                        .get();
-                    
-                    console.log('📬 Messaggi gruppo ricevuti:', snapshot.size);
+            // Listener in tempo reale per i messaggi
+
+
+            const unsubscribeSnapshot = db.collection('messages')
+
+
+                .where('roomId', '==', roomId)
+
+
+                .orderBy('timestamp', 'asc')
+
+
+                .onSnapshot(snapshot => {
+
+
                     const messages = [];
+
+
                     snapshot.forEach((doc) => {
+
+
                         messages.push({ id: doc.id, ...doc.data() });
+
+
                     });
+
 
                     renderMessages(messages);
-                } catch (error) {
-                    console.error('❌ Errore caricamento messaggi gruppo:', error);
-                }
-            }
 
-            // Carica subito
-            window.reloadMessages();
 
-            // Polling
-            console.log('🔄 Avvio polling gruppo per:', groupId);
+                }, error => {
+
+
+                    console.error('❌ Errore in onSnapshot:', error);
+
+
+                });
+
+
             
-            let lastMessageId = null;
-            const intervalId = setInterval(async () => {
-                if (!activeChat || activeChat.id !== groupId || !activeChat.isGroup) {
-                    console.log('⏹️ Polling gruppo fermato - chat cambiata');
-                    clearInterval(intervalId);
-                    return;
-                }
-                
-                console.log('🔄 [Group Polling] Check nuovi messaggi...', groupId);
-                
-                try {
-                    const snapshot = await db.collection('messages')
-                        .where('roomId', '==', roomId)
-                        .orderBy('timestamp', 'asc')
-                        .get();
-                    
-                    if (snapshot.empty) return;
-                    
-                    const allMessages = [];
-                    snapshot.forEach(doc => {
-                        allMessages.push({ id: doc.id, ...doc.data() });
-                    });
-                    
-                    if (!lastMessageId && allMessages.length > 0) {
-                        lastMessageId = allMessages[allMessages.length - 1].id;
-                        return;
-                    }
-                    
-                    const lastIndex = allMessages.findIndex(msg => msg.id === lastMessageId);
-                    
-                    if (lastIndex !== -1 && lastIndex < allMessages.length - 1) {
-                        const newMessages = allMessages.slice(lastIndex + 1);
-                        const messagesContainer = document.getElementById('messagesContainer');
-                        const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
-                        
-                        newMessages.forEach(msg => {
-                            if (document.querySelector(`[data-message-id="${msg.id}"]`)) return;
-                            
-                            const isSent = msg.senderId === currentUser.id;
-                            const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
-                            
-                            // Usa cache avatar
-                            let avatarContent = '';
-                            let avatarStyle = '';
-                            if (isSent) {
-                                if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
-                                    avatarStyle = `style="background-image: url('${currentUser.avatar}'); background-size: cover;"`;
-                                } else {
-                                    avatarContent = currentUser.avatar;
-                                }
-                            } else {
-                                const cachedAvatar = userAvatarsCache[msg.senderId] || msg.senderAvatar || msg.senderName[0].toUpperCase();
-                                if (cachedAvatar && cachedAvatar.startsWith('data:image')) {
-                                    avatarStyle = `style="background-image: url('${cachedAvatar}'); background-size: cover;"`;
-                                } else {
-                                    avatarContent = cachedAvatar;
-                                }
-                            }
-                            
-                            const messageDiv = document.createElement('div');
-                            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
-                            messageDiv.setAttribute('data-message-id', msg.id);
-                            messageDiv.innerHTML = `
-                                <div class="message-avatar" ${avatarStyle}>${avatarContent}</div>
-                                <div class="message-content">
-                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
-                                    <div class="message-bubble">${formatMessage(msg.text)}</div>
-                                    <div class="message-time">${time}</div>
-                                </div>
-                            `;
-                            
-                            messagesContainer.appendChild(messageDiv);
-                        });
-                        
-                        lastMessageId = allMessages[allMessages.length - 1].id;
-                        
-                        if (wasAtBottom) {
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        }
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Errore polling gruppo:', error);
-                }
-            }, 5000);
-            
-            console.log('✅ Polling gruppo attivo ogni 5 secondi');
-            
+
+
+            // Cleanup function
+
+
             unsubscribeMessages = () => {
-                clearInterval(intervalId);
-                lastMessageId = null;
+
+
+                unsubscribeSnapshot();
+
+
             };
-        }
+
+
+            }
 
         // Cache avatar utenti (evita di salvare base64 in ogni messaggio)
         const userAvatarsCache = {};
@@ -4568,7 +4439,7 @@ async function acceptCall() {
                     },
                     body: JSON.stringify({
                         message: userMessage,
-                        history: history // Invia TUTTA la storia (il backend prenderà gli ultimi 20)
+                        history: history.slice(-20) // Invia solo gli ultimi 20 per risparmiare rete
                     })
                 });
 
