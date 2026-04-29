@@ -381,178 +381,6 @@
             gap: 16px;
         }
 
-        /* === CALL / VIDEO CALL BUTTONS === */
-        .chat-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .call-btn {
-            width: 40px;
-            height: 40px;
-            border: 1px solid var(--border-subtle);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s ease;
-        }
-
-        .call-btn:hover {
-            background: var(--accent-primary);
-            color: white;
-            transform: scale(1.05);
-        }
-
-        .call-btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* === CALL MODAL === */
-        .call-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.75);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            padding: 16px;
-        }
-
-        .call-modal.visible {
-            display: flex;
-        }
-
-        .call-box {
-            width: min(900px, 95vw);
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 20px;
-            padding: 20px;
-            color: var(--text-primary);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .call-title {
-            text-align: center;
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        .video-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-
-        .video-box {
-            background: #111;
-            border-radius: 16px;
-            overflow: hidden;
-            min-height: 260px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            position: relative;
-        }
-
-        .video-box::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 12px;
-            top: 10px;
-            z-index: 1;
-            font-size: 12px;
-            opacity: 0.75;
-            background: rgba(0, 0, 0, 0.45);
-            padding: 4px 8px;
-            border-radius: 999px;
-        }
-
-        .video-box video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .audio-placeholder {
-            min-height: 180px;
-            border-radius: 16px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            margin-bottom: 18px;
-            font-size: 48px;
-        }
-
-        .audio-placeholder.visible {
-            display: flex;
-        }
-
-        .call-controls {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .call-control-btn {
-            border: none;
-            border-radius: 999px;
-            padding: 12px 18px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 15px;
-        }
-
-        .call-accept {
-            background: #22c55e;
-            color: white;
-        }
-
-        .call-reject,
-        .call-end {
-            background: #ef4444;
-            color: white;
-        }
-
-        .call-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-subtle);
-        }
-
-        @media (max-width: 768px) {
-            .video-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .video-box {
-                min-height: 200px;
-            }
-
-            .call-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 16px;
-            }
-        }
-
-
         .chat-avatar {
             width: 44px;
             height: 44px;
@@ -1200,7 +1028,6 @@
         <div class="chat-area">
             <div class="chat-header" id="chatHeader" style="display: none;">
                 <h1 id="chatHeaderTitle" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1; display: none;">Conversando</h1>
-
                 <div class="chat-user-info" id="chatUserInfo" style="display: none;">
                     <div class="chat-avatar" id="chatAvatar" onclick="openContactProfile()" style="cursor: pointer;" title="Vedi profilo">C</div>
                     <div class="chat-user-details">
@@ -1210,11 +1037,6 @@
                             <span id="chatUserStatus">Online</span>
                         </div>
                     </div>
-                </div>
-
-                <div class="chat-actions" id="chatActions" style="display: none;">
-                    <button class="call-btn" onclick="startCall(false)" title="Chiamata audio">📞</button>
-                    <button class="call-btn" onclick="startCall(true)" title="Videochiamata">📹</button>
                 </div>
             </div>
 
@@ -1230,36 +1052,6 @@
                     <input type="text" class="message-input" id="messageInput" placeholder="Scrivi un messaggio...">
                     <button class="send-button" id="sendButton" onclick="sendMessage()">➤</button>
                 </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Call Modal -->
-    <div class="call-modal" id="callModal">
-        <div class="call-box">
-            <div class="call-title" id="callTitle">Chiamata</div>
-
-            <div class="audio-placeholder" id="audioPlaceholder">📞</div>
-
-            <div class="video-grid" id="videoGrid">
-                <div class="video-box" data-label="Tu">
-                    <video id="localVideo" autoplay muted playsinline></video>
-                </div>
-                <div class="video-box" data-label="Altro utente">
-                    <video id="remoteVideo" autoplay playsinline></video>
-                </div>
-            </div>
-
-            <div class="call-controls" id="incomingCallControls" style="display: none;">
-                <button class="call-control-btn call-accept" onclick="acceptCall()">✅ Accetta</button>
-                <button class="call-control-btn call-reject" onclick="rejectCall()">❌ Rifiuta</button>
-            </div>
-
-            <div class="call-controls" id="activeCallControls" style="display: none;">
-                <button class="call-control-btn call-secondary" id="micToggleBtn" onclick="toggleMicrophone()">🎙️ Microfono</button>
-                <button class="call-control-btn call-secondary" id="camToggleBtn" onclick="toggleCamera()">📷 Camera</button>
-                <button class="call-control-btn call-end" onclick="endCall()">🔴 Chiudi</button>
             </div>
         </div>
     </div>
@@ -1434,62 +1226,11 @@
         let unsubscribeMessages = null;
         let db = null;
         let auth = null;
-        // === CALL / VIDEO CALL VARIABLES ===
-        let currentCallId = null;
-        let currentCallData = null;
-        let callUnsubscribe = null;
-        let incomingCallsUnsubscribe = null;
-        let peerConnection = null;
-        let localStream = null;
-        let remoteStream = null;
-        let micEnabled = true;
-        let cameraEnabled = true;
-
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-
         let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
         let lastSeenMessages = {}; // Traccia ultimi messaggi visti per chat
         let swRegistration = null; // Service Worker registration
         
         const CONVERSINA_ID = 'conversina_ai_bot';
-        const OFFICIAL_FALLBACK_ID = 'admin_conversando_official';
-        let officialAdminId = null;
-
-        function isOfficialAdminId(userId) {
-            return !!userId && (userId === officialAdminId || userId === OFFICIAL_FALLBACK_ID);
-        }
-
-        async function getOfficialAdminId() {
-            if (officialAdminId) return officialAdminId;
-
-            if (currentUser?.isAdmin && currentUser?.id) {
-                officialAdminId = currentUser.id;
-                return officialAdminId;
-            }
-
-            try {
-                const snap = await db.collection('users')
-                    .where('isAdmin', '==', true)
-                    .limit(1)
-                    .get();
-
-                if (!snap.empty) {
-                    officialAdminId = snap.docs[0].id;
-                    console.log('👑 UID Conversando Official trovato:', officialAdminId);
-                    return officialAdminId;
-                }
-            } catch (error) {
-                console.warn('⚠️ Impossibile recuperare UID admin ufficiale:', error);
-            }
-
-            officialAdminId = OFFICIAL_FALLBACK_ID;
-            return officialAdminId;
-        }
 
         // Ripristina stato notifiche da localStorage
         if (notificationsEnabled && Notification.permission === 'granted') {
@@ -1686,7 +1427,7 @@
                 if (latestMsg.senderId === CONVERSINA_ID) {
                     senderName = 'Conversina AI';
                     senderIcon = '🤖';
-                } else if (isOfficialAdminId(latestMsg.senderId)) {
+                } else if (latestMsg.senderId === 'admin_conversando_official') {
                     senderName = 'Conversando Official';
                     senderIcon = '👑';
                 }
@@ -1705,7 +1446,7 @@
         // 🔔 POLLING GLOBALE - Controlla TUTTE le chat per nuovi messaggi
         let globalPollingInterval = null;
         
-        async function startGlobalMessagePolling() {
+        function startGlobalMessagePolling() {
             if (globalPollingInterval) {
                 console.log('⚠️ Polling già attivo');
                 return; // Già attivo
@@ -1713,7 +1454,6 @@
             
             console.log('🔔 Avvio polling globale messaggi...');
             console.log('📍 Utente:', currentUser?.name, '- ID:', currentUser?.id);
-            const officialId = await getOfficialAdminId();
             
             // Alert solo in debug
             if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
@@ -1731,7 +1471,7 @@
                         // 1. Conversina
                         [currentUser.id, CONVERSINA_ID].sort().join('_'),
                         // 2. Conversando Official (se non sei tu)
-                        currentUser.id !== officialId ? [currentUser.id, officialId].sort().join('_') : null,
+                        currentUser.id !== 'admin_conversando_official' ? [currentUser.id, 'admin_conversando_official'].sort().join('_') : null,
                     ].filter(Boolean);
                     
                     console.log('🔔 [Polling] Rooms da controllare:', roomsToCheck.length);
@@ -2202,7 +1942,6 @@
             document.getElementById('chatHeader').style.display = 'flex';
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
-            document.getElementById('chatActions').style.display = 'none';
             const chatAvatar = document.getElementById('chatAvatar');
             
             if (groupIcon) {
@@ -2952,47 +2691,21 @@
                 </div>
             `;
 
-            // 2️⃣ Mostra sempre Conversando Official per TUTTI (eccetto l'admin)
-            const officialId = await getOfficialAdminId();
-            if (currentUser?.id !== officialId) {
-                const officialRoomId = [currentUser.id, officialId].sort().join('_');
-                let officialLastMessage = 'Account ufficiale • Supporto & News';
-                let officialLastTime = '🔔';
-
-                try {
-                    const lastOfficialMsgSnapshot = await db.collection('messages')
-                        .where('roomId', '==', officialRoomId)
-                        .orderBy('timestamp', 'desc')
-                        .limit(1)
-                        .get();
-
-                    if (!lastOfficialMsgSnapshot.empty) {
-                        const lastMsg = lastOfficialMsgSnapshot.docs[0].data();
-                        officialLastMessage = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
-                        if (lastMsg.timestamp) {
-                            const date = new Date(lastMsg.timestamp.seconds * 1000);
-                            const diffHours = (new Date() - date) / (1000 * 60 * 60);
-                            officialLastTime = diffHours < 24
-                                ? date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-                                : date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Nessun messaggio official precedente o indice mancante:', e);
-                }
-
+            // 2️⃣ Mostra sempre Conversando Official per TUTTI (eccetto se sei tu)
+            if (currentUser?.id !== 'admin_conversando_official') {
                 html += `
-                    <div class="contact-item" id="contact-${officialId}" onclick="selectChatMobile('${officialId}', 'Conversando Official', '👑', false)">
+                    <div class="contact-item" id="contact-admin_conversando_official" onclick="selectChatMobile('admin_conversando_official', 'Conversando Official', '👑', false)">
                         <div class="contact-avatar online" style="background: linear-gradient(135deg, #c9a961, #d4af37); color: #0a0a0f;">👑</div>
                         <div class="contact-info">
                             <div class="contact-name" style="color: var(--accent-primary);">Conversando Official</div>
-                            <div class="contact-preview" id="preview-${officialId}">${officialLastMessage}</div>
+                            <div class="contact-preview" id="preview-admin_conversando_official">Account ufficiale • Supporto & News</div>
                         </div>
                         <div class="contact-meta">
-                            <div class="contact-time" id="time-${officialId}">${officialLastTime}</div>
+                            <div class="contact-time" id="time-admin_conversando_official">🔔</div>
                         </div>
                     </div>
                 `;
+                
             }
 
             try {
@@ -3196,7 +2909,6 @@
             document.getElementById('chatHeader').style.display = 'flex';
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
-            document.getElementById('chatActions').style.display = isAI ? 'none' : 'flex';
             const chatAvatar = document.getElementById('chatAvatar');
             chatAvatar.textContent = isAI ? '🤖' : avatar;
             if (isAI) chatAvatar.classList.add('ai');
@@ -3310,18 +3022,15 @@
                             
                             const isSent = msg.senderId === currentUser.id;
                             const isAI = msg.senderId === CONVERSINA_ID;
-                            const isOfficial = isOfficialAdminId(msg.senderId);
-                            const displaySenderName = isOfficial ? 'Conversando Official' : msg.senderName;
-                            const displaySenderAvatar = isOfficial ? '👑' : msg.senderAvatar;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}`;
                             messageDiv.setAttribute('data-message-id', msg.id); // Aggiungi ID per controllo duplicati
                             messageDiv.innerHTML = `
-                                <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : displaySenderAvatar)}</div>
+                                <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
                                 <div class="message-content">
-                                    ${!isSent ? `<div class="message-sender">${displaySenderName}</div>` : ''}
+                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                                     <div class="message-bubble">${formatMessage(msg.text)}</div>
                                     <div class="message-time">${time}</div>
                                 </div>
@@ -3434,18 +3143,15 @@
                             if (document.querySelector(`[data-message-id="${msg.id}"]`)) return;
                             
                             const isSent = msg.senderId === currentUser.id;
-                            const isOfficial = isOfficialAdminId(msg.senderId);
-                            const displaySenderName = isOfficial ? 'Conversando Official' : msg.senderName;
-                            const displaySenderAvatar = isOfficial ? '👑' : msg.senderAvatar;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
                             messageDiv.setAttribute('data-message-id', msg.id);
                             messageDiv.innerHTML = `
-                                <div class="message-avatar">${isSent ? currentUser.avatar : displaySenderAvatar}</div>
+                                <div class="message-avatar">${isSent ? currentUser.avatar : msg.senderAvatar}</div>
                                 <div class="message-content">
-                                    ${!isSent ? `<div class="message-sender">${displaySenderName}</div>` : ''}
+                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                                     <div class="message-bubble">${formatMessage(msg.text)}</div>
                                     <div class="message-time">${time}</div>
                                 </div>
@@ -3497,16 +3203,13 @@
             const messagesHTML = messages.map(msg => {
                 const isSent = msg.senderId === currentUser.id;
                 const isAI = msg.senderId === CONVERSINA_ID;
-                const isOfficial = isOfficialAdminId(msg.senderId);
-                const displaySenderName = isOfficial ? 'Conversando Official' : msg.senderName;
-                const displaySenderAvatar = isOfficial ? '👑' : msg.senderAvatar;
                 const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                 
                 return `
                     <div class="message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}" data-message-id="${msg.id}">
-                        <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : displaySenderAvatar)}</div>
+                        <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
                         <div class="message-content">
-                            ${!isSent ? `<div class="message-sender">${displaySenderName}</div>` : ''}
+                            ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                             <div class="message-bubble">${formatMessage(msg.text)}</div>
                             <div class="message-time">${time}</div>
                         </div>
@@ -3530,350 +3233,6 @@
         // Format message (highlight mentions)
         function formatMessage(text) {
             return text.replace(/@conversina/gi, '<span class="mention">@Conversina</span>');
-        }
-
-
-        // =====================================================
-        // CALL / VIDEO CALL LOGIC
-        // =====================================================
-
-        function getCallRoomId(userA, userB) {
-            return [userA, userB].sort().join('_');
-        }
-
-        function setCallMediaMode(videoEnabled) {
-            const videoGrid = document.getElementById('videoGrid');
-            const audioPlaceholder = document.getElementById('audioPlaceholder');
-            const camToggleBtn = document.getElementById('camToggleBtn');
-
-            if (!videoGrid || !audioPlaceholder) return;
-
-            videoGrid.style.display = videoEnabled ? 'grid' : 'none';
-            audioPlaceholder.classList.toggle('visible', !videoEnabled);
-            if (camToggleBtn) camToggleBtn.style.display = videoEnabled ? 'inline-flex' : 'none';
-        }
-
-        async function prepareLocalStream(videoEnabled) {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert('Il browser non supporta microfono/camera. Usa Chrome/Edge e apri il sito in HTTPS o localhost.');
-                throw new Error('getUserMedia non supportato');
-            }
-
-            localStream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: videoEnabled
-            });
-
-            const localVideo = document.getElementById('localVideo');
-            if (localVideo) localVideo.srcObject = localStream;
-
-            micEnabled = true;
-            cameraEnabled = true;
-            return localStream;
-        }
-
-        function createPeerConnection(callDocRef, role) {
-            peerConnection = new RTCPeerConnection(rtcConfig);
-            remoteStream = new MediaStream();
-
-            const remoteVideo = document.getElementById('remoteVideo');
-            if (remoteVideo) remoteVideo.srcObject = remoteStream;
-
-            if (localStream) {
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-            }
-
-            peerConnection.ontrack = (event) => {
-                event.streams[0].getTracks().forEach(track => {
-                    remoteStream.addTrack(track);
-                });
-            };
-
-            peerConnection.onicecandidate = async (event) => {
-                if (event.candidate) {
-                    const collectionName = role === 'caller' ? 'callerCandidates' : 'calleeCandidates';
-                    await callDocRef.collection(collectionName).add(event.candidate.toJSON());
-                }
-            };
-
-            return peerConnection;
-        }
-
-        async function startCall(videoEnabled) {
-            if (!currentUser || !activeChat) return;
-
-            if (activeChat.isAI || activeChat.isGroup) {
-                alert('Le chiamate sono disponibili solo nelle chat 1 a 1.');
-                return;
-            }
-
-            currentCallId = null;
-            currentCallData = null;
-
-            const callType = videoEnabled ? 'video' : 'audio';
-            const callRoomId = getCallRoomId(currentUser.id, activeChat.id);
-
-            document.getElementById('callModal').classList.add('visible');
-            document.getElementById('callTitle').textContent = videoEnabled
-                ? `📹 Videochiamata a ${activeChat.name}`
-                : `📞 Chiamata a ${activeChat.name}`;
-
-            document.getElementById('incomingCallControls').style.display = 'none';
-            document.getElementById('activeCallControls').style.display = 'flex';
-            setCallMediaMode(videoEnabled);
-
-            try {
-                await prepareLocalStream(videoEnabled);
-
-                const callDocRef = db.collection('calls').doc();
-                currentCallId = callDocRef.id;
-
-                createPeerConnection(callDocRef, 'caller');
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                await callDocRef.set({
-                    roomId: callRoomId,
-                    callerId: currentUser.id,
-                    callerName: currentUser.name,
-                    calleeId: activeChat.id,
-                    calleeName: activeChat.name,
-                    type: callType,
-                    status: 'ringing',
-                    offer: {
-                        type: offer.type,
-                        sdp: offer.sdp
-                    },
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                callUnsubscribe = callDocRef.onSnapshot(async (snapshot) => {
-                    const data = snapshot.data();
-                    if (!data) return;
-
-                    currentCallData = data;
-
-                    if (data.status === 'rejected') {
-                        alert('Chiamata rifiutata.');
-                        cleanupCall();
-                        return;
-                    }
-
-                    if (data.status === 'ended') {
-                        cleanupCall();
-                        return;
-                    }
-
-                    if (data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-                        document.getElementById('callTitle').textContent = videoEnabled
-                            ? `📹 In videochiamata con ${activeChat.name}`
-                            : `📞 In chiamata con ${activeChat.name}`;
-                    }
-                });
-
-                callDocRef.collection('calleeCandidates').onSnapshot((snapshot) => {
-                    snapshot.docChanges().forEach(async (change) => {
-                        if (change.type === 'added' && peerConnection) {
-                            const candidate = new RTCIceCandidate(change.doc.data());
-                            await peerConnection.addIceCandidate(candidate);
-                        }
-                    });
-                });
-
-            } catch (error) {
-                console.error('Errore avvio chiamata:', error);
-                alert('Non riesco ad avviare la chiamata. Controlla permessi microfono/camera e HTTPS.');
-                cleanupCall();
-            }
-        }
-
-        function listenIncomingCalls() {
-            if (!currentUser || !db) return;
-
-            if (incomingCallsUnsubscribe) {
-                incomingCallsUnsubscribe();
-            }
-
-            incomingCallsUnsubscribe = db.collection('calls')
-                .where('calleeId', '==', currentUser.id)
-                .where('status', '==', 'ringing')
-                .onSnapshot((snapshot) => {
-                    snapshot.docChanges().forEach((change) => {
-                        if (change.type === 'added') {
-                            const call = change.doc.data();
-                            currentCallId = change.doc.id;
-                            currentCallData = call;
-                            showIncomingCall(call);
-                        }
-                    });
-                });
-        }
-
-        function showIncomingCall(call) {
-            const isVideo = call.type === 'video';
-
-            document.getElementById('callModal').classList.add('visible');
-            document.getElementById('callTitle').textContent = isVideo
-                ? `📹 Videochiamata in arrivo da ${call.callerName}`
-                : `📞 Chiamata in arrivo da ${call.callerName}`;
-
-            document.getElementById('incomingCallControls').style.display = 'flex';
-            document.getElementById('activeCallControls').style.display = 'none';
-            setCallMediaMode(isVideo);
-        }
-
-        async function acceptCall() {
-            if (!currentCallId || !currentCallData) return;
-
-            const callDocRef = db.collection('calls').doc(currentCallId);
-            const isVideo = currentCallData.type === 'video';
-
-            try {
-                document.getElementById('incomingCallControls').style.display = 'none';
-                document.getElementById('activeCallControls').style.display = 'flex';
-                setCallMediaMode(isVideo);
-
-                await prepareLocalStream(isVideo);
-
-                createPeerConnection(callDocRef, 'callee');
-
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(currentCallData.offer));
-
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                await callDocRef.update({
-                    status: 'accepted',
-                    answer: {
-                        type: answer.type,
-                        sdp: answer.sdp
-                    },
-                    acceptedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                document.getElementById('callTitle').textContent = isVideo
-                    ? '📹 Videochiamata in corso'
-                    : '📞 Chiamata in corso';
-
-                callDocRef.collection('callerCandidates').onSnapshot((snapshot) => {
-                    snapshot.docChanges().forEach(async (change) => {
-                        if (change.type === 'added' && peerConnection) {
-                            const candidate = new RTCIceCandidate(change.doc.data());
-                            await peerConnection.addIceCandidate(candidate);
-                        }
-                    });
-                });
-
-                callUnsubscribe = callDocRef.onSnapshot((snapshot) => {
-                    const data = snapshot.data();
-                    if (!data) return;
-
-                    if (data.status === 'ended' || data.status === 'rejected') {
-                        cleanupCall();
-                    }
-                });
-
-            } catch (error) {
-                console.error('Errore accettazione chiamata:', error);
-                alert('Errore durante l’accettazione della chiamata.');
-                cleanupCall();
-            }
-        }
-
-        async function rejectCall() {
-            if (!currentCallId) {
-                cleanupCall();
-                return;
-            }
-
-            try {
-                await db.collection('calls').doc(currentCallId).update({
-                    status: 'rejected',
-                    rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } catch (error) {
-                console.error('Errore rifiuto chiamata:', error);
-            }
-
-            cleanupCall();
-        }
-
-        async function endCall() {
-            if (currentCallId) {
-                try {
-                    await db.collection('calls').doc(currentCallId).update({
-                        status: 'ended',
-                        endedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } catch (error) {
-                    console.error('Errore chiusura chiamata:', error);
-                }
-            }
-
-            cleanupCall();
-        }
-
-        function cleanupCall() {
-            const modal = document.getElementById('callModal');
-            if (modal) modal.classList.remove('visible');
-
-            if (callUnsubscribe) {
-                callUnsubscribe();
-                callUnsubscribe = null;
-            }
-
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-
-            if (remoteStream) {
-                remoteStream.getTracks().forEach(track => track.stop());
-                remoteStream = null;
-            }
-
-            const localVideo = document.getElementById('localVideo');
-            const remoteVideo = document.getElementById('remoteVideo');
-            if (localVideo) localVideo.srcObject = null;
-            if (remoteVideo) remoteVideo.srcObject = null;
-
-            currentCallId = null;
-            currentCallData = null;
-            micEnabled = true;
-            cameraEnabled = true;
-        }
-
-        function toggleMicrophone() {
-            if (!localStream) return;
-
-            micEnabled = !micEnabled;
-            localStream.getAudioTracks().forEach(track => {
-                track.enabled = micEnabled;
-            });
-
-            const btn = document.getElementById('micToggleBtn');
-            if (btn) btn.textContent = micEnabled ? '🎙️ Microfono' : '🔇 Microfono off';
-        }
-
-        function toggleCamera() {
-            if (!localStream) return;
-
-            cameraEnabled = !cameraEnabled;
-            localStream.getVideoTracks().forEach(track => {
-                track.enabled = cameraEnabled;
-            });
-
-            const btn = document.getElementById('camToggleBtn');
-            if (btn) btn.textContent = cameraEnabled ? '📷 Camera' : '🚫 Camera off';
         }
 
         // Send message
@@ -3905,7 +3264,6 @@
                     senderId: currentUser.id,
                     senderName: currentUser.name,
                     senderAvatar: currentUser.avatar,
-                    recipientId: activeChat.isGroup ? null : activeChat.id,
                     text: text,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     isGroup: activeChat.isGroup || false
@@ -4054,7 +3412,6 @@
                     
                     // Se è admin, cambia avatar in corona
                     if (currentUser.isAdmin) {
-                        officialAdminId = currentUser.id;
                         currentUser.avatar = '👑';
                         console.log('👑 Admin riconosciuto:', currentUser.name);
                     }
@@ -4077,7 +3434,6 @@
                     
                     // 🔔 Avvia polling globale per controllare messaggi in TUTTE le chat
                     startGlobalMessagePolling();
-                    listenIncomingCalls();
                     
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
@@ -4088,11 +3444,6 @@
                 }
             } else {
                 // Utente non loggato su Firebase
-                if (incomingCallsUnsubscribe) {
-                    incomingCallsUnsubscribe();
-                    incomingCallsUnsubscribe = null;
-                }
-                cleanupCall();
                 currentUser = null;
                 activeChat = null;
                 document.getElementById('loginScreen').style.display = 'flex';
