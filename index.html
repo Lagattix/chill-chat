@@ -375,6 +375,46 @@
             background: var(--bg-secondary);
         }
 
+
+
+        .chat-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 16px;
+        }
+
+        .chat-action-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .chat-action-btn:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent-primary);
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .chat-action-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-color: var(--border-subtle);
+        }
+
         .chat-user-info {
             display: flex;
             align-items: center;
@@ -1037,6 +1077,10 @@
                             <span id="chatUserStatus">Online</span>
                         </div>
                     </div>
+                </div>
+                <div class="chat-actions" id="chatActions" style="display: none;">
+                    <button class="chat-action-btn" id="audioCallButton" onclick="startAudioCall()" title="Chiamata audio">📞</button>
+                    <button class="chat-action-btn" id="videoCallButton" onclick="startVideoCall()" title="Videochiamata">📹</button>
                 </div>
             </div>
 
@@ -1976,6 +2020,7 @@
             document.getElementById('chatHeader').style.display = 'flex';
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
+            updateCallButtonsVisibility();
             const chatAvatar = document.getElementById('chatAvatar');
             
             if (groupIcon) {
@@ -2969,6 +3014,7 @@
             document.getElementById('chatHeader').style.display = 'flex';
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
+            updateCallButtonsVisibility();
             const chatAvatar = document.getElementById('chatAvatar');
             chatAvatar.textContent = isAI ? '🤖' : avatar;
             if (isAI) chatAvatar.classList.add('ai');
@@ -3305,6 +3351,69 @@
         }
 
         // Send message
+
+        function updateCallButtonsVisibility() {
+            const actions = document.getElementById('chatActions');
+            const audioBtn = document.getElementById('audioCallButton');
+            const videoBtn = document.getElementById('videoCallButton');
+            if (!actions || !audioBtn || !videoBtn) return;
+
+            const canCall = !!activeChat && !activeChat.isAI && !activeChat.isGroup;
+            actions.style.display = activeChat ? 'flex' : 'none';
+            audioBtn.disabled = !canCall;
+            videoBtn.disabled = !canCall;
+            audioBtn.title = canCall ? 'Chiamata audio' : 'Chiamata disponibile solo nelle chat 1:1';
+            videoBtn.title = canCall ? 'Videochiamata' : 'Videochiamata disponibile solo nelle chat 1:1';
+        }
+
+        async function createCallRequest(type) {
+            if (!activeChat || activeChat.isAI || activeChat.isGroup) {
+                alert('Le chiamate sono disponibili solo nelle chat 1:1 con un utente reale.');
+                return;
+            }
+
+            const roomId = [currentUser.id, activeChat.id].sort().join('_');
+            const callData = {
+                roomId,
+                type,
+                status: 'ringing',
+                callerId: currentUser.id,
+                callerName: currentUser.name,
+                recipientId: activeChat.id,
+                recipientName: activeChat.name,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection('calls').add(callData);
+                await db.collection('messages').add({
+                    text: type === 'video' ? '📹 Videochiamata avviata' : '📞 Chiamata avviata',
+                    senderId: currentUser.id,
+                    senderName: currentUser.name,
+                    recipientId: activeChat.id,
+                    roomId,
+                    type: 'call-log',
+                    callType: type,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert(type === 'video'
+                    ? '📹 Richiesta videochiamata inviata. Il pulsante ora compare; per la chiamata reale serve aggiungere WebRTC.'
+                    : '📞 Richiesta chiamata inviata. Il pulsante ora compare; per la chiamata reale serve aggiungere WebRTC.');
+            } catch (error) {
+                console.error('Errore avvio chiamata:', error);
+                alert('Errore durante l\'avvio della chiamata');
+            }
+        }
+
+        function startAudioCall() {
+            createCallRequest('audio');
+        }
+
+        function startVideoCall() {
+            createCallRequest('video');
+        }
+
         async function sendMessage() {
             console.log('📤 Tentativo invio messaggio...');
             const input = document.getElementById('messageInput');
