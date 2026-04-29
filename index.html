@@ -6,9 +6,11 @@
     <meta name="description" content="Conversando - Chat in tempo reale con amici e Conversina AI">
     <meta name="theme-color" content="#0a0a0f">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="logo.png">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="/chill-chat/logo.png">
+    <link rel="shortcut icon" type="image/png" href="/chill-chat/logo.png">
+    <link rel="apple-touch-icon" href="/chill-chat/logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Conversando">
     <title>Conversando</title>
@@ -300,6 +302,7 @@
             color: var(--bg-primary);
             position: relative;
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .contact-avatar.ai {
@@ -392,6 +395,7 @@
             font-size: 18px;
             font-weight: 500;
             color: var(--bg-primary);
+            overflow: hidden;
         }
 
         .chat-avatar.ai {
@@ -466,6 +470,11 @@
             }
         }
 
+        @keyframes callPulse {
+            from { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 0 rgba(52,199,89,0.3); }
+            to   { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 16px rgba(52,199,89,0); }
+        }
+
         .message.sent {
             flex-direction: row-reverse;
         }
@@ -481,6 +490,7 @@
             font-size: 14px;
             color: var(--bg-primary);
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .message-avatar.ai {
@@ -548,7 +558,7 @@
 
         /* Input Area */
         .input-area {
-            padding: 24px 32px;
+            padding: 14px 32px;
             border-top: 1px solid var(--border-subtle);
             background: var(--bg-secondary);
         }
@@ -787,6 +797,7 @@
             font-size: 36px;
             font-weight: 600;
             color: var(--bg-primary);
+            overflow: hidden;
         }
 
         .profile-info {
@@ -858,20 +869,47 @@
         @media (max-width: 768px) {
             .app-container {
                 grid-template-columns: 1fr;
-                height: calc(100vh - 49px);
+                height: 100vh; /* Altezza piena - top-nav non più sempre visibile */
             }
 
             .mobile-menu-btn {
                 display: flex !important;
             }
-
-            .chat-header {
-                padding-left: 80px;
+            
+            /* Mostra pulsante menu fisso su mobile */
+            #mobileMenuBtnFixed {
+                display: flex !important;
             }
             
-            /* Nascondi icone su mobile nella top nav quando non serve */
+            /* Nascondi il pulsante menu nella top-nav (usiamo quello fisso) */
+            .mobile-menu-btn {
+                display: none !important;
+            }
+
+            .chat-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                padding-left: 80px;
+                z-index: 99;
+            }
+            
+            /* Top Nav - nascosta di default su mobile */
             .top-nav {
-                padding: 8px 12px;
+                position: relative; /* Non fixed di default */
+                display: none; /* Nascosta di default su mobile */
+                transition: all 0.3s ease;
+            }
+            
+            /* Classe per mostrare top-nav quando sidebar è aperta */
+            .top-nav.mobile-visible {
+                display: flex;
+                position: fixed; /* Fixed solo quando visibile */
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1002;
             }
 
             .top-nav-title {
@@ -906,11 +944,15 @@
             .chat-area {
                 width: 100%;
                 height: 100vh;
+                display: flex;
+                flex-direction: column;
             }
 
             .messages-container {
                 padding: 16px;
-                padding-bottom: 100px; /* Spazio per input area su mobile */
+                padding-bottom: 20px; /* Spazio ridotto */
+                flex: 1;
+                overflow-y: auto;
             }
 
             .message-bubble {
@@ -919,7 +961,20 @@
             }
 
             .input-area {
-                padding: 12px;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 7px 12px;
+                background: var(--bg-primary);
+                border-top: 1px solid var(--border-subtle);
+                z-index: 100;
+            }
+            
+            /* Aggiungi padding per compensare header e input fixed */
+            .chat-messages {
+                padding-top: 100px !important;
+                padding-bottom: 80px !important;
             }
 
             .login-card {
@@ -935,6 +990,15 @@
     </style>
 </head>
 <body>
+    <!-- Mobile Menu Button (Always Visible) -->
+    <button id="mobileMenuBtnFixed" onclick="toggleMobileSidebar()" style="display: none; position: fixed; top: 12px; left: 12px; z-index: 999; width: 44px; height: 44px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
     <!-- Top Navigation -->
     <div class="top-nav" id="topNav" style="display: none;">
         <div class="top-nav-left">
@@ -1038,6 +1102,16 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Call Buttons -->
+                <div id="callButtons" style="display: none; margin-left: auto; gap: 12px;">
+                    <button onclick="startCall('audio')" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;" title="Chiamata Audio">
+                        📞
+                    </button>
+                    <button onclick="startCall('video')" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;" title="Videochiamata">
+                        📹
+                    </button>
+                </div>
             </div>
 
             <div class="messages-container" id="messagesContainer">
@@ -1060,10 +1134,24 @@
     <div class="profile-modal" id="profileModal" onclick="closeProfile(event)">
         <div class="profile-card" onclick="event.stopPropagation()">
             <div class="profile-header">
-                <div class="profile-avatar" id="profileAvatar">U</div>
+                <div style="position: relative;">
+                    <div class="profile-avatar" id="profileAvatar">U</div>
+                    <button onclick="changeAvatar()" style="position: absolute; bottom: 0; right: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-primary); border: 2px solid var(--bg-primary); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Cambia avatar">
+                        ✏️
+                    </button>
+                    <input type="file" id="avatarInput" accept="image/*" style="display: none;" onchange="uploadAvatar(event)">
+                </div>
                 <div class="profile-info">
-                    <h2 class="profile-name" id="profileName">Nome Utente</h2>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h2 class="profile-name" id="profileName">Nome Utente</h2>
+                        <button onclick="changeName()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px;" title="Modifica nome">
+                            ✏️
+                        </button>
+                    </div>
                     <p class="profile-email" id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="cca9a1ada5a08ca9b4ada1bca0a9e2afa3a1">[email&#160;protected]</a></p>
+                    <div id="nameChangeInfo" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: none;">
+                        Prossimo cambio disponibile: <span id="nextNameChange"></span>
+                    </div>
                 </div>
             </div>
             
@@ -1214,14 +1302,98 @@
         </div>
     </div>
 
+    <!-- Call Modal -->
+    <div id="callModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
+        
+        <!-- Schermata "Chiamata in corso..." (quando chiami TU) -->
+        <div id="callWaitingScreen" style="display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; animation: callPulse 1.5s ease-in-out infinite alternate;">
+            <!-- Avatar grande -->
+            <div id="callContactAvatar" style="width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display: flex; align-items: center; justify-content: center; font-size: 56px; margin-bottom: 32px; overflow: hidden; border: 4px solid var(--accent-primary); box-shadow: 0 0 0 8px rgba(52,199,89,0.2);">
+                <span id="callContactAvatarText">👤</span>
+            </div>
+            <!-- Nome -->
+            <div id="callContactName" style="font-size: 32px; font-weight: 700; color: white; margin-bottom: 12px;">Nome Contatto</div>
+            <!-- Status -->
+            <div id="callStatus" style="font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 60px;">Chiamata in corso...</div>
+            <!-- Pulsante riaggancia/rifiuta -->
+            <button onclick="currentCall && !currentCall.isInitiator ? declineCall() : endCall()" style="width: 72px; height: 72px; border-radius: 50%; background: #ff3b30; border: none; color: white; cursor: pointer; font-size: 32px; box-shadow: 0 6px 20px rgba(255,59,48,0.5); transition: transform 0.15s;">
+                📵
+            </button>
+        </div>
+        
+        <!-- Video Container (quando la chiamata è connessa) -->
+        <div id="callVideoContainer" style="display: none; flex-direction: column; align-items: center;">
+            <div style="position: relative; width: 100%; max-width: 900px; aspect-ratio: 16/9; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 20px;">
+                <!-- Remote Video (principale) -->
+                <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                
+                <!-- Local Video (PiP) -->
+                <video id="localVideo" autoplay muted playsinline style="position: absolute; bottom: 20px; right: 20px; width: 200px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid var(--accent-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.3);"></video>
+                
+                <!-- Call Info -->
+                <div id="callInfo" style="position: absolute; top: 20px; left: 20px; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 4px;" id="callContactName2">Connesso</div>
+                    <div id="callDuration" style="font-size: 14px; opacity: 0.8;">00:00</div>
+                </div>
+            </div>
+            
+            <!-- Call Controls -->
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <button id="toggleMicBtn" onclick="toggleMic()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s;">
+                    🎤
+                </button>
+                <button id="toggleVideoBtn" onclick="toggleVideo()" style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-secondary); border: none; color: white; cursor: pointer; font-size: 24px; transition: all 0.2s; display: none;">
+                    📹
+                </button>
+                <button onclick="endCall()" style="width: 64px; height: 64px; border-radius: 50%; background: #ff4444; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 12px rgba(255,68,68,0.4);">
+                    📵
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <!-- Modal chiamata in arrivo -->
+    <div id="incomingCallModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div style="background: var(--bg-primary); border-radius: 24px; padding: 40px 32px; text-align: center; min-width: 300px; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: callPulse 1s ease-in-out infinite alternate;">
+            <!-- Avatar chiamante -->
+            <div id="incomingCallAvatar" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 16px; overflow: hidden; border: 3px solid var(--accent-primary); box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.2);">
+                <span id="incomingCallAvatarText">👤</span>
+            </div>
+            <!-- Nome -->
+            <div id="incomingCallName" style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Nome Contatto</div>
+            <!-- Tipo chiamata -->
+            <div id="incomingCallType" style="font-size: 15px; color: var(--text-secondary); margin-bottom: 32px;">Chiamata in arrivo...</div>
+            <!-- Bottoni -->
+            <div style="display: flex; gap: 32px; justify-content: center; align-items: center;">
+                <div style="text-align: center;">
+                    <button onclick="declineCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #ff3b30; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(255,59,48,0.4); transition: transform 0.15s;">
+                        📵
+                    </button>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Rifiuta</div>
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="acceptCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #34c759; border: none; color: white; cursor: pointer; font-size: 28px; box-shadow: 0 4px 16px rgba(52,199,89,0.4); transition: transform 0.15s;">
+                        📞
+                    </button>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Accetta</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK v8 (compat mode) from cdnjs -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-messaging.js"></script>
 
     <script>
         // Global variables
+        const PIPEDREAM_WEBHOOK_URL = 'https://eodprhvejk2u9b4.m.pipedream.net';
+        const VAPID_PUBLIC_KEY = 'BJymFYMqJUDtmbdE2x39atsqRScyu_jOIESRoCMAEcZ0OBJ6IiIGVhcIKzyEyWXOD5g-01AMju9G-gdrrRBRFKw';
         let currentUser = null;
+        let messaging = null;
         let activeChat = null;
         let unsubscribeMessages = null;
         let db = null;
@@ -1237,6 +1409,23 @@
             console.log('🔔 Notifiche ripristinate da localStorage');
         }
 
+        // 📞 WEBRTC VARIABLES
+        let localStream = null;
+        let remoteStream = null;
+        let peerConnection = null;
+        let currentCall = null;
+        let callDurationInterval = null;
+        let isMuted = false;
+        let isVideoOff = false;
+        
+        // STUN servers for ICE
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
         // Registra Service Worker per notifiche
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/chill-chat/sw.js')
@@ -1247,6 +1436,60 @@
                 .catch((error) => {
                     console.error('❌ Errore registrazione Service Worker:', error);
                 });
+        }
+
+
+        // 🔔 Registra FCM Token per notifiche push
+        async function registerFCMToken() {
+            if (!messaging) {
+                console.log('❌ FCM non disponibile');
+                return;
+            }
+
+            try {
+                // Ottieni FCM token
+                const token = await messaging.getToken({ 
+                    vapidKey: VAPID_PUBLIC_KEY 
+                });
+
+                if (token) {
+                    console.log('✅ FCM Token ottenuto:', token.substring(0, 20) + '...');
+                    
+                    // Salva token in Firestore
+                    await db.collection('users').doc(currentUser.id).update({
+                        fcmToken: token,
+                        fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    console.log('✅ FCM Token salvato in Firestore');
+                }
+
+            } catch (err) {
+                console.error('❌ Errore registrazione FCM:', err);
+            }
+        }
+
+        // Listener FCM quando app è aperta
+        function setupFCMListener() {
+            if (!messaging) return;
+            
+            messaging.onMessage((payload) => {
+                console.log('📞 [FCM] Messaggio ricevuto con app aperta:', payload);
+                
+                const { notification, data } = payload;
+                const callData = data || {};
+                
+                // Mostra notifica in-app se finestra non è attiva
+                if (document.hidden && Notification.permission === 'granted') {
+                    new Notification(notification?.title || '📞 Chiamata in arrivo', {
+                        body: notification?.body || 'Nuova chiamata',
+                        icon: '/chill-chat/icon-192.png',
+                        tag: `call-${callData.callId}`,
+                        requireInteraction: true,
+                        data: callData
+                    });
+                }
+            });
         }
 
         // 🔔 Sistema Notifiche Push
@@ -1620,6 +1863,30 @@
             
             console.log('✅ Firebase Auth inizializzato');
             
+            // 🔔 Inizializza Firebase Cloud Messaging
+            // Registra firebase-messaging-sw.js PRIMA di inizializzare messaging
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/chill-chat/firebase-messaging-sw.js', {
+                    scope: '/chill-chat/'
+                })
+                    .then(reg => {
+                        console.log('✅ Firebase Messaging SW registrato:', reg.scope);
+                        
+                        // Inizializza messaging DOPO che SW è registrato
+                        try {
+                            messaging = firebase.messaging();
+                            // Usa il service worker registration appena creato
+                            messaging.useServiceWorker(reg);
+                            console.log('✅ Firebase Messaging inizializzato con SW custom');
+                        } catch (err) {
+                            console.log('⚠️ Firebase Messaging non disponibile:', err.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('❌ Errore registrazione FCM SW:', err);
+                    });
+            }
+            
             // 🔔 Attiva notifiche subito se già loggato
             // Il check viene fatto dopo che onAuthStateChanged rileva l'utente
             setTimeout(() => {
@@ -1777,6 +2044,11 @@
             // Ferma polling globale
             stopGlobalMessagePolling();
             
+            // Notifica Service Worker di logout (ferma polling chiamate)
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' });
+            }
+            
             // Logout normale
             auth.signOut();
         }
@@ -1911,9 +2183,23 @@
         function toggleMobileSidebar() {
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.getElementById('mobileOverlay');
+            const topNav = document.querySelector('.top-nav');
+            const fixedMenuBtn = document.getElementById('mobileMenuBtnFixed');
             
             sidebar.classList.toggle('mobile-visible');
             overlay.classList.toggle('visible');
+            
+            // Mostra/nascondi top-nav insieme alla sidebar su mobile
+            if (window.innerWidth <= 768) {
+                topNav.classList.toggle('mobile-visible');
+                
+                // Nascondi pulsante fisso quando sidebar è aperta (evita duplicazione)
+                if (sidebar.classList.contains('mobile-visible')) {
+                    fixedMenuBtn.style.display = 'none';
+                } else {
+                    fixedMenuBtn.style.display = 'flex';
+                }
+            }
         }
 
         // Wrapper per selectChat che chiude sidebar su mobile
@@ -1923,8 +2209,13 @@
             if (window.innerWidth <= 768) {
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.getElementById('mobileOverlay');
+                const topNav = document.querySelector('.top-nav');
+                const fixedMenuBtn = document.getElementById('mobileMenuBtnFixed');
+                
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
+                topNav.classList.remove('mobile-visible'); // Nascondi anche top-nav
+                fixedMenuBtn.style.display = 'flex'; // Ri-mostra pulsante fisso
             }
         }
 
@@ -1956,6 +2247,9 @@
             chatAvatar.classList.remove('ai');
             document.getElementById('chatUserName').textContent = groupName;
 
+            // Nascondi pulsanti chiamata per gruppi
+            document.getElementById('callButtons').style.display = 'none';
+
             // Load messages
             loadGroupMessages(groupId);
 
@@ -1966,8 +2260,13 @@
             if (window.innerWidth <= 768) {
                 const sidebar = document.querySelector('.sidebar');
                 const overlay = document.getElementById('mobileOverlay');
+                const topNav = document.querySelector('.top-nav');
+                const fixedMenuBtn = document.getElementById('mobileMenuBtnFixed');
+                
                 sidebar.classList.remove('mobile-visible');
                 overlay.classList.remove('visible');
+                topNav.classList.remove('mobile-visible'); // Nascondi anche top-nav
+                fixedMenuBtn.style.display = 'flex'; // Ri-mostra pulsante fisso
             }
         }
 
@@ -1988,7 +2287,19 @@
             
             // Update profile info
             if (currentUser) {
-                document.getElementById('profileAvatar').textContent = currentUser.avatar;
+                const avatarEl = document.getElementById('profileAvatar');
+                
+                // Se ha avatar custom (base64), mostralo
+                if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
+                    avatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
+                    avatarEl.style.backgroundSize = 'cover';
+                    avatarEl.style.backgroundPosition = 'center';
+                    avatarEl.textContent = '';
+                } else {
+                    avatarEl.style.backgroundImage = '';
+                    avatarEl.textContent = currentUser.avatar || currentUser.name[0].toUpperCase();
+                }
+                
                 document.getElementById('profileName').textContent = currentUser.name;
                 document.getElementById('profileEmail').textContent = currentUser.email || '';
                 document.getElementById('profileFriendCode').textContent = currentUser.friendCode || 'CHILL-XXXXXX';
@@ -1996,6 +2307,9 @@
             
             // Aggiorna stato notifiche
             updateNotificationsUI();
+            
+            // Aggiorna info cambio nome
+            updateNameChangeInfo();
             
             // Show profile modal
             document.getElementById('profileModal').classList.add('visible');
@@ -2105,6 +2419,142 @@
                 document.getElementById('profileModal').classList.remove('visible');
                 document.getElementById('navProfile').classList.remove('active');
                 document.getElementById('navHome').classList.add('active');
+            }
+        }
+
+        // ✏️ MODIFICA AVATAR
+        function changeAvatar() {
+            document.getElementById('avatarInput').click();
+        }
+
+        async function uploadAvatar(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validazione
+            if (!file.type.startsWith('image/')) {
+                alert('Seleziona un\'immagine valida');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB max
+                alert('Immagine troppo grande. Max 5MB');
+                return;
+            }
+            
+            try {
+                // Converti in base64
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const avatarBase64 = e.target.result;
+                    
+                    // Salva su Firestore
+                    await db.collection('users').doc(currentUser.id).update({
+                        avatar: avatarBase64,
+                        avatarUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Aggiorna UI
+                    currentUser.avatar = avatarBase64;
+                    const avatarEl = document.getElementById('profileAvatar');
+                    avatarEl.style.backgroundImage = `url(${avatarBase64})`;
+                    avatarEl.style.backgroundSize = 'cover';
+                    avatarEl.style.backgroundPosition = 'center';
+                    avatarEl.textContent = '';
+                    
+                    alert('Avatar aggiornato con successo! ✅');
+                    
+                    // Ricarica chat per aggiornare avatar ovunque
+                    loadChats();
+                };
+                reader.readAsDataURL(file);
+                
+            } catch (error) {
+                console.error('Errore upload avatar:', error);
+                alert('Errore durante il caricamento dell\'avatar');
+            }
+        }
+
+        // ✏️ MODIFICA NOME
+        async function changeName() {
+            // Controlla ultima modifica
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.id).get();
+                const userData = userDoc.data();
+                const lastNameChange = userData.lastNameChange;
+                
+                if (lastNameChange) {
+                    const daysSinceChange = (Date.now() - lastNameChange.toMillis()) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysSinceChange < 14) {
+                        const daysLeft = Math.ceil(14 - daysSinceChange);
+                        alert(`⏳ Puoi cambiare il nome tra ${daysLeft} giorni`);
+                        return;
+                    }
+                }
+                
+                // Richiedi nuovo nome
+                const newName = prompt('Inserisci il nuovo nome:', currentUser.name);
+                
+                if (!newName || newName.trim() === '') {
+                    return;
+                }
+                
+                const trimmedName = newName.trim();
+                
+                if (trimmedName.length < 2) {
+                    alert('Il nome deve essere almeno 2 caratteri');
+                    return;
+                }
+                
+                if (trimmedName.length > 30) {
+                    alert('Il nome deve essere massimo 30 caratteri');
+                    return;
+                }
+                
+                // Salva su Firestore
+                await db.collection('users').doc(currentUser.id).update({
+                    name: trimmedName,
+                    lastNameChange: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Aggiorna UI
+                currentUser.name = trimmedName;
+                document.getElementById('profileName').textContent = trimmedName;
+                document.getElementById('currentUserName').textContent = trimmedName;
+                
+                alert('Nome aggiornato con successo! ✅\n\nPotrai cambiarlo di nuovo tra 14 giorni.');
+                
+                // Mostra info prossimo cambio
+                updateNameChangeInfo();
+                
+            } catch (error) {
+                console.error('Errore cambio nome:', error);
+                alert('Errore durante il cambio nome');
+            }
+        }
+
+        async function updateNameChangeInfo() {
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.id).get();
+                const userData = userDoc.data();
+                const lastNameChange = userData.lastNameChange;
+                
+                if (lastNameChange) {
+                    const nextChangeDate = new Date(lastNameChange.toMillis() + (14 * 24 * 60 * 60 * 1000));
+                    const daysSinceChange = (Date.now() - lastNameChange.toMillis()) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysSinceChange < 14) {
+                        document.getElementById('nameChangeInfo').style.display = 'block';
+                        document.getElementById('nextNameChange').textContent = nextChangeDate.toLocaleDateString('it-IT');
+                    } else {
+                        document.getElementById('nameChangeInfo').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('nameChangeInfo').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Errore caricamento info nome:', error);
             }
         }
 
@@ -2582,6 +3032,688 @@
             }
         }
 
+        // 📞 ========== WEBRTC CALLS ==========
+        
+        async function startCall(type) {
+            console.log('📞 startCall chiamato, type:', type);
+            console.log('📞 activeChat:', activeChat);
+            
+            if (!activeChat) {
+                alert('Nessuna chat selezionata. Apri una chat prima di chiamare.');
+                return;
+            }
+            
+            if (activeChat.isAI || activeChat.isGroup) {
+                alert('Le chiamate sono disponibili solo per chat 1-1');
+                return;
+            }
+            
+            // Salva valori activeChat localmente (può cambiare durante async)
+            const chatId = activeChat.id;
+            const chatName = activeChat.name;
+            
+            if (!chatId || !chatName) {
+                console.error('❌ activeChat manca id o name:', activeChat);
+                alert('Errore: dati chat non validi');
+                return;
+            }
+            
+            console.log('📞 Avvio chiamata', type, 'con', chatName, '(ID:', chatId, ')');
+            
+            try {
+                // Lista dispositivi audio disponibili
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                console.log('🎤 Microfoni disponibili:');
+                audioInputs.forEach((device, i) => {
+                    console.log(`  ${i}: ${device.label} (${device.deviceId})`);
+                });
+                
+                // Richiedi permessi media
+                const constraints = {
+                    audio: true,
+                    video: type === 'video'
+                };
+                
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Stream locale ottenuto');
+                console.log('📊 Tracce audio:', localStream.getAudioTracks().length);
+                console.log('📊 Tracce video:', localStream.getVideoTracks().length);
+                
+                // Verifica che le tracce siano enabled
+                localStream.getAudioTracks().forEach(track => {
+                    console.log('🎤 Audio track:', track.label, 'enabled:', track.enabled, 'muted:', track.muted);
+                });
+                
+                // Mostra video locale
+                document.getElementById('localVideo').srcObject = localStream;
+                if (type === 'audio') {
+                    document.getElementById('localVideo').style.display = 'none';
+                    document.getElementById('toggleVideoBtn').style.display = 'none';
+                } else {
+                    document.getElementById('toggleVideoBtn').style.display = 'block';
+                }
+                
+                // Crea PeerConnection
+                peerConnection = new RTCPeerConnection(iceServers);
+                
+                // Buffer per ICE candidates (prima che callId esista)
+                const iceCandidatesBuffer = [];
+                
+                // Imposta handler ICE SUBITO (prima di createOffer)
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 ICE candidate generato (buffered)');
+                        iceCandidatesBuffer.push(event.candidate);
+                    }
+                };
+                
+                // Aggiungi stream locale
+                console.log('➕ Aggiunta tracce al PeerConnection (startCall)');
+                localStream.getTracks().forEach(track => {
+                    console.log('  -', track.kind, track.label, 'enabled:', track.enabled);
+                    const sender = peerConnection.addTrack(track, localStream);
+                    console.log('  ✅ Sender creato:', sender);
+                });
+                
+                // Gestisci stream remoto
+                remoteStream = new MediaStream();
+                document.getElementById('remoteVideo').srcObject = remoteStream;
+                
+                // Log ICE connection state
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log('🧊 ICE Connection State (startCall):', peerConnection.iceConnectionState);
+                };
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection State (startCall):', peerConnection.connectionState);
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('📹 Track remoto ricevuto (startCall)');
+                    console.log('  - Tipo:', event.track.kind);
+                    console.log('  - Streams:', event.streams.length);
+                    event.streams[0].getTracks().forEach(track => {
+                        console.log('  - Aggiunta track remota:', track.kind, track.label);
+                        remoteStream.addTrack(track);
+                    });
+                    
+                    // Forza play audio
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    if (remoteVideo && event.track.kind === 'audio') {
+                        remoteVideo.play().then(() => {
+                            console.log('🔊 Audio remoto in play');
+                        }).catch(err => {
+                            console.error('❌ Errore play audio:', err);
+                        });
+                    }
+                };
+                
+                // Crea offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                // Salva chiamata su Firestore
+                const callDoc = await db.collection('calls').add({
+                    from: currentUser.id,
+                    fromName: currentUser.name,
+                    fromAvatar: currentUser.avatar || currentUser.name[0].toUpperCase(),
+                    to: chatId,
+                    toName: chatName,
+                    type: type,
+                    offer: {
+                        sdp: offer.sdp,
+                        type: offer.type
+                    },
+                    status: 'ringing',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                const callId = callDoc.id;
+                
+                currentCall = {
+                    id: callId,
+                    type: type,
+                    isInitiator: true,
+                    name: chatName  // Salva il nome per showCallUI
+                };
+                
+                // Invia tutti gli ICE candidates bufferizzati
+                console.log('📤 Invio', iceCandidatesBuffer.length, 'ICE candidates bufferizzati');
+                for (const candidate of iceCandidatesBuffer) {
+                    await db.collection('calls').doc(callId).collection('candidates').add({
+                        candidate: candidate.toJSON(),
+                        from: currentUser.id
+                    }).catch(err => console.error('Errore invio ICE:', err));
+                }
+                
+                // Ora imposta handler per nuovi ICE (dopo buffer)
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 Nuovo ICE candidate (live)');
+                        db.collection('calls').doc(callId).collection('candidates').add({
+                            candidate: event.candidate.toJSON(),
+                            from: currentUser.id
+                        }).catch(err => console.error('Errore invio ICE:', err));
+                    }
+                };
+                
+                console.log('📞 Chiamata creata:', callId);
+                
+                // Invia notifica push via Pipedream
+                fetch(PIPEDREAM_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        callId: callId,
+                        from: currentUser.id,
+                        fromName: currentUser.name,
+                        to: chatId,
+                        type: type
+                    })
+                }).then(() => {
+                    console.log('✅ Webhook Pipedream chiamato');
+                }).catch(err => {
+                    console.error('❌ Errore chiamata webhook:', err);
+                });
+                
+                // Mostra UI chiamata
+                showCallUI();
+                
+                // Ascolta answer
+                listenForAnswer();
+                
+            } catch (error) {
+                console.error('❌ Errore avvio chiamata:', error);
+                alert('Errore avvio chiamata: ' + error.message);
+                endCall();
+            }
+        }
+
+        async function listenForAnswer() {
+            const callDoc = db.collection('calls').doc(currentCall.id);
+            
+            // Ascolta answer
+            const unsubscribe = callDoc.onSnapshot(async (snapshot) => {
+                const data = snapshot.data();
+                
+                if (data?.answer && !peerConnection.currentRemoteDescription) {
+                    console.log('📞 Answer ricevuta');
+                    const answer = new RTCSessionDescription(data.answer);
+                    await peerConnection.setRemoteDescription(answer);
+                    
+                    // Avvia timer durata (chi chiama non ha suoneria da fermare)
+                    startCallDuration();
+                }
+                
+                if (data?.status === 'ended') {
+                    console.log('📞 Chiamata terminata dall\'altro utente');
+                    endCall();
+                    unsubscribe();
+                }
+            });
+            
+            // Ascolta ICE candidates
+            callDoc.collection('candidates').onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === 'added') {
+                        const data = change.doc.data();
+                        if (data.from !== currentUser.id) {
+                            console.log('🧊 ICE candidate ricevuto');
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        }
+                    }
+                });
+            });
+        }
+
+async function acceptCall() {
+            if (!currentCall) return;
+            
+            console.log('✅ Accettazione chiamata');
+            
+            try {
+                // Lista dispositivi audio disponibili
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+                console.log('🎤 Microfoni disponibili (acceptCall):');
+                audioInputs.forEach((device, i) => {
+                    console.log(`  ${i}: ${device.label} (${device.deviceId})`);
+                });
+                
+                // Richiedi permessi media
+                const constraints = {
+                    audio: true,
+                    video: currentCall.type === 'video'
+                };
+                
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('✅ Stream locale ottenuto (acceptCall)');
+                console.log('📊 Tracce audio:', localStream.getAudioTracks().length);
+                console.log('📊 Tracce video:', localStream.getVideoTracks().length);
+                
+                localStream.getAudioTracks().forEach(track => {
+                    console.log('🎤 Audio track:', track.label, 'enabled:', track.enabled);
+                });
+                
+                document.getElementById('localVideo').srcObject = localStream;
+                
+                if (currentCall.type === 'audio') {
+                    document.getElementById('localVideo').style.display = 'none';
+                    document.getElementById('toggleVideoBtn').style.display = 'none';
+                } else {
+                    document.getElementById('toggleVideoBtn').style.display = 'block';
+                }
+                
+                // Nascondi modal chiamata in arrivo
+                document.getElementById('incomingCallModal').style.display = 'none';
+                stopRingtone();
+                
+                // Crea PeerConnection
+                peerConnection = new RTCPeerConnection(iceServers);
+                
+                // Aggiungi stream locale
+                console.log('➕ Aggiunta tracce al PeerConnection (acceptCall)');
+                localStream.getTracks().forEach(track => {
+                    console.log('  -', track.kind, track.label, 'enabled:', track.enabled);
+                    const sender = peerConnection.addTrack(track, localStream);
+                    console.log('  ✅ Sender creato:', sender);
+                });
+                
+                // Gestisci stream remoto
+                remoteStream = new MediaStream();
+                document.getElementById('remoteVideo').srcObject = remoteStream;
+                
+                // Log ICE connection state
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log('🧊 ICE Connection State (acceptCall):', peerConnection.iceConnectionState);
+                };
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection State (acceptCall):', peerConnection.connectionState);
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('📹 Track remoto ricevuto (acceptCall)');
+                    console.log('  - Tipo:', event.track.kind);
+                    console.log('  - Streams:', event.streams.length);
+                    event.streams[0].getTracks().forEach(track => {
+                        console.log('  - Aggiunta track remota:', track.kind, track.label);
+                        remoteStream.addTrack(track);
+                    });
+                    
+                    // Forza play audio (fix Chrome autoplay block)
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    if (remoteVideo && event.track.kind === 'audio') {
+                        remoteVideo.play().then(() => {
+                            console.log('🔊 Audio remoto in play');
+                        }).catch(err => {
+                            console.error('❌ Errore play audio:', err);
+                        });
+                    }
+                };
+                
+                // Gestisci ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && currentCall) {
+                        console.log('🧊 Invio ICE candidate (acceptCall)');
+                        db.collection('calls').doc(currentCall.id).collection('candidates').add({
+                            candidate: event.candidate.toJSON(),
+                            from: currentUser.id
+                        }).catch(err => console.error('Errore invio ICE:', err));
+                    }
+                };
+                
+                // Ascolta ICE candidates SUBITO (prima di answer)
+                console.log('👂 Inizio ascolto ICE candidates...');
+                db.collection('calls').doc(currentCall.id).collection('candidates').onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(async (change) => {
+                        if (change.type === 'added') {
+                            const data = change.doc.data();
+                            if (data.from !== currentUser.id) {
+                                console.log('🧊 ICE candidate ricevuto (acceptCall)');
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                            }
+                        }
+                    });
+                });
+                
+                // Set remote description (offer)
+                console.log('📥 Setting remote description (offer)');
+                const offer = new RTCSessionDescription(currentCall.offer);
+                await peerConnection.setRemoteDescription(offer);
+                
+                // Crea answer
+                console.log('📤 Creazione answer...');
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                // Invia answer
+                console.log('📤 Invio answer...');
+                await db.collection('calls').doc(currentCall.id).update({
+                    answer: {
+                        sdp: answer.sdp,
+                        type: answer.type
+                    },
+                    status: 'active'
+                });
+                
+                console.log('✅ Answer inviata, chiamata attiva');
+                
+                // Mostra UI
+                showCallUI();
+                startCallDuration();
+                
+            } catch (error) {
+                console.error('❌ Errore accettazione chiamata:', error);
+                alert('Errore: ' + error.message);
+                endCall();
+            }
+        }
+
+        function declineCall() {
+            if (!currentCall) return;
+            
+            // Segna chiamata come rifiutata
+            db.collection('calls').doc(currentCall.id).update({
+                status: 'declined'
+            });
+            
+            // Chiudi modal
+            document.getElementById('incomingCallModal').style.display = 'none';
+                stopRingtone();
+            currentCall = null;
+        }
+
+        async function endCall() {
+            console.log('📵 Terminazione chiamata');
+            
+            // Ferma stream
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (remoteStream) {
+                remoteStream.getTracks().forEach(track => track.stop());
+                remoteStream = null;
+            }
+            
+            // Chiudi peer connection
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            // Aggiorna stato su Firestore
+            if (currentCall) {
+                try {
+                    await db.collection('calls').doc(currentCall.id).update({
+                        status: 'ended',
+                        endedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Errore aggiornamento stato:', error);
+                }
+            }
+            
+            // Nascondi UI
+            document.getElementById('callModal').style.display = 'none';
+            document.getElementById('incomingCallModal').style.display = 'none';
+                stopRingtone();
+            
+            // Ferma timer
+            if (callDurationInterval) {
+                clearInterval(callDurationInterval);
+                callDurationInterval = null;
+            }
+            
+            // Reset stato
+            currentCall = null;
+            isMuted = false;
+            isVideoOff = false;
+        }
+
+        function showCallUI() {
+            document.getElementById('callModal').style.display = 'flex';
+            const contactName = currentCall?.fromName || currentCall?.toName || activeChat?.name || 'Sconosciuto';
+            
+            // Mostra sempre video container direttamente per tutti
+            document.getElementById('callVideoContainer').style.display = 'block';
+            document.getElementById('callWaitingScreen').style.display = 'none';
+            
+            if (document.getElementById('callContactName2')) {
+                document.getElementById('callContactName2').textContent = contactName;
+            }
+            
+            document.getElementById('callDuration').textContent = '00:00';
+        }
+
+        function startCallDuration() {
+            let seconds = 0;
+            callDurationInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('callDuration').textContent = 
+                    `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }, 1000);
+            
+            document.getElementById('callStatus').textContent = 'Connesso';
+        }
+
+        function toggleMic() {
+            if (!localStream) return;
+            
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                isMuted = !audioTrack.enabled;
+                
+                const btn = document.getElementById('toggleMicBtn');
+                if (isMuted) {
+                    btn.textContent = '🔇';
+                    btn.style.background = '#ff4444';
+                } else {
+                    btn.textContent = '🎤';
+                    btn.style.background = 'var(--bg-secondary)';
+                }
+            }
+        }
+
+        function toggleVideo() {
+            if (!localStream) return;
+            
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                isVideoOff = !videoTrack.enabled;
+                
+                const btn = document.getElementById('toggleVideoBtn');
+                if (isVideoOff) {
+                    btn.textContent = '📹❌';
+                    btn.style.background = '#ff4444';
+                } else {
+                    btn.textContent = '📹';
+                    btn.style.background = 'var(--bg-secondary)';
+                }
+            }
+        }
+
+        // Ascolta chiamate in arrivo
+
+        // 🔔 Suoneria chiamata stile WhatsApp
+        let ringtoneAudio = null;
+        const RINGTONE_B64 = 'data:audio/wav;base64,UklGRrYmAQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YZImAQAAAAgAIQBJAHwAtwD3ADUBbwGfAcIB1AHVAcMBnwFpASMB0ABzAA8AqP8//9f+c/4U/rz9a/0j/eT8sPyG/Gn8XPxe/HT8n/zi/D79tP1E/uz+qf92AE8BKwIDA8wDfwQSBX0FuQXDBZgFOAWnBOoDCwMUAhABDQAY/zz+hf36/KL8gPyT/Nf8Rf3U/Xj+Jf/N/2QA3wA0AV4BWAEjAcEAOQCV/93+Hf5j/bn8Kvy++3z7Z/t/+8L7Lfy5/F79Ff7V/pn/WQATAcQBbQIOA6oDRQTiBIMFKQbTBn8HJQi9CDsJkwm2CZcJJwlcCC8HmwWkA1ABrf7O+8v4wfXP8hbwtu3O63rqzenY6aHqKOxj7kLxq/SB+KH85AAlBT4JCw1vEE8TmRVBF0EYmhhTGHgXGRZGFBMSkw/XDO8J6QbQA60Ai/1t+lv3XvR/8cjuR+wM6inosea55VLljuV75iDof+qT7U3xmPVX+mT/lAS7CagOKxMYF0camRz3HVUesh0ZHKAZZRaPEksOygk8BdEAs/wG+ef1afOU8Wrw4e/p72vwTvF18sTzIvV69rn31/jN+Z36TPvk+3H8//ya/Uv+Gf8EAAoBIgJAA1YEUQUhBrYGBAcBB60GCwYmBQ8E3AKoAY8Arv8e//P+P/8FAEUB8gL2BDEHfgmzC6ENGw/6DxkQYA/ADTgL1AesA+j+tvlO9PDu2ulK5Xrhmt7Q3DXc1tyu3q7htuWg6jnwTfai/AADMwkND2QUGxkcHVkgzSJ6JGclniUrJRokcyI/IIMdQRp5FiwSWg0HCDsCBvx99b7u8udG4fLaL9U60FDMp8luyMvI1MqNzu3T1NoR42bsg/YOAakL8xWLHxsoVS/8NOU49jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N5UzIC6fJ10gphjFEP0IiwGh+mL05u496mfmXuMV4XzfgN4Q3hvemN6A39Hgi+K15FLnaOr47f7xcPY8+0kAdwWeCpAPHhQYGFMbpx32Hi8fSx5THF4ZkRUbETYMIwciAnj9XPkE9pXzKfLJ8Wvy+vNO9jf5evzX/w8D5gUnCKUJRArzCbQIlQa1Az0AYPxT+FT0mfBX7bnq4Ojj58nnkOgq6n7sbO/R8ob2ZvpP/iICywU4CWAMQA/bETYUVhZCGPwZgRvLHMwdcB6gHkAeNB1hG7AYEhWBEAMLqgSa/f71E+4d5mneSNcI0fbLVMhXxiTGzsdVy6PQjtfb3z7pY/Pq/XMIoBIXHIskuStxMZM1DzjqODQ4DjaiMiAuvyi1IjYcchWTDr0HDAGW+mn0k+4d6RHkeN9e29TX7NS80lzR5dBt0QfTwdWd2ZfemuSK6znzcvvxA3EMpBQ+HPMigyi2LGMvczDfL7QtEionJTMffRhVEQ0K9AJW/HD2dvGL7cPqH+mS6AHpROos7IXuGvG58zX2afg8+p37ivwI/Sf9/fym/D383/uj+5z71ftT/BL9B/4h/0sAcAF5AlUD9ANQBGgERQT1A44DKgPmAt4CKgPeAwUFoAamCAMLlQ01ELMS2hR1FlQXSRczFv4ToxAtDLgGbgCK+VDyDusV5LbdPtjx0wXRo8/gz8HRNdUd2kfgd+dn78r3UgC4CLMQCRiHHgkkdSjAK+kt+C7+LhAuRSy2KXompiJLHncZNBSNDosINwKi+9v0/O0m53/gNNp41IDPgsuzyEHHUMf6yErMOtGy14rfiehm8sz8YAfCEZEbdCQYLDoyqTZDOf454jgMNqsx+Ss/Jcod7BXyDSYGyv4Q+CLyGO0B6dvlm+Mv4nzhaOHV4avi0uM75dvmreiz6vDsau8n8iv1d/gD/MT/pAONB1wL7g4cEsIUvBbvF0cYuxdOFg8UGhGWDbIJpAWoAff9xfpB+I/2xvXu9QD35Ph2+4X+1wEvBU0I8grpDAUOKA5CDVMLawisBEEAZPtS9k3xmexw6ArlkOIg4crgj+Fk4zDm0Oka7uDy8vci/UMCNAfWCxQQ3xMyFwsabhxgHuUfASG0IfkhySEUIcwf3R03G8gXiRN2DpYI/QHK+ibzSut14+/bBNUAzyvKxcYDxQrF78axyjzQZ9f436XpFvTs/sIJNxTvHZUm4y2lM7c3BzqZOn852zbdMrwtticJIfMZrRJqC1UEkP0z90/x8Osb59HiFt/q21HZU9f61VPVbNVV1hzYytpm3uriS+hx7jr1evz4A3sLvRJ7GXMfaCQnKIkqdCvhKtooeSXqIGUbLxWTDt8HYAFf+xj2v/F37lHsUOtj62/sR+668I7zifZy+Rj8T/76/wQBagEzAW8APP+6/RD8Y/ra+JP3p/Ym9hj2e/ZF92X4xflP++j8ff76/1MBhAKOA3oEUwUtBhoHLAhyCfYKugy3Dt0QFBM4FSIXpRiTGb8ZAxlCF2gUchBrC24Fp/5N96bvAeiw4AbaUdTZz9nMesvWy/TNxNEm1+ndy+WB7rn3HAFZCiATLBtBIjIo4yxBMEoyCTOQMvswai7+KtwmISLsHFYXcxFTCwcFm/4d+J3xL+vr5PDeYdln1CzQ3cymyq7JFsr0y1PPL9Rz2vzhlur/8+j9+wffETYbqiPsKrkw3jQ6N8E3ejaBMwMvPClzIvkaIBM5C5IDb/wF9n/w+Ot96ArmkOT34x7k4eQZ5qPnX+k06w7t5O6z8HzySfQk9hj4Lvpt/NX+XgEABKYGOAmaC64NVg95EAER4xAaEK4OsQw+CnoHkgS0ARL/2vw0+0D6FPq2+iD8Pf7pAPgDMwddCjcNhw8WEbkRUBHMDy4Nhwn6BLb/9vkA9Bvukein45rfnNzT2lXaJ9s/3YXg0+T76cbv+/Vg/L4C4wimDuUThxh+HMMfVSI5JHglGSYkJp8liyTnIq4g2B1dGjcWYBHbC7EF9P6/9zrwlegM4d/ZU9OwzTjJKMa0xP7EG8cLy77QC9i64ITqEPUAAPAKfBVGH/UnQi/1NOU4AjtMO9g5yDZQMq0sISb0HmsXxg9BCAwBT/ol9KDuyemj5SjiUt8Z3XXbYdrc2efZiNrH26vdPeCC43nnG+xa8R33Qv2gAwUKOhAFFi0bex/BItkkqyUtJWQjZiBZHG8X5READAoGSgAG+3n20vI08LDuR+7q7nnwyfKj9c34CPwX/8MB4ANKBewFwAXMBCYD7gBM/m77hvjC9U/zUvHm7x3v/+6H76rwUvJm9Mj2WvkA/KL+KwGTA9IF6AfcCbcLhA1NDxwR8hLMFKEWXRjnGR8b4hsJHHAb9hmDFwgUgQ/7CZEDbvzH9ODsB+WN3cTW/dB/zIbJP8jGyCLLR88U1VbcyuQh7gX4GAIBDGoVBB6NJdErrTAMNOo1UjZaNSMz1C+ZK58mECEVG9EUYw7jB2UB+fqt9I3uqugU49/dJNkC1ZbRBc9wzffMts2/zx3Tzte/3dTk4Oyn9eT+Rwh/ETUaFyLaKDwuDDIqNIY0JzMnMK8r+iVQH/8XWhCzCFkBkvqV9I7vmOu+6P3mQeZt5lvn3ujI6uzsI+9J8UbzCvWO9tT35vjT+a36hvty/Hz9rf4GAIMBGAOxBDsGmwe7CIUJ6AnaCVkJbQgmB50F8ANGAsQAkf/N/pb+/P4GALEB6AOOBncJcgxGD7kRkROdFLAUrxOJEUEO6AmhBKD+Ifht8dHqm+QW34faJtcf1YzUd9XZ15jbjeCF5kPthfQI/IYDxgqPEbUXFh2aITYl5CerKZQqrSoGKq0oryYWJOogLx3lGBAUsQ7NCHACq/uW9FPtDeb33krYRNIjzSXJgcZnxfnFSchbzB3Sa9kR4snrPvYUAeoLWxYIIJkoxC9PNRE59jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N5UzIC6fJ10gphjFEP0IiwGh+mL05u496mfmXuMV4XzfgN4Q3hvemN6A39Hgi+K15FLnaOr47f7xcPY8+0kAdwWeCpAPHhQYGFMbpx32Hi8fSx5THF4ZkRUbETYMIwciAnj9XPkE9pXzKfLJ8Wvy+vNO9jf5evzX/w8D5gUnCKUJRArzCbQIlQa1Az0AYPxT+FT0mfBX7bnq4Ojj58nnkOgq6n7sbO/R8ob2ZvpP/iICywU4CWAMQA/bETYUVhZCGPwZgRvLHMwdcB6gHkAeNB1hG7AYEhWBEAMLqgSa/f71E+4d5mneSNcI0fbLVMhXxiTGzsdVy6PQjtfb3z7pY/Pq/XMIoBIXHIskuStxMZM1DzjqODQ4DjaiMiAuvyi1IjYcchWTDr0HDAGW+mn0k+4d6RHkeN9e29TX7NS80lzR5dBt0QfTwdWd2ZfemuSK6znzcvvxA3EMpBQ+HPMigyi2LGMvczDfL7QtEionJTMffRhVEQ0K9AJW/HD2dvGL7cPqH+mS6AHpROos7IXuGvG58zX2afg8+p37ivwI/Sf9/fym/D383/uj+5z71ftT/BL9B/4h/0sAcAF5AlUD9ANQBGgERQT1A44DKgPmAt4CKgPeAwUFoAamCAMLlQ01ELMS2hR1FlQXSRczFv4ToxAtDLgGbgCK+VDyDusV5LbdPtjx0wXRo8/gz8HRNdUd2kfgd+dn78r3UgC4CLMQCRiHHgkkdSjAK+kt+C7+LhAuRSy2KXompiJLHncZNBSNDosINwKi+9v0/O0m53/gNNp41IDPgsuzyEHHUMf6yErMOtGy14rfiehm8sz8YAfCEZEbdCQYLDoyqTZDOf454jgMNqsx+Ss/Jcod7BXyDSYGyv4Q+CLyGO0B6dvlm+Mv4nzhaOHV4avi0uM75dvmreiz6vDsau8n8iv1d/gD/MT/pAONB1wL7g4cEsIUvBbvF0cYuxdOFg8UGhGWDbIJpAWoAff9xfpB+I/2xvXu9QD35Ph2+4X+1wEvBU0I8grpDAUOKA5CDVMLawisBEEAZPtS9k3xmexw6ArlkOIg4crgj+Fk4zDm0Oka7uDy8vci/UMCNAfWCxQQ3xMyFwsabhxgHuUfASG0IfkhySEUIcwf3R03G8gXiRN2DpYI/QHK+ibzSut14+/bBNUAzyvKxcYDxQrF78axyjzQZ9f436XpFvTs/sIJNxTvHZUm4y2lM7c3BzqZOn852zbdMrwtticJIfMZrRJqC1UEkP0z90/x8Osb59HiFt/q21HZU9f61VPVbNVV1hzYytpm3uriS+hx7jr1evz4A3sLvRJ7GXMfaCQnKIkqdCvhKtooeSXqIGUbLxWTDt8HYAFf+xj2v/F37lHsUOtj62/sR+668I7zifZy+Rj8T/76/wQBagEzAW8APP+6/RD8Y/ra+JP3p/Ym9hj2e/ZF92X4xflP++j8ff76/1MBhAKOA3oEUwUtBhoHLAhyCfYKugy3Dt0QFBM4FSIXpRiTGb8ZAxlCF2gUchBrC24Fp/5N96bvAeiw4AbaUdTZz9nMesvWy/TNxNEm1+ndy+WB7rn3HAFZCiATLBtBIjIo4yxBMEoyCTOQMvswai7+KtwmISLsHFYXcxFTCwcFm/4d+J3xL+vr5PDeYdln1CzQ3cymyq7JFsr0y1PPL9Rz2vzhlur/8+j9+wffETYbqiPsKrkw3jQ6N8E3ejaBMwMvPClzIvkaIBM5C5IDb/wF9n/w+Ot96ArmkOT34x7k4eQZ5qPnX+k06w7t5O6z8HzySfQk9hj4Lvpt/NX+XgEABKYGOAmaC64NVg95EAER4xAaEK4OsQw+CnoHkgS0ARL/2vw0+0D6FPq2+iD8Pf7pAPgDMwddCjcNhw8WEbkRUBHMDy4Nhwn6BLb/9vkA9Bvukein45rfnNzT2lXaJ9s/3YXg0+T76cbv+/Vg/L4C4wimDuUThxh+HMMfVSI5JHglGSYkJp8liyTnIq4g2B1dGjcWYBHbC7EF9P6/9zrwlegM4d/ZU9OwzTjJKMa0xP7EG8cLy77QC9i64ITqEPUAAPAKfBVGH/UnQi/1NOU4AjtMO9g5yDZQMq0sISb0HmsXxg9BCAwBT/ol9KDuyemj5SjiUt8Z3XXbYdrc2efZiNrH26vdPeCC43nnG+xa8R33Qv2gAwUKOhAFFi0bex/BItkkqyUtJWQjZiBZHG8X5READAoGSgAG+3n20vI08LDuR+7q7nnwyfKj9c34CPwX/8MB4ANKBewFwAXMBCYD7gBM/m77hvjC9U/zUvHm7x3v/+6H76rwUvJm9Mj2WvkA/KL+KwGTA9IF6AfcCbcLhA1NDxwR8hLMFKEWXRjnGR8b4hsJHHAb9hmDFwgUgQ/7CZEDbvzH9ODsB+WN3cTW/dB/zIbJP8jGyCLLR88U1VbcyuQh7gX4GAIBDGoVBB6NJdErrTAMNOo1UjZaNSMz1C+ZK58mECEVG9EUYw7jB2UB+fqt9I3uqugU49/dJNkC1ZbRBc9wzffMts2/zx3Tzte/3dTk4Oyn9eT+Rwh/ETUaFyLaKDwuDDIqNIY0JzMnMK8r+iVQH/8XWhCzCFkBkvqV9I7vmOu+6P3mQeZt5lvn3ujI6uzsI+9J8UbzCvWO9tT35vjT+a36hvty/Hz9rf4GAIMBGAOxBDsGmwe7CIUJ6AnaCVkJbQgmB50F8ANGAsQAkf/N/pb+/P4GALEB6AOOBncJcgxGD7kRkROdFLAUrxOJEUEO6AmhBKD+Ifht8dHqm+QW34faJtcf1YzUd9XZ15jbjeCF5kPthfQI/IYDxgqPEbUXFh2aITYl5CerKZQqrSoGKq0oryYWJOogLx3lGBAUsQ7NCHACq/uW9FPtDeb33krYRNIjzSXJgcZnxfnFSchbzB3Sa9kR4snrPvYUAeoLWxYIIJkoxC9PNRE59jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N5UzIC6fJ10gphjFEP0IiwGh+mL05u496mfmXuMV4XzfgN4Q3hvemN6A39Hgi+K15FLnaOr47f7xcPY8+0kAdwWeCpAPHhQYGFMbpx32Hi8fSx5THF4ZkRUbETYMIwciAnj9XPkE9pXzKfLJ8Wvy+vNO9jf5evzX/w8D5gUnCKUJRArzCbQIlQa1Az0AYPxT+FT0mfBX7bnq4Ojj58nnkOgq6n7sbO/R8ob2ZvpP/iICywU4CWAMQA/bETYUVhZCGPwZgRvLHMwdcB6gHkAeNB1hG7AYEhWBEAMLqgSa/f71E+4d5mneSNcI0fbLVMhXxiTGzsdVy6PQjtfb3z7pY/Pq/XMIoBIXHIskuStxMZM1DzjqODQ4DjaiMiAuvyi1IjYcchWTDr0HDAGW+mn0k+4d6RHkeN9e29TX7NS80lzR5dBt0QfTwdWd2ZfemuSK6znzcvvxA3EMpBQ+HPMigyi2LGMvczDfL7QtEionJTMffRhVEQ0K9AJW/HD2dvGL7cPqH+mS6AHpROos7IXuGvG58zX2afg8+p37ivwI/Sf9/fym/D383/uj+5z71ftT/BL9B/4h/0sAcAF5AlUD9ANQBGgERQT1A44DKgPmAt4CKgPeAwUFoAamCAMLlQ01ELMS2hR1FlQXSRczFv4ToxAtDLgGbgCK+VDyDusV5LbdPtjx0wXRo8/gz8HRNdUd2kfgd+dn78r3UgC4CLMQCRiHHgkkdSjAK+kt+C7+LhAuRSy2KXompiJLHncZNBSNDosINwKi+9v0/O0m53/gNNp41IDPgsuzyEHHUMf6yErMOtGy14rfiehm8sz8YAfCEZEbdCQYLDoyqTZDOf454jgMNqsx+Ss/Jcod7BXyDSYGyv4Q+CLyGO0B6dvlm+Mv4nzhaOHV4avi0uM75dvmreiz6vDsau8n8iv1d/gD/MT/pAONB1wL7g4cEsIUvBbvF0cYuxdOFg8UGhGWDbIJpAWoAff9xfpB+I/2xvXu9QD35Ph2+4X+1wEvBU0I8grpDAUOKA5CDVMLawisBEEAZPtS9k3xmexw6ArlkOIg4crgj+Fk4zDm0Oka7uDy8vci/UMCNAfWCxQQ3xMyFwsabhxgHuUfASG0IfkhySEUIcwf3R03G8gXiRN2DpYI/QHK+ibzSut14+/bBNUAzyvKxcYDxQrF78axyjzQZ9f436XpFvTs/sIJNxTvHZUm4y2lM7c3BzqZOn852zbdMrwtticJIfMZrRJqC1UEkP0z90/x8Osb59HiFt/q21HZU9f61VPVbNVV1hzYytpm3uriS+hx7jr1evz4A3sLvRJ7GXMfaCQnKIkqdCvhKtooeSXqIGUbLxWTDt8HYAFf+xj2v/F37lHsUOtj62/sR+668I7zifZy+Rj8T/76/wQBagEzAW8APP+6/RD8Y/ra+JP3p/Ym9hj2e/ZF92X4xflP++j8ff76/1MBhAKOA3oEUwUtBhoHLAhyCfYKugy3Dt0QFBM4FSIXpRiTGb8ZAxlCF2gUchBrC24Fp/5N96bvAeiw4AbaUdTZz9nMesvWy/TNxNEm1+ndy+WB7rn3HAFZCiATLBtBIjIo4yxBMEoyCTOQMvswai7+KtwmISLsHFYXcxFTCwcFm/4d+J3xL+vr5PDeYdln1CzQ3cymyq7JFsr0y1PPL9Rz2vzhlur/8+j9+wffETYbqiPsKrkw3jQ6N8E3ejaBMwMvPClzIvkaIBM5C5IDb/wF9n/w+Ot96ArmkOT34x7k4eQZ5qPnX+k06w7t5O6z8HzySfQk9hj4Lvpt/NX+XgEABKYGOAmaC64NVg95EAER4xAaEK4OsQw+CnoHkgS0ARL/2vw0+0D6FPq2+iD8Pf7pAPgDMwddCjcNhw8WEbkRUBHMDy4Nhwn6BLb/9vkA9Bvukein45rfnNzT2lXaJ9s/3YXg0+T76cbv+/Vg/L4C4wimDuUThxh+HMMfVSI5JHglGSYkJp8liyTnIq4g2B1dGjcWYBHbC7EF9P6/9zrwlegM4d/ZU9OwzTjJKMa0xP7EG8cLy77QC9i64ITqEPUAAPAKfBVGH/UnQi/1NOU4AjtMO9g5yDZQMq0sISb0HmsXxg9BCAwBT/ol9KDuyemj5SjiUt8Z3XXbYdrc2efZiNrH26vdPeCC43nnG+xa8R33Qv2gAwUKOhAFFi0bex/BItkkqyUtJWQjZiBZHG8X5READAoGSgAG+3n20vI08LDuR+7q7nnwyfKj9c34CPwX/8MB4ANKBewFwAXMBCYD7gBM/m77hvjC9U/zUvHm7x3v/+6H76rwUvJm9Mj2WvkA/KL+KwGTA9IF6AfcCbcLhA1NDxwR8hLMFKEWXRjnGR8b4hsJHHAb9hmDFwgUgQ/7CZEDbvzH9ODsB+WN3cTW/dB/zIbJP8jGyCLLR88U1VbcyuQh7gX4GAIBDGoVBB6NJdErrTAMNOo1UjZaNSMz1C+ZK58mECEVG9EUYw7jB2UB+fqt9I3uqugU49/dJNkC1ZbRBc9wzffMts2/zx3Tzte/3dTk4Oyn9eT+Rwh/ETUaFyLaKDwuDDIqNIY0JzMnMK8r+iVQH/8XWhCzCFkBkvqV9I7vmOu+6P3mQeZt5lvn3ujI6uzsI+9J8UbzCvWO9tT35vjT+a36hvty/Hz9rf4GAIMBGAOxBDsGmwe7CIUJ6AnaCVkJbQgmB50F8ANGAsQAkf/N/pb+/P4GALEB6AOOBncJcgxGD7kRkROdFLAUrxOJEUEO6AmhBKD+Ifht8dHqm+QW34faJtcf1YzUd9XZ15jbjeCF5kPthfQI/IYDxgqPEbUXFh2aITYl5CerKZQqrSoGKq0oryYWJOogLx3lGBAUsQ7NCHACq/uW9FPtDeb33krYRNIjzSXJgcZnxfnFSchbzB3Sa9kR4snrPvYUAeoLWxYIIJkoxC9PNRE59jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N20z2C1CJ/gfRhh2EMwIggHH+rz0ee8I62rnluR+4hHhO+Dr3xDgoOCT4ebimuSy5jLpHexz7y/zR/es+0IA7wSNCfQN+hF1FUAYOhpLG2QbhRq1GA0WrhLEDoEKHgbTAdj9X/qQ94z1ZPQe9LH0Bvb892n6G/3f/34CyQSXBsUHPAj0B+4GOQXuAjAAKP0C+uv2EPSY8aPvSu6a7ZrtQ+6K71vxm/Mv9vn43fvC/pABOgSyBvMI/ArPDHAO4w8uEVISUBMhFL0UGBUhFccU+ROkErwQOA4WC10HGwNp/mb5O/QV7yfqo+W84aHed9xf22zbpdwG333i7OYr7AfyS/i8/hwFNQvSEMUV6hknHW0ftyAKIXUgDR/uHDcaCReEE8cP7gsQCEIEkgAO/bv5oPbC8yTxzO697ADrnOmc6Avo8udc6E/p0Ore7HPvg/L99cr5zf3kAfAFyQlODVwQ1xKoFMAVFxauFY8UzBJ9EMANtwqIB1YERAFx/vb75/lR+Dn3nfZ19rT2SPcb+Bj5Kfo5+zj8GP3P/Vn+tf7m/vT+5/7K/qf+iP52/nf+j/69/gH/Vv+2/xgAeADOABMBQwFdAWEBUgE3ARQB9ADdANgA7AAeAW8B3wFrAgsDtwNiBAAFgwXfBQYG8gWZBfsEGAT2Ap0BGgB9/tf8Ovu5+WX4Tfd+9gH23PUO9pX2a/eE+NX5Tvvg/Hv+DwCQAfECKgQyBQYGpAYMB0EHSAckB9wGdQb1BWEFvQQNBFQDlALQAQkBQwB//8D+CP5c/b/8NvzE+2/7N/sh+yz7Wvun+xP8l/wv/dX9gf4t/9H/ZwDqAFcBqQHgAfwB/gHqAcMBjgFQAQ4BzQCQAFwAMwAVAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIQBJAHwAtwD3ADUBbwGfAcIB1AHVAcMBnwFpASMB0ABzAA8AqP8//9f+c/4U/rz9a/0j/eT8sPyG/Gn8XPxe/HT8n/zi/D79tP1E/uz+qf92AE8BKwIDA8wDfwQSBX0FuQXDBZgFOAWnBOoDCwMUAhABDQAY/zz+hf36/KL8gPyT/Nf8Rf3U/Xj+Jf/N/2QA3wA0AV4BWAEjAcEAOQCV/93+Hf5j/bn8Kvy++3z7Z/t/+8L7Lfy5/F79Ff7V/pn/WQATAcQBbQIOA6oDRQTiBIMFKQbTBn8HJQi9CDsJkwm2CZcJJwlcCC8HmwWkA1ABrf7O+8v4wfXP8hbwtu3O63rqzenY6aHqKOxj7kLxq/SB+KH85AAlBT4JCw1vEE8TmRVBF0EYmhhTGHgXGRZGFBMSkw/XDO8J6QbQA60Ai/1t+lv3XvR/8cjuR+wM6inosea55VLljuV75iDof+qT7U3xmPVX+mT/lAS7CagOKxMYF0camRz3HVUesh0ZHKAZZRaPEksOygk8BdEAs/wG+ef1afOU8Wrw4e/p72vwTvF18sTzIvV69rn31/jN+Z36TPvk+3H8//ya/Uv+Gf8EAAoBIgJAA1YEUQUhBrYGBAcBB60GCwYmBQ8E3AKoAY8Arv8e//P+P/8FAEUB8gL2BDEHfgmzC6ENGw/6DxkQYA/ADTgL1AesA+j+tvlO9PDu2ulK5Xrhmt7Q3DXc1tyu3q7htuWg6jnwTfai/AADMwkND2QUGxkcHVkgzSJ6JGclniUrJRokcyI/IIMdQRp5FiwSWg0HCDsCBvx99b7u8udG4fLaL9U60FDMp8luyMvI1MqNzu3T1NoR42bsg/YOAakL8xWLHxsoVS/8NOU49jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N5UzIC6fJ10gphjFEP0IiwGh+mL05u496mfmXuMV4XzfgN4Q3hvemN6A39Hgi+K15FLnaOr47f7xcPY8+0kAdwWeCpAPHhQYGFMbpx32Hi8fSx5THF4ZkRUbETYMIwciAnj9XPkE9pXzKfLJ8Wvy+vNO9jf5evzX/w8D5gUnCKUJRArzCbQIlQa1Az0AYPxT+FT0mfBX7bnq4Ojj58nnkOgq6n7sbO/R8ob2ZvpP/iICywU4CWAMQA/bETYUVhZCGPwZgRvLHMwdcB6gHkAeNB1hG7AYEhWBEAMLqgSa/f71E+4d5mneSNcI0fbLVMhXxiTGzsdVy6PQjtfb3z7pY/Pq/XMIoBIXHIskuStxMZM1DzjqODQ4DjaiMiAuvyi1IjYcchWTDr0HDAGW+mn0k+4d6RHkeN9e29TX7NS80lzR5dBt0QfTwdWd2ZfemuSK6znzcvvxA3EMpBQ+HPMigyi2LGMvczDfL7QtEionJTMffRhVEQ0K9AJW/HD2dvGL7cPqH+mS6AHpROos7IXuGvG58zX2afg8+p37ivwI/Sf9/fym/D383/uj+5z71ftT/BL9B/4h/0sAcAF5AlUD9ANQBGgERQT1A44DKgPmAt4CKgPeAwUFoAamCAMLlQ01ELMS2hR1FlQXSRczFv4ToxAtDLgGbgCK+VDyDusV5LbdPtjx0wXRo8/gz8HRNdUd2kfgd+dn78r3UgC4CLMQCRiHHgkkdSjAK+kt+C7+LhAuRSy2KXompiJLHncZNBSNDosINwKi+9v0/O0m53/gNNp41IDPgsuzyEHHUMf6yErMOtGy14rfiehm8sz8YAfCEZEbdCQYLDoyqTZDOf454jgMNqsx+Ss/Jcod7BXyDSYGyv4Q+CLyGO0B6dvlm+Mv4nzhaOHV4avi0uM75dvmreiz6vDsau8n8iv1d/gD/MT/pAONB1wL7g4cEsIUvBbvF0cYuxdOFg8UGhGWDbIJpAWoAff9xfpB+I/2xvXu9QD35Ph2+4X+1wEvBU0I8grpDAUOKA5CDVMLawisBEEAZPtS9k3xmexw6ArlkOIg4crgj+Fk4zDm0Oka7uDy8vci/UMCNAfWCxQQ3xMyFwsabhxgHuUfASG0IfkhySEUIcwf3R03G8gXiRN2DpYI/QHK+ibzSut14+/bBNUAzyvKxcYDxQrF78axyjzQZ9f436XpFvTs/sIJNxTvHZUm4y2lM7c3BzqZOn852zbdMrwtticJIfMZrRJqC1UEkP0z90/x8Osb59HiFt/q21HZU9f61VPVbNVV1hzYytpm3uriS+hx7jr1evz4A3sLvRJ7GXMfaCQnKIkqdCvhKtooeSXqIGUbLxWTDt8HYAFf+xj2v/F37lHsUOtj62/sR+668I7zifZy+Rj8T/76/wQBagEzAW8APP+6/RD8Y/ra+JP3p/Ym9hj2e/ZF92X4xflP++j8ff76/1MBhAKOA3oEUwUtBhoHLAhyCfYKugy3Dt0QFBM4FSIXpRiTGb8ZAxlCF2gUchBrC24Fp/5N96bvAeiw4AbaUdTZz9nMesvWy/TNxNEm1+ndy+WB7rn3HAFZCiATLBtBIjIo4yxBMEoyCTOQMvswai7+KtwmISLsHFYXcxFTCwcFm/4d+J3xL+vr5PDeYdln1CzQ3cymyq7JFsr0y1PPL9Rz2vzhlur/8+j9+wffETYbqiPsKrkw3jQ6N8E3ejaBMwMvPClzIvkaIBM5C5IDb/wF9n/w+Ot96ArmkOT34x7k4eQZ5qPnX+k06w7t5O6z8HzySfQk9hj4Lvpt/NX+XgEABKYGOAmaC64NVg95EAER4xAaEK4OsQw+CnoHkgS0ARL/2vw0+0D6FPq2+iD8Pf7pAPgDMwddCjcNhw8WEbkRUBHMDy4Nhwn6BLb/9vkA9Bvukein45rfnNzT2lXaJ9s/3YXg0+T76cbv+/Vg/L4C4wimDuUThxh+HMMfVSI5JHglGSYkJp8liyTnIq4g2B1dGjcWYBHbC7EF9P6/9zrwlegM4d/ZU9OwzTjJKMa0xP7EG8cLy77QC9i64ITqEPUAAPAKfBVGH/UnQi/1NOU4AjtMO9g5yDZQMq0sISb0HmsXxg9BCAwBT/ol9KDuyemj5SjiUt8Z3XXbYdrc2efZiNrH26vdPeCC43nnG+xa8R33Qv2gAwUKOhAFFi0bex/BItkkqyUtJWQjZiBZHG8X5READAoGSgAG+3n20vI08LDuR+7q7nnwyfKj9c34CPwX/8MB4ANKBewFwAXMBCYD7gBM/m77hvjC9U/zUvHm7x3v/+6H76rwUvJm9Mj2WvkA/KL+KwGTA9IF6AfcCbcLhA1NDxwR8hLMFKEWXRjnGR8b4hsJHHAb9hmDFwgUgQ/7CZEDbvzH9ODsB+WN3cTW/dB/zIbJP8jGyCLLR88U1VbcyuQh7gX4GAIBDGoVBB6NJdErrTAMNOo1UjZaNSMz1C+ZK58mECEVG9EUYw7jB2UB+fqt9I3uqugU49/dJNkC1ZbRBc9wzffMts2/zx3Tzte/3dTk4Oyn9eT+Rwh/ETUaFyLaKDwuDDIqNIY0JzMnMK8r+iVQH/8XWhCzCFkBkvqV9I7vmOu+6P3mQeZt5lvn3ujI6uzsI+9J8UbzCvWO9tT35vjT+a36hvty/Hz9rf4GAIMBGAOxBDsGmwe7CIUJ6AnaCVkJbQgmB50F8ANGAsQAkf/N/pb+/P4GALEB6AOOBncJcgxGD7kRkROdFLAUrxOJEUEO6AmhBKD+Ifht8dHqm+QW34faJtcf1YzUd9XZ15jbjeCF5kPthfQI/IYDxgqPEbUXFh2aITYl5CerKZQqrSoGKq0oryYWJOogLx3lGBAUsQ7NCHACq/uW9FPtDeb33krYRNIjzSXJgcZnxfnFSchbzB3Sa9kR4snrPvYUAeoLWxYIIJkoxC9PNRE59jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N5UzIC6fJ10gphjFEP0IiwGh+mL05u496mfmXuMV4XzfgN4Q3hvemN6A39Hgi+K15FLnaOr47f7xcPY8+0kAdwWeCpAPHhQYGFMbpx32Hi8fSx5THF4ZkRUbETYMIwciAnj9XPkE9pXzKfLJ8Wvy+vNO9jf5evzX/w8D5gUnCKUJRArzCbQIlQa1Az0AYPxT+FT0mfBX7bnq4Ojj58nnkOgq6n7sbO/R8ob2ZvpP/iICywU4CWAMQA/bETYUVhZCGPwZgRvLHMwdcB6gHkAeNB1hG7AYEhWBEAMLqgSa/f71E+4d5mneSNcI0fbLVMhXxiTGzsdVy6PQjtfb3z7pY/Pq/XMIoBIXHIskuStxMZM1DzjqODQ4DjaiMiAuvyi1IjYcchWTDr0HDAGW+mn0k+4d6RHkeN9e29TX7NS80lzR5dBt0QfTwdWd2ZfemuSK6znzcvvxA3EMpBQ+HPMigyi2LGMvczDfL7QtEionJTMffRhVEQ0K9AJW/HD2dvGL7cPqH+mS6AHpROos7IXuGvG58zX2afg8+p37ivwI/Sf9/fym/D383/uj+5z71ftT/BL9B/4h/0sAcAF5AlUD9ANQBGgERQT1A44DKgPmAt4CKgPeAwUFoAamCAMLlQ01ELMS2hR1FlQXSRczFv4ToxAtDLgGbgCK+VDyDusV5LbdPtjx0wXRo8/gz8HRNdUd2kfgd+dn78r3UgC4CLMQCRiHHgkkdSjAK+kt+C7+LhAuRSy2KXompiJLHncZNBSNDosINwKi+9v0/O0m53/gNNp41IDPgsuzyEHHUMf6yErMOtGy14rfiehm8sz8YAfCEZEbdCQYLDoyqTZDOf454jgMNqsx+Ss/Jcod7BXyDSYGyv4Q+CLyGO0B6dvlm+Mv4nzhaOHV4avi0uM75dvmreiz6vDsau8n8iv1d/gD/MT/pAONB1wL7g4cEsIUvBbvF0cYuxdOFg8UGhGWDbIJpAWoAff9xfpB+I/2xvXu9QD35Ph2+4X+1wEvBU0I8grpDAUOKA5CDVMLawisBEEAZPtS9k3xmexw6ArlkOIg4crgj+Fk4zDm0Oka7uDy8vci/UMCNAfWCxQQ3xMyFwsabhxgHuUfASG0IfkhySEUIcwf3R03G8gXiRN2DpYI/QHK+ibzSut14+/bBNUAzyvKxcYDxQrF78axyjzQZ9f436XpFvTs/sIJNxTvHZUm4y2lM7c3BzqZOn852zbdMrwtticJIfMZrRJqC1UEkP0z90/x8Osb59HiFt/q21HZU9f61VPVbNVV1hzYytpm3uriS+hx7jr1evz4A3sLvRJ7GXMfaCQnKIkqdCvhKtooeSXqIGUbLxWTDt8HYAFf+xj2v/F37lHsUOtj62/sR+668I7zifZy+Rj8T/76/wQBagEzAW8APP+6/RD8Y/ra+JP3p/Ym9hj2e/ZF92X4xflP++j8ff76/1MBhAKOA3oEUwUtBhoHLAhyCfYKugy3Dt0QFBM4FSIXpRiTGb8ZAxlCF2gUchBrC24Fp/5N96bvAeiw4AbaUdTZz9nMesvWy/TNxNEm1+ndy+WB7rn3HAFZCiATLBtBIjIo4yxBMEoyCTOQMvswai7+KtwmISLsHFYXcxFTCwcFm/4d+J3xL+vr5PDeYdln1CzQ3cymyq7JFsr0y1PPL9Rz2vzhlur/8+j9+wffETYbqiPsKrkw3jQ6N8E3ejaBMwMvPClzIvkaIBM5C5IDb/wF9n/w+Ot96ArmkOT34x7k4eQZ5qPnX+k06w7t5O6z8HzySfQk9hj4Lvpt/NX+XgEABKYGOAmaC64NVg95EAER4xAaEK4OsQw+CnoHkgS0ARL/2vw0+0D6FPq2+iD8Pf7pAPgDMwddCjcNhw8WEbkRUBHMDy4Nhwn6BLb/9vkA9Bvukein45rfnNzT2lXaJ9s/3YXg0+T76cbv+/Vg/L4C4wimDuUThxh+HMMfVSI5JHglGSYkJp8liyTnIq4g2B1dGjcWYBHbC7EF9P6/9zrwlegM4d/ZU9OwzTjJKMa0xP7EG8cLy77QC9i64ITqEPUAAPAKfBVGH/UnQi/1NOU4AjtMO9g5yDZQMq0sISb0HmsXxg9BCAwBT/ol9KDuyemj5SjiUt8Z3XXbYdrc2efZiNrH26vdPeCC43nnG+xa8R33Qv2gAwUKOhAFFi0bex/BItkkqyUtJWQjZiBZHG8X5READAoGSgAG+3n20vI08LDuR+7q7nnwyfKj9c34CPwX/8MB4ANKBewFwAXMBCYD7gBM/m77hvjC9U/zUvHm7x3v/+6H76rwUvJm9Mj2WvkA/KL+KwGTA9IF6AfcCbcLhA1NDxwR8hLMFKEWXRjnGR8b4hsJHHAb9hmDFwgUgQ/7CZEDbvzH9ODsB+WN3cTW/dB/zIbJP8jGyCLLR88U1VbcyuQh7gX4GAIBDGoVBB6NJdErrTAMNOo1UjZaNSMz1C+ZK58mECEVG9EUYw7jB2UB+fqt9I3uqugU49/dJNkC1ZbRBc9wzffMts2/zx3Tzte/3dTk4Oyn9eT+Rwh/ETUaFyLaKDwuDDIqNIY0JzMnMK8r+iVQH/8XWhCzCFkBkvqV9I7vmOu+6P3mQeZt5lvn3ujI6uzsI+9J8UbzCvWO9tT35vjT+a36hvty/Hz9rf4GAIMBGAOxBDsGmwe7CIUJ6AnaCVkJbQgmB50F8ANGAsQAkf/N/pb+/P4GALEB6AOOBncJcgxGD7kRkROdFLAUrxOJEUEO6AmhBKD+Ifht8dHqm+QW34faJtcf1YzUd9XZ15jbjeCF5kPthfQI/IYDxgqPEbUXFh2aITYl5CerKZQqrSoGKq0oryYWJOogLx3lGBAUsQ7NCHACq/uW9FPtDeb33krYRNIjzSXJgcZnxfnFSchbzB3Sa9kR4snrPvYUAeoLWxYIIJkoxC9PNRE59jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N5UzIC6fJ10gphjFEP0IiwGh+mL05u496mfmXuMV4XzfgN4Q3hvemN6A39Hgi+K15FLnaOr47f7xcPY8+0kAdwWeCpAPHhQYGFMbpx32Hi8fSx5THF4ZkRUbETYMIwciAnj9XPkE9pXzKfLJ8Wvy+vNO9jf5evzX/w8D5gUnCKUJRArzCbQIlQa1Az0AYPxT+FT0mfBX7bnq4Ojj58nnkOgq6n7sbO/R8ob2ZvpP/iICywU4CWAMQA/bETYUVhZCGPwZgRvLHMwdcB6gHkAeNB1hG7AYEhWBEAMLqgSa/f71E+4d5mneSNcI0fbLVMhXxiTGzsdVy6PQjtfb3z7pY/Pq/XMIoBIXHIskuStxMZM1DzjqODQ4DjaiMiAuvyi1IjYcchWTDr0HDAGW+mn0k+4d6RHkeN9e29TX7NS80lzR5dBt0QfTwdWd2ZfemuSK6znzcvvxA3EMpBQ+HPMigyi2LGMvczDfL7QtEionJTMffRhVEQ0K9AJW/HD2dvGL7cPqH+mS6AHpROos7IXuGvG58zX2afg8+p37ivwI/Sf9/fym/D383/uj+5z71ftT/BL9B/4h/0sAcAF5AlUD9ANQBGgERQT1A44DKgPmAt4CKgPeAwUFoAamCAMLlQ01ELMS2hR1FlQXSRczFv4ToxAtDLgGbgCK+VDyDusV5LbdPtjx0wXRo8/gz8HRNdUd2kfgd+dn78r3UgC4CLMQCRiHHgkkdSjAK+kt+C7+LhAuRSy2KXompiJLHncZNBSNDosINwKi+9v0/O0m53/gNNp41IDPgsuzyEHHUMf6yErMOtGy14rfiehm8sz8YAfCEZEbdCQYLDoyqTZDOf454jgMNqsx+Ss/Jcod7BXyDSYGyv4Q+CLyGO0B6dvlm+Mv4nzhaOHV4avi0uM75dvmreiz6vDsau8n8iv1d/gD/MT/pAONB1wL7g4cEsIUvBbvF0cYuxdOFg8UGhGWDbIJpAWoAff9xfpB+I/2xvXu9QD35Ph2+4X+1wEvBU0I8grpDAUOKA5CDVMLawisBEEAZPtS9k3xmexw6ArlkOIg4crgj+Fk4zDm0Oka7uDy8vci/UMCNAfWCxQQ3xMyFwsabhxgHuUfASG0IfkhySEUIcwf3R03G8gXiRN2DpYI/QHK+ibzSut14+/bBNUAzyvKxcYDxQrF78axyjzQZ9f436XpFvTs/sIJNxTvHZUm4y2lM7c3BzqZOn852zbdMrwtticJIfMZrRJqC1UEkP0z90/x8Osb59HiFt/q21HZU9f61VPVbNVV1hzYytpm3uriS+hx7jr1evz4A3sLvRJ7GXMfaCQnKIkqdCvhKtooeSXqIGUbLxWTDt8HYAFf+xj2v/F37lHsUOtj62/sR+668I7zifZy+Rj8T/76/wQBagEzAW8APP+6/RD8Y/ra+JP3p/Ym9hj2e/ZF92X4xflP++j8ff76/1MBhAKOA3oEUwUtBhoHLAhyCfYKugy3Dt0QFBM4FSIXpRiTGb8ZAxlCF2gUchBrC24Fp/5N96bvAeiw4AbaUdTZz9nMesvWy/TNxNEm1+ndy+WB7rn3HAFZCiATLBtBIjIo4yxBMEoyCTOQMvswai7+KtwmISLsHFYXcxFTCwcFm/4d+J3xL+vr5PDeYdln1CzQ3cymyq7JFsr0y1PPL9Rz2vzhlur/8+j9+wffETYbqiPsKrkw3jQ6N8E3ejaBMwMvPClzIvkaIBM5C5IDb/wF9n/w+Ot96ArmkOT34x7k4eQZ5qPnX+k06w7t5O6z8HzySfQk9hj4Lvpt/NX+XgEABKYGOAmaC64NVg95EAER4xAaEK4OsQw+CnoHkgS0ARL/2vw0+0D6FPq2+iD8Pf7pAPgDMwddCjcNhw8WEbkRUBHMDy4Nhwn6BLb/9vkA9Bvukein45rfnNzT2lXaJ9s/3YXg0+T76cbv+/Vg/L4C4wimDuUThxh+HMMfVSI5JHglGSYkJp8liyTnIq4g2B1dGjcWYBHbC7EF9P6/9zrwlegM4d/ZU9OwzTjJKMa0xP7EG8cLy77QC9i64ITqEPUAAPAKfBVGH/UnQi/1NOU4AjtMO9g5yDZQMq0sISb0HmsXxg9BCAwBT/ol9KDuyemj5SjiUt8Z3XXbYdrc2efZiNrH26vdPeCC43nnG+xa8R33Qv2gAwUKOhAFFi0bex/BItkkqyUtJWQjZiBZHG8X5READAoGSgAG+3n20vI08LDuR+7q7nnwyfKj9c34CPwX/8MB4ANKBewFwAXMBCYD7gBM/m77hvjC9U/zUvHm7x3v/+6H76rwUvJm9Mj2WvkA/KL+KwGTA9IF6AfcCbcLhA1NDxwR8hLMFKEWXRjnGR8b4hsJHHAb9hmDFwgUgQ/7CZEDbvzH9ODsB+WN3cTW/dB/zIbJP8jGyCLLR88U1VbcyuQh7gX4GAIBDGoVBB6NJdErrTAMNOo1UjZaNSMz1C+ZK58mECEVG9EUYw7jB2UB+fqt9I3uqugU49/dJNkC1ZbRBc9wzffMts2/zx3Tzte/3dTk4Oyn9eT+Rwh/ETUaFyLaKDwuDDIqNIY0JzMnMK8r+iVQH/8XWhCzCFkBkvqV9I7vmOu+6P3mQeZt5lvn3ujI6uzsI+9J8UbzCvWO9tT35vjT+a36hvty/Hz9rf4GAIMBGAOxBDsGmwe7CIUJ6AnaCVkJbQgmB50F8ANGAsQAkf/N/pb+/P4GALEB6AOOBncJcgxGD7kRkROdFLAUrxOJEUEO6AmhBKD+Ifht8dHqm+QW34faJtcf1YzUd9XZ15jbjeCF5kPthfQI/IYDxgqPEbUXFh2aITYl5CerKZQqrSoGKq0oryYWJOogLx3lGBAUsQ7NCHACq/uW9FPtDeb33krYRNIjzSXJgcZnxfnFSchbzB3Sa9kR4snrPvYUAeoLWxYIIJkoxC9PNRE59jr9Ojs51TUAMfwqESSLHLYU2gw2BQP+aveK8XfsOOjJ5CPiNODs3jfeB95M3v/eG+Cg4ZLj9eXO6CHs7O8q9Mz4vf3eAg4IIA3mETAW0BmcHHEeNh/gHnAd9hqQF2cTsw6uCZwEv/9U+5X3rfS+8tjx+/EX8w71s/fR+in+ewGKBBwHAAkSCjoKcQm/BzsFCQJY/lz6TvZq8ubu8euy6UXouecR6ETpPuvk7RLxpPRz+Fz8PAD9A4kH1QrZDZYQEBNNFVMXJRnFGi4cVR0rHpgehB7RHWUcJRr/FugS3g3wBzYB2vkO8hTqNuLB2gfUVc70yR7HAsa9xlfJxs3o04zbb+Q+7qD4NAOaDXcXdiBOKMYutjMGN7A4vzhNN340gDCIK8wlgR/aGAQSJQteBMn9dfdz8czriea14VrdhtlK1rvT8NEC0QjRF9JA1IvX99t54ffnTe9I967/NgiZEIkYuR/jJcsqPy4gMF0w+y4PLMInSiLrG/IUsA12BpL/SPnT813vAuzN6bforOiL6SbrTe3L72vy/fRa92D5+/oi/Nb8Iv0a/db8cvwL/Lv7mPuw+wz8q/yH/ZD+tf/fAPkB7gKtAysEZARdBCEEwwNaAwMD2QL4AnYDYwTEBZcHywlHDOYOexHUE7wV/xZuF+EWPRV1EooOkAmqAwz98/Wr7oPnzeDZ2u7VTNIh0I3PndBK033XDd3C41zrj/MP/I4Exwx2FGYbaSFjJj8q+SyTLhsvpC5ELRQrLCiiJIgg7xvjFm0RlwtqBfT+Q/ht8Y7qyuNL3UHX4NFezfLJzMcWx/HHbcqPzkfUddvp42DtjfcWAp0MwhYlIHIoXS+rNDI43DmpOaw3CjT4LrgolyHjGe0RAgpmAlb7/fR/7+7qUOef5MziwOFg4ZDhNOI143/kBOa+56rpyusl7sDwoPPI9jX63v2xAZoFegkvDZQQghPWFXAXNxgdGCAXRxWpEmcPrAutB6ADw/9L/Gv5TPcN9rz1W/bZ9xr68fwpAIYDyQayCQYMlQ03DtcNawz8CaQGiALe/d34yvPl7m/qouat47Xh0eAK4VnireTo5+LrcPBi9Yn6t//EBJAJAg4IEpgVrhhLG3UdLx+AIGgh5SHwIYAhhCDrHqIcmRnDFRoRngtfBXX+A/c771rno99h2ODRa8xGyK3FzMTBxZXIP82g04fbsOTL7nr5XAQPDzAZaSJrKvkw5jUXOYc6PzpbOAQ1bTDSKnAkhx1TFggP1wfmAFP6MfSP7nTp5OTi4G7di9o+2JHWj9VG1cXVHNdW2Xrci+CA5UfrxPHP+DQAvQcoDzEWlBwSInEmhikuK1orCypSJ1QjQh5cGOkRNwuUBEz+ofjM8/fvP+2s6zjrzOtE7XHvHPIK9QP40PpD/Tj/kwBMAWEB4QDi/4P+5/w3+5j5LfgQ91n2EfY89tT2y/cO+Yb6G/y1/T//qwDxAQ4DBwToBL8FoAadB8cILArQC7INxg/4ESoUNxbzFzEZxBmAGUUY+RWREg8OiQggAgj7fvPP60nkQd0I1+rRJ87zy3DLrcynz0bUX9q64RDqEvNr/MUF0A5BF9geYCW0KrwucDHSMvIy5zHQL80sAimPJJQfLBptFGkOMgjUAV373PRi7gbo4uEZ3M/WL9JkzpzLAMq0ydXKdM2S0SbXEt4r5jXv6PjxAvkMohaSH3YnBS4DM0Y2uDdWNzI1bzFELPMlxx4TFykPWQft/x/5I/Mb7hnqI+cv5Snk9eNv5HHl1uZ96EjqIez67czvmPFi8zT1Gvce+Uj7nP0VAK4CVAXzB3EKrwyRDvkP0RAHEZQQeA/ADYQL5AgIBh4DWADm/fL7ovoR+kv6U/sa/YT/ZwKUBc4I2At0DmoQiBGoEbIQoA56C1sHawLh/P32B/FG6wTmgeH23Y/batqU2gvcvt6O4k/n0OzX8iv5lP/aBdMLWBFLFpkaNx4iIVwj7STcJTEm9CUnJcwj3iFXHzAcYBjiE7MO2ghjAmb7A/Ro7MnkZd2A1mDQSsuAxzjFn8TRxdnIrs001DvcgeW374L6fgVJEH8axSPMK1IyJzcvOmE7yDqAOLY0oC+AKZsiNxuYE/0LmgSd/Sb3TfEe7KDn0OOp4CLeNNzZ2gzaz9kk2hPbpNze3snhZ+W16ajuLfQm+mwA1QYpDTATsRhyHUIh9SNsJZYlcSQKIn8e/Bm6FPkOAwkfA5X9pfiG9GDxTu9Y7njulu+M8Sj0Mvds+pn9fADmAq0EtQXvBV4FDgQaAqj/4vz4+Rz3fPRA8ojwbO/57i/vB/Bv8VHzj/UN+Kz6Uv3r/2QCuATiBuYIzAqeDGgONBAGEt8TuBWDFyoZjxqRGwsc1xvRGt0Y5xXlEd0M4QYTAKf41/Dt6DnhDdq805HOzsqqyEjIusn9zPvRithu4F7pB/MP/RgHyxDVGe4h2ihuLowyKzVMNgA2ZDScMdEtMSnnIx4e+heeESQLowQs/s73l/GT69TlbOBx2/7WM9Mw0BnODs0uzZDORNFM1aDaKOG/6DDxO/qVA+4M8BVGHqEluitZMFMzkDQNNNkxFi74KL8itxsxFIIM+ATg/Xf38fFv7Qfqu+eA5jzmz+YN6Mnp1usI7jrwTvIw9NT1Ofdj+GD5QfoY+/n78vwP/lX/wQBLAuUDegXyBjUILAnECe8JpwnwCNMHaAbJBBkDfQEeAB//n/60/m3/yAC9AjAF/Qf2CuQNjxC8EjQUyBRUFMESCRA0DF8HtAFs+8n0F+6k577hrNyu2PXVptTS1HrWj9nu3Wzjz+nY8EP4zP8xBzwOuRSAGnUfhiOqJuQoOyq6KnEqbynCJ3UlkiIeHxwbjBZxEc8LrQUa/yn4+PCt6XnikNsu1ZPP/Mqlx8HFecXpxhrKB8+V1Zfd0Obx8KT7hgY1EVAbeSRgLMEyazc/OjQ7Uzq6N20z2C1CJ/gfRhh2EMwIggHH+rz0ee8I62rnluR+4hHhO+Dr3xDgoOCT4ebimuSy5jLpHexz7y/zR/es+0IA7wSNCfQN+hF1FUAYOhpLG2QbhRq1GA0WrhLEDoEKHgbTAdj9X/qQ94z1ZPQe9LH0Bvb892n6G/3f/34CyQSXBsUHPAj0B+4GOQXuAjAAKP0C+uv2EPSY8aPvSu6a7ZrtQ+6K71vxm/Mv9vn43fvC/pABOgSyBvMI/ArPDHAO4w8uEVISUBMhFL0UGBUhFccU+ROkErwQOA4WC10HGwNp/mb5O/QV7yfqo+W84aHed9xf22zbpdwG333i7OYr7AfyS/i8/hwFNQvSEMUV6hknHW0ftyAKIXUgDR/uHDcaCReEE8cP7gsQCEIEkgAO/bv5oPbC8yTxzO697ADrnOmc6Avo8udc6E/p0Ore7HPvg/L99cr5zf3kAfAFyQlODVwQ1xKoFMAVFxauFY8UzBJ9EMANtwqIB1YERAFx/vb75/lR+Dn3nfZ19rT2SPcb+Bj5Kfo5+zj8GP3P/Vn+tf7m/vT+5/7K/qf+iP52/nf+j/69/gH/Vv+2/xgAeADOABMBQwFdAWEBUgE3ARQB9ADdANgA7AAeAW8B3wFrAgsDtwNiBAAFgwXfBQYG8gWZBfsEGAT2Ap0BGgB9/tf8Ovu5+WX4Tfd+9gH23PUO9pX2a/eE+NX5Tvvg/Hv+DwCQAfECKgQyBQYGpAYMB0EHSAckB9wGdQb1BWEFvQQNBFQDlALQAQkBQwB//8D+CP5c/b/8NvzE+2/7N/sh+yz7Wvun+xP8l/wv/dX9gf4t/9H/ZwDqAFcBqQHgAfwB/gHqAcMBjgFQAQ4BzQCQAFwAMwAVAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+
+        function startRingtone() {
+            stopRingtone();
+            try {
+                ringtoneAudio = new Audio(RINGTONE_B64);
+                ringtoneAudio.loop = true;
+                ringtoneAudio.volume = 1.0;
+                
+                const playPromise = ringtoneAudio.play();
+                if (playPromise) {
+                    playPromise.catch((e) => {
+                        console.log('Autoplay bloccato, uso sintetica');
+                        startSyntheticRingtone();
+                    });
+                }
+            } catch(e) {
+                startSyntheticRingtone();
+            }
+        }
+        
+        let syntheticRingtoneInterval = null;
+        let audioCtx = null;
+
+        function startSyntheticRingtone() {
+            stopSyntheticRingtone();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Pattern suoneria WhatsApp: RING RING ... pausa ... RING RING
+            function playPattern() {
+                if (!audioCtx) return;
+                
+                function playTone(freq1, freq2, startTime, duration) {
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    const t = audioCtx.currentTime + startTime;
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc1.type = 'sine';
+                    osc2.type = 'sine';
+                    osc1.frequency.setValueAtTime(freq1, t);
+                    osc2.frequency.setValueAtTime(freq2, t);
+                    
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
+                    gain.gain.setValueAtTime(0.35, t + duration - 0.02);
+                    gain.gain.linearRampToValueAtTime(0, t + duration);
+                    
+                    osc1.start(t);
+                    osc1.stop(t + duration);
+                    osc2.start(t);
+                    osc2.stop(t + duration);
+                }
+                
+                // Suoneria stile telefono: due toni doppi con pausa
+                playTone(480, 620, 0.0,  0.4);
+                playTone(480, 620, 0.5,  0.4);
+                // Pausa da 1.0 a 3.0
+                playTone(480, 620, 3.0,  0.4);
+                playTone(480, 620, 3.5,  0.4);
+                // Pausa da 4.0 a 6.0 poi ripete
+            }
+            
+            playPattern();
+            syntheticRingtoneInterval = setInterval(playPattern, 6000);
+        }
+        
+        function stopSyntheticRingtone() {
+            if (syntheticRingtoneInterval) {
+                clearInterval(syntheticRingtoneInterval);
+                syntheticRingtoneInterval = null;
+            }
+            if (audioCtx) {
+                audioCtx.close().catch(() => {});
+                audioCtx = null;
+            }
+        }
+
+        function stopRingtone() {
+            if (ringtoneAudio) {
+                ringtoneAudio.pause();
+                ringtoneAudio.src = '';
+                ringtoneAudio = null;
+            }
+            stopSyntheticRingtone();
+        }
+
+        function listenForIncomingCalls() {
+            if (!currentUser) return;
+            
+            console.log('📞 Avvio listener chiamate per:', currentUser.name);
+            
+            // Timestamp per evitare chiamate vecchie
+            const startTime = firebase.firestore.Timestamp.now();
+            
+            db.collection('calls')
+                .where('to', '==', currentUser.id)
+                .onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const callData = change.doc.data();
+                            
+                            console.log('📞 Nuova chiamata rilevata:', callData);
+                            
+                            // Ignora chiamate vecchie (prima del login)
+                            if (callData.createdAt && callData.createdAt < startTime) {
+                                console.log('⏭️ Chiamata vecchia, skip');
+                                return;
+                            }
+                            
+                            // Solo se status è ringing
+                            if (callData.status !== 'ringing') {
+                                console.log('⏭️ Status non ringing:', callData.status);
+                                return;
+                            }
+                            
+                            // Non mostrare se già in chiamata
+                            if (currentCall) {
+                                console.log('⏭️ Già in chiamata');
+                                return;
+                            }
+                            
+                            console.log('✅ Mostrando chiamata in arrivo');
+                            
+                            // Mostra notifica chiamata in arrivo
+                            currentCall = {
+                                id: change.doc.id,
+                                from: callData.from,
+                                fromName: callData.fromName,
+                                type: callData.type,
+                                offer: callData.offer,
+                                isInitiator: false
+                            };
+                            
+                            document.getElementById('incomingCallName').textContent = callData.fromName;
+                            document.getElementById('incomingCallType').textContent = 
+                                callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
+                            
+                            // Mostra avatar chiamante
+                            const avatarEl = document.getElementById('incomingCallAvatar');
+                            const avatarText = document.getElementById('incomingCallAvatarText');
+                            if (callData.fromAvatar && callData.fromAvatar.startsWith('data:image')) {
+                                avatarEl.style.backgroundImage = `url('${callData.fromAvatar}')`;
+                                avatarEl.style.backgroundSize = 'cover';
+                                avatarText.textContent = '';
+                            } else {
+                                avatarEl.style.backgroundImage = '';
+                                avatarText.textContent = callData.fromAvatar || callData.fromName[0].toUpperCase();
+                            }
+                            
+                            document.getElementById('incomingCallModal').style.display = 'flex';
+                            
+                            // Suona con Audio API (suoneria)
+                            startRingtone();
+                            
+                            // Mostra anche notifica push
+                            if (notificationsEnabled) {
+                                showNotification(
+                                    callData.fromName, 
+                                    callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata in arrivo',
+                                    '📞'
+                                );
+                            }
+                        }
+                    });
+                });
+        }
+
         async function loadFriendRequests() {
             const container = document.getElementById('friendRequestsList');
             
@@ -2770,7 +3902,16 @@
                             
                             const userData = doc.data();
                             const userName = userData.name || 'Utente';
-                            const userAvatar = userName[0].toUpperCase();
+                            const userAvatar = userData.avatar || userName[0].toUpperCase();
+                            
+                            // HTML per avatar (custom o lettera)
+                            let avatarHTML;
+                            if (userData.avatar && userData.avatar.startsWith('data:image')) {
+                                avatarHTML = `<div class="contact-avatar online" style="background-image: url(${userData.avatar}); background-size: cover; background-position: center;"></div>`;
+                            } else {
+                                avatarHTML = `<div class="contact-avatar online">${userAvatar}</div>`;
+                            }
+                            
                             const roomId = [currentUser.id, doc.id].sort().join('_');
                             
                             // Carica ultimo messaggio (opzionale)
@@ -2805,7 +3946,7 @@
                             
                             html += `
                                 <div class="contact-item" onclick="selectChatMobile('${doc.id}', '${userName}', '${userAvatar}', false)">
-                                    <div class="contact-avatar online">${userAvatar}</div>
+                                    ${avatarHTML}
                                     <div class="contact-info">
                                         <div class="contact-name">${userName}</div>
                                         <div class="contact-preview" style="font-size: 12px; color: var(--text-muted);">${userData.email}</div>
@@ -2839,7 +3980,15 @@
                             if (friendUserDoc.exists) {
                                 const friendUser = friendUserDoc.data();
                                 const friendName = friendUser.name || 'Amico';
-                                const friendAvatar = friendName[0].toUpperCase();
+                                const friendAvatar = friendUser.avatar || friendName[0].toUpperCase();
+                                
+                                // HTML per avatar (custom o lettera)
+                                let avatarHTML;
+                                if (friendUser.avatar && friendUser.avatar.startsWith('data:image')) {
+                                    avatarHTML = `<div class="contact-avatar online" style="background-image: url(${friendUser.avatar}); background-size: cover; background-position: center;"></div>`;
+                                } else {
+                                    avatarHTML = `<div class="contact-avatar online">${friendAvatar}</div>`;
+                                }
                                 
                                 const roomId = [currentUser.id, friendId].sort().join('_');
                                 let lastMessage = 'Inizia una conversazione';
@@ -2873,7 +4022,7 @@
                                 
                                 html += `
                                     <div class="contact-item" onclick="selectChatMobile('${friendId}', '${friendName}', '${friendAvatar}', false)">
-                                        <div class="contact-avatar online">${friendAvatar}</div>
+                                        ${avatarHTML}
                                         <div class="contact-info">
                                             <div class="contact-name">${friendName}</div>
                                             <div class="contact-preview">${lastMessage}</div>
@@ -2910,10 +4059,31 @@
             document.getElementById('chatUserInfo').style.display = 'flex';
             document.getElementById('inputArea').style.display = 'block';
             const chatAvatar = document.getElementById('chatAvatar');
-            chatAvatar.textContent = isAI ? '🤖' : avatar;
+            
+            // Gestisci avatar (custom image o emoji/lettera)
+            if (avatar && avatar.startsWith('data:image')) {
+                // Avatar custom
+                chatAvatar.style.backgroundImage = `url(${avatar})`;
+                chatAvatar.style.backgroundSize = 'cover';
+                chatAvatar.style.backgroundPosition = 'center';
+                chatAvatar.textContent = '';
+            } else {
+                // Avatar normale (emoji o lettera)
+                chatAvatar.style.backgroundImage = '';
+                chatAvatar.textContent = isAI ? '🤖' : avatar;
+            }
+            
             if (isAI) chatAvatar.classList.add('ai');
             else chatAvatar.classList.remove('ai');
             document.getElementById('chatUserName').textContent = name;
+
+            // Mostra pulsanti chiamata solo per chat 1-1 (non AI, non gruppi)
+            const callButtons = document.getElementById('callButtons');
+            if (!isAI && !activeChat.isGroup) {
+                callButtons.style.display = 'flex';
+            } else {
+                callButtons.style.display = 'none';
+            }
 
             // Update active state
             document.querySelectorAll('.contact-item').forEach(item => {
@@ -3145,11 +4315,29 @@
                             const isSent = msg.senderId === currentUser.id;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
+                            // Usa cache avatar
+                            let avatarContent = '';
+                            let avatarStyle = '';
+                            if (isSent) {
+                                if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
+                                    avatarStyle = `style="background-image: url('${currentUser.avatar}'); background-size: cover;"`;
+                                } else {
+                                    avatarContent = currentUser.avatar;
+                                }
+                            } else {
+                                const cachedAvatar = userAvatarsCache[msg.senderId] || msg.senderAvatar || msg.senderName[0].toUpperCase();
+                                if (cachedAvatar && cachedAvatar.startsWith('data:image')) {
+                                    avatarStyle = `style="background-image: url('${cachedAvatar}'); background-size: cover;"`;
+                                } else {
+                                    avatarContent = cachedAvatar;
+                                }
+                            }
+                            
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
                             messageDiv.setAttribute('data-message-id', msg.id);
                             messageDiv.innerHTML = `
-                                <div class="message-avatar">${isSent ? currentUser.avatar : msg.senderAvatar}</div>
+                                <div class="message-avatar" ${avatarStyle}>${avatarContent}</div>
                                 <div class="message-content">
                                     ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                                     <div class="message-bubble">${formatMessage(msg.text)}</div>
@@ -3180,9 +4368,28 @@
             };
         }
 
+        // Cache avatar utenti (evita di salvare base64 in ogni messaggio)
+        const userAvatarsCache = {};
+        
         // Render messages
-        function renderMessages(messages) {
+        async function renderMessages(messages) {
             const messagesContainer = document.getElementById('messagesContainer');
+            
+            // Carica avatar degli utenti presenti nei messaggi
+            const userIds = [...new Set(messages.map(m => m.senderId))];
+            for (const userId of userIds) {
+                if (!userAvatarsCache[userId] && userId !== CONVERSINA_ID) {
+                    try {
+                        const userDoc = await db.collection('users').doc(userId).get();
+                        if (userDoc.exists) {
+                            const userData = userDoc.data();
+                            userAvatarsCache[userId] = userData.avatar || userData.name[0].toUpperCase();
+                        }
+                    } catch (err) {
+                        console.error('Errore caricamento avatar:', err);
+                    }
+                }
+            }
             
             // Salva la posizione di scroll corrente
             const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 100;
@@ -3205,9 +4412,34 @@
                 const isAI = msg.senderId === CONVERSINA_ID;
                 const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                 
+                // Gestione avatar: usa cache invece di msg.senderAvatar
+                let avatarContent = '';
+                let avatarStyle = '';
+                if (isSent) {
+                    // Utente corrente
+                    if (currentUser.avatar && currentUser.avatar.startsWith('data:image')) {
+                        avatarStyle = `style="background-image: url('${currentUser.avatar}'); background-size: cover;"`;
+                        avatarContent = '';
+                    } else {
+                        avatarContent = currentUser.avatar;
+                    }
+                } else if (isAI) {
+                    // Conversina AI
+                    avatarContent = '🤖';
+                } else {
+                    // Altri utenti - usa cache
+                    const cachedAvatar = userAvatarsCache[msg.senderId] || msg.senderAvatar || msg.senderName[0].toUpperCase();
+                    if (cachedAvatar && cachedAvatar.startsWith('data:image')) {
+                        avatarStyle = `style="background-image: url('${cachedAvatar}'); background-size: cover;"`;
+                        avatarContent = '';
+                    } else {
+                        avatarContent = cachedAvatar;
+                    }
+                }
+                
                 return `
                     <div class="message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}" data-message-id="${msg.id}">
-                        <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
+                        <div class="message-avatar ${isAI ? 'ai' : ''}" ${avatarStyle}>${avatarContent}</div>
                         <div class="message-content">
                             ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
                             <div class="message-bubble">${formatMessage(msg.text)}</div>
@@ -3259,11 +4491,15 @@
             try {
                 // Add message to Firestore
                 console.log('💾 Salvataggio messaggio su Firestore...');
+                
+                // Salva solo l'iniziale, non l'avatar completo (risparmio spazio)
+                const avatarInitial = currentUser.name ? currentUser.name[0].toUpperCase() : '👤';
+                
                 await db.collection('messages').add({
                     roomId: roomId,
                     senderId: currentUser.id,
                     senderName: currentUser.name,
-                    senderAvatar: currentUser.avatar,
+                    senderAvatar: avatarInitial,
                     text: text,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     isGroup: activeChat.isGroup || false
@@ -3405,13 +4641,13 @@
                         id: user.uid,
                         name: userData?.name || user.email.split('@')[0],
                         email: user.email,
-                        avatar: (userData?.name || user.email)[0].toUpperCase(),
+                        avatar: userData?.avatar || (userData?.name || user.email)[0].toUpperCase(),
                         friendCode: userData?.friendCode,
                         isAdmin: userData?.isAdmin || false  // 👑 Carica flag admin
                     };
                     
-                    // Se è admin, cambia avatar in corona
-                    if (currentUser.isAdmin) {
+                    // Se è admin, cambia avatar in corona (solo se non ha custom avatar)
+                    if (currentUser.isAdmin && !userData?.avatar) {
                         currentUser.avatar = '👑';
                         console.log('👑 Admin riconosciuto:', currentUser.name);
                     }
@@ -3435,6 +4671,101 @@
                     // 🔔 Avvia polling globale per controllare messaggi in TUTTE le chat
                     startGlobalMessagePolling();
                     
+                    // 📞 Avvia listener per chiamate in arrivo
+                    listenForIncomingCalls();
+                    
+                    // 🔔 Setup FCM listener e registra token
+                    setupFCMListener();
+                    registerFCMToken();
+                    
+                    // 🔔 Inizializza Service Worker con config Firebase per notifiche background
+                    if ('serviceWorker' in navigator) {
+                        console.log('🔔 Preparazione init SW...');
+                        navigator.serviceWorker.ready.then(registration => {
+                            console.log('🔔 SW ready, registration:', registration);
+                            console.log('🔔 SW active:', !!registration.active);
+                            if (registration.active) {
+                                const msg = {
+                                    type: 'INIT',
+                                    config: { 
+                                        apiKey: firebaseConfig.apiKey,
+                                        projectId: firebaseConfig.projectId
+                                    },
+                                    userId: currentUser.id
+                                };
+                                console.log('🔔 Invio messaggio INIT al SW:', msg);
+                                registration.active.postMessage(msg);
+                                console.log('✅ Messaggio INIT inviato al Service Worker');
+                            } else {
+                                console.log('❌ SW non attivo!');
+                            }
+                        }).catch(err => {
+                            console.error('❌ Errore SW ready:', err);
+                        });
+                    } else {
+                        console.log('❌ Service Worker non supportato');
+                    }
+                    
+                    // 📞 Gestisci risposta chiamata da notifica SW (quando app era chiusa)
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data?.type === 'ACCEPT_CALL') {
+                            const { callId, fromId, fromName, callType } = event.data;
+                            currentCall = { id: callId, from: fromId, fromName, type: callType, isInitiator: false };
+                            acceptCall();
+                        }
+                    });
+                    
+                    // 📞 Controlla se l'app è stata aperta da una notifica chiamata
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const acceptCallId = urlParams.get('acceptCall');
+                    if (acceptCallId) {
+                        const fromId = urlParams.get('from');
+                        const fromName = decodeURIComponent(urlParams.get('fromName') || '');
+                        const callType = urlParams.get('type') || 'audio';
+                        
+                        // Carica dati chiamata da Firestore
+                        db.collection('calls').doc(acceptCallId).get().then(doc => {
+                            if (doc.exists && doc.data().status === 'ringing') {
+                                const callData = doc.data();
+                                currentCall = { 
+                                    id: acceptCallId, 
+                                    from: fromId, 
+                                    fromName, 
+                                    fromAvatar: callData.fromAvatar,
+                                    type: callType, 
+                                    offer: callData.offer,
+                                    isInitiator: false 
+                                };
+                                
+                                // SUONA IMMEDIATAMENTE quando app si apre da notifica
+                                startRingtone();
+                                
+                                // Mostra modal chiamata in arrivo
+                                document.getElementById('incomingCallName').textContent = fromName;
+                                document.getElementById('incomingCallType').textContent = 
+                                    callType === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo';
+                                
+                                // Avatar
+                                const avatarEl = document.getElementById('incomingCallAvatar');
+                                const avatarText = document.getElementById('incomingCallAvatarText');
+                                const avatar = callData.fromAvatar || fromName[0]?.toUpperCase() || '👤';
+                                if (avatar && avatar.startsWith('data:image')) {
+                                    avatarEl.style.backgroundImage = `url('${avatar}')`;
+                                    avatarEl.style.backgroundSize = 'cover';
+                                    avatarText.textContent = '';
+                                } else {
+                                    avatarEl.style.backgroundImage = '';
+                                    avatarText.textContent = avatar;
+                                }
+                                
+                                document.getElementById('incomingCallModal').style.display = 'flex';
+                            }
+                        });
+                        
+                        // Pulisci URL
+                        window.history.replaceState({}, '', window.location.pathname);
+                    }
+                    
                     // 👑 Mostra badge e pannello admin se è admin
                     if (currentUser.isAdmin) {
                         showAdminBadge();
@@ -3456,6 +4787,20 @@
         document.getElementById('messageInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
+            }
+        });
+        
+        // Auto-scroll su mobile quando si apre la tastiera
+        document.getElementById('messageInput').addEventListener('focus', () => {
+            if (window.innerWidth <= 768) {
+                setTimeout(() => {
+                    const messagesContainer = document.querySelector('.chat-messages');
+                    if (messagesContainer) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                    // Scroll anche la finestra se necessario
+                    window.scrollTo(0, document.body.scrollHeight);
+                }, 300); // Aspetta che la tastiera si apra
             }
         });
     </script>
