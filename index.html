@@ -1231,6 +1231,39 @@
         let swRegistration = null; // Service Worker registration
         
         const CONVERSINA_ID = 'conversina_ai_bot';
+        const OFFICIAL_FALLBACK_ID = 'admin_conversando_official';
+        let officialAdminId = null;
+
+        function isOfficialAdminId(userId) {
+            return !!userId && (userId === officialAdminId || userId === OFFICIAL_FALLBACK_ID);
+        }
+
+        async function getOfficialAdminId() {
+            if (officialAdminId) return officialAdminId;
+
+            if (currentUser?.isAdmin && currentUser?.id) {
+                officialAdminId = currentUser.id;
+                return officialAdminId;
+            }
+
+            try {
+                const snap = await db.collection('users')
+                    .where('isAdmin', '==', true)
+                    .limit(1)
+                    .get();
+
+                if (!snap.empty) {
+                    officialAdminId = snap.docs[0].id;
+                    console.log('👑 UID Conversando Official trovato:', officialAdminId);
+                    return officialAdminId;
+                }
+            } catch (error) {
+                console.warn('⚠️ Impossibile recuperare UID admin ufficiale:', error);
+            }
+
+            officialAdminId = OFFICIAL_FALLBACK_ID;
+            return officialAdminId;
+        }
 
         // Ripristina stato notifiche da localStorage
         if (notificationsEnabled && Notification.permission === 'granted') {
@@ -1427,7 +1460,7 @@
                 if (latestMsg.senderId === CONVERSINA_ID) {
                     senderName = 'Conversina AI';
                     senderIcon = '🤖';
-                } else if (latestMsg.senderId === 'admin_conversando_official') {
+                } else if (isOfficialAdminId(latestMsg.senderId)) {
                     senderName = 'Conversando Official';
                     senderIcon = '👑';
                 }
@@ -1446,7 +1479,7 @@
         // 🔔 POLLING GLOBALE - Controlla TUTTE le chat per nuovi messaggi
         let globalPollingInterval = null;
         
-        function startGlobalMessagePolling() {
+        async function startGlobalMessagePolling() {
             if (globalPollingInterval) {
                 console.log('⚠️ Polling già attivo');
                 return; // Già attivo
@@ -1454,6 +1487,7 @@
             
             console.log('🔔 Avvio polling globale messaggi...');
             console.log('📍 Utente:', currentUser?.name, '- ID:', currentUser?.id);
+            const officialId = await getOfficialAdminId();
             
             // Alert solo in debug
             if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
@@ -1471,7 +1505,7 @@
                         // 1. Conversina
                         [currentUser.id, CONVERSINA_ID].sort().join('_'),
                         // 2. Conversando Official (se non sei tu)
-                        currentUser.id !== 'admin_conversando_official' ? [currentUser.id, 'admin_conversando_official'].sort().join('_') : null,
+                        currentUser.id !== officialId ? [currentUser.id, officialId].sort().join('_') : null,
                     ].filter(Boolean);
                     
                     console.log('🔔 [Polling] Rooms da controllare:', roomsToCheck.length);
@@ -2691,21 +2725,47 @@
                 </div>
             `;
 
-            // 2️⃣ Mostra sempre Conversando Official per TUTTI (eccetto se sei tu)
-            if (currentUser?.id !== 'admin_conversando_official') {
+            // 2️⃣ Mostra sempre Conversando Official per TUTTI (eccetto l'admin)
+            const officialId = await getOfficialAdminId();
+            if (currentUser?.id !== officialId) {
+                const officialRoomId = [currentUser.id, officialId].sort().join('_');
+                let officialLastMessage = 'Account ufficiale • Supporto & News';
+                let officialLastTime = '🔔';
+
+                try {
+                    const lastOfficialMsgSnapshot = await db.collection('messages')
+                        .where('roomId', '==', officialRoomId)
+                        .orderBy('timestamp', 'desc')
+                        .limit(1)
+                        .get();
+
+                    if (!lastOfficialMsgSnapshot.empty) {
+                        const lastMsg = lastOfficialMsgSnapshot.docs[0].data();
+                        officialLastMessage = lastMsg.text.substring(0, 40) + (lastMsg.text.length > 40 ? '...' : '');
+                        if (lastMsg.timestamp) {
+                            const date = new Date(lastMsg.timestamp.seconds * 1000);
+                            const diffHours = (new Date() - date) / (1000 * 60 * 60);
+                            officialLastTime = diffHours < 24
+                                ? date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+                                : date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Nessun messaggio official precedente o indice mancante:', e);
+                }
+
                 html += `
-                    <div class="contact-item" id="contact-admin_conversando_official" onclick="selectChatMobile('admin_conversando_official', 'Conversando Official', '👑', false)">
+                    <div class="contact-item" id="contact-${officialId}" onclick="selectChatMobile('${officialId}', 'Conversando Official', '👑', false)">
                         <div class="contact-avatar online" style="background: linear-gradient(135deg, #c9a961, #d4af37); color: #0a0a0f;">👑</div>
                         <div class="contact-info">
                             <div class="contact-name" style="color: var(--accent-primary);">Conversando Official</div>
-                            <div class="contact-preview" id="preview-admin_conversando_official">Account ufficiale • Supporto & News</div>
+                            <div class="contact-preview" id="preview-${officialId}">${officialLastMessage}</div>
                         </div>
                         <div class="contact-meta">
-                            <div class="contact-time" id="time-admin_conversando_official">🔔</div>
+                            <div class="contact-time" id="time-${officialId}">${officialLastTime}</div>
                         </div>
                     </div>
                 `;
-                
             }
 
             try {
@@ -3022,15 +3082,18 @@
                             
                             const isSent = msg.senderId === currentUser.id;
                             const isAI = msg.senderId === CONVERSINA_ID;
+                            const isOfficial = isOfficialAdminId(msg.senderId);
+                            const displaySenderName = isOfficial ? 'Conversando Official' : msg.senderName;
+                            const displaySenderAvatar = isOfficial ? '👑' : msg.senderAvatar;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}`;
                             messageDiv.setAttribute('data-message-id', msg.id); // Aggiungi ID per controllo duplicati
                             messageDiv.innerHTML = `
-                                <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
+                                <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : displaySenderAvatar)}</div>
                                 <div class="message-content">
-                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
+                                    ${!isSent ? `<div class="message-sender">${displaySenderName}</div>` : ''}
                                     <div class="message-bubble">${formatMessage(msg.text)}</div>
                                     <div class="message-time">${time}</div>
                                 </div>
@@ -3143,15 +3206,18 @@
                             if (document.querySelector(`[data-message-id="${msg.id}"]`)) return;
                             
                             const isSent = msg.senderId === currentUser.id;
+                            const isOfficial = isOfficialAdminId(msg.senderId);
+                            const displaySenderName = isOfficial ? 'Conversando Official' : msg.senderName;
+                            const displaySenderAvatar = isOfficial ? '👑' : msg.senderAvatar;
                             const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                             
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
                             messageDiv.setAttribute('data-message-id', msg.id);
                             messageDiv.innerHTML = `
-                                <div class="message-avatar">${isSent ? currentUser.avatar : msg.senderAvatar}</div>
+                                <div class="message-avatar">${isSent ? currentUser.avatar : displaySenderAvatar}</div>
                                 <div class="message-content">
-                                    ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
+                                    ${!isSent ? `<div class="message-sender">${displaySenderName}</div>` : ''}
                                     <div class="message-bubble">${formatMessage(msg.text)}</div>
                                     <div class="message-time">${time}</div>
                                 </div>
@@ -3203,13 +3269,16 @@
             const messagesHTML = messages.map(msg => {
                 const isSent = msg.senderId === currentUser.id;
                 const isAI = msg.senderId === CONVERSINA_ID;
+                const isOfficial = isOfficialAdminId(msg.senderId);
+                const displaySenderName = isOfficial ? 'Conversando Official' : msg.senderName;
+                const displaySenderAvatar = isOfficial ? '👑' : msg.senderAvatar;
                 const time = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'Ora';
                 
                 return `
                     <div class="message ${isSent ? 'sent' : 'received'} ${isAI ? 'ai' : ''}" data-message-id="${msg.id}">
-                        <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : msg.senderAvatar)}</div>
+                        <div class="message-avatar ${isAI ? 'ai' : ''}">${isSent ? currentUser.avatar : (isAI ? '🤖' : displaySenderAvatar)}</div>
                         <div class="message-content">
-                            ${!isSent ? `<div class="message-sender">${msg.senderName}</div>` : ''}
+                            ${!isSent ? `<div class="message-sender">${displaySenderName}</div>` : ''}
                             <div class="message-bubble">${formatMessage(msg.text)}</div>
                             <div class="message-time">${time}</div>
                         </div>
@@ -3264,6 +3333,7 @@
                     senderId: currentUser.id,
                     senderName: currentUser.name,
                     senderAvatar: currentUser.avatar,
+                    recipientId: activeChat.isGroup ? null : activeChat.id,
                     text: text,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     isGroup: activeChat.isGroup || false
@@ -3412,6 +3482,7 @@
                     
                     // Se è admin, cambia avatar in corona
                     if (currentUser.isAdmin) {
+                        officialAdminId = currentUser.id;
                         currentUser.avatar = '👑';
                         console.log('👑 Admin riconosciuto:', currentUser.name);
                     }
