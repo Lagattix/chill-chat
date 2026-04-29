@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conversando - Chat in tempo reale con amici e Conversina AI" />
+  <meta name="description" content="Conversando - Chat, chiamate e video in stile social" />
   <meta name="theme-color" content="#0a0a0f" />
 
   <link rel="manifest" href="manifest.json" />
@@ -1312,6 +1312,339 @@
         display: none;
       }
     }
+    /* ===== Bottom Nav + Video Feed ===== */
+    .app-container {
+      padding-bottom: 74px;
+    }
+
+    .sidebar,
+    .chat-area {
+      height: calc(100vh - 49px - 74px);
+    }
+
+    .app-container.visible.video-mode {
+      display: block;
+    }
+
+    .app-container.video-mode .sidebar,
+    .app-container.video-mode .chat-area,
+    .app-container.video-mode .mobile-overlay {
+      display: none !important;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(420px, calc(100% - 28px));
+      height: 60px;
+      background: rgba(18, 18, 26, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 22px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+      z-index: 160;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 6px;
+    }
+
+    .bottom-nav-item {
+      flex: 1;
+      height: 48px;
+      border: none;
+      border-radius: 16px;
+      background: transparent;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .bottom-nav-item .icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .bottom-nav-item.active {
+      background: linear-gradient(135deg, rgba(201,169,97,0.24), rgba(201,169,97,0.08));
+      color: var(--accent-primary);
+      box-shadow: inset 0 0 0 1px rgba(201,169,97,0.22);
+    }
+
+    .video-page {
+      display: none;
+      height: calc(100vh - 49px - 74px);
+      width: 100%;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(201,169,97,0.12), transparent 30%),
+        radial-gradient(circle at 80% 90%, rgba(155,89,182,0.14), transparent 32%),
+        #050509;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .app-container.video-mode .video-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .video-shell {
+      width: min(440px, 100%);
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .video-topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 6;
+      padding: 18px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(0,0,0,0.72), transparent);
+      pointer-events: none;
+    }
+
+    .video-topbar h2 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.65);
+    }
+
+    .video-upload-btn {
+      pointer-events: auto;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+    }
+
+    .video-feed {
+      height: 100%;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .video-feed::-webkit-scrollbar {
+      width: 0;
+    }
+
+    .reel {
+      position: relative;
+      height: 100%;
+      min-height: 100%;
+      scroll-snap-align: start;
+      background: #050505;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .reel video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .reel-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 32px;
+      background:
+        linear-gradient(145deg, rgba(201,169,97,0.16), rgba(155,89,182,0.18)),
+        radial-gradient(circle at 50% 30%, rgba(255,255,255,0.16), transparent 28%),
+        #090911;
+    }
+
+    .reel-placeholder .big-icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 10px 30px rgba(0,0,0,0.35));
+    }
+
+    .reel-placeholder h3 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .reel-placeholder p {
+      font-size: 15px;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.72);
+      max-width: 320px;
+    }
+
+    .reel-gradient {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.45), transparent 28%, transparent 58%, rgba(0,0,0,0.78)),
+        linear-gradient(90deg, transparent 62%, rgba(0,0,0,0.30));
+      pointer-events: none;
+    }
+
+    .reel-info {
+      position: absolute;
+      left: 16px;
+      right: 86px;
+      bottom: 22px;
+      z-index: 4;
+      color: #fff;
+    }
+
+    .reel-author {
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .reel-title {
+      font-size: 16px;
+      line-height: 1.35;
+      font-weight: 600;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+    }
+
+    .reel-actions {
+      position: absolute;
+      right: 14px;
+      bottom: 82px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+    }
+
+    .reel-action {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 800;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+    }
+
+    .reel-action button {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.13);
+      color: #fff;
+      font-size: 22px;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .reel-action button:active {
+      transform: scale(0.92);
+    }
+
+    .reel-action button.liked {
+      background: rgba(255, 48, 94, 0.30);
+      border-color: rgba(255, 48, 94, 0.50);
+    }
+
+    .profile-social-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .profile-social-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 11px 7px;
+      text-align: center;
+    }
+
+    .profile-social-card strong {
+      display: block;
+      color: var(--text-primary);
+      font-size: 17px;
+      margin-bottom: 4px;
+    }
+
+    .profile-social-card span {
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        padding-bottom: 72px;
+      }
+
+      .sidebar {
+        height: calc(100dvh - 72px);
+      }
+
+      .chat-area {
+        height: calc(100dvh - 72px);
+      }
+
+      .video-page {
+        height: calc(100dvh - 72px);
+      }
+
+      .app-container.video-mode {
+        padding-top: 0;
+      }
+
+      .bottom-nav {
+        bottom: 10px;
+        height: 58px;
+      }
+
+      .profile-social-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
   </style>
 </head>
 
@@ -1436,6 +1769,28 @@
         </div>
       </div>
     </section>
+    <section class="video-page" id="videoPage">
+      <div class="video-shell">
+        <div class="video-topbar">
+          <h2>Video</h2>
+          <button class="video-upload-btn" onclick="document.getElementById('videoUploadInput').click()">＋ Carica</button>
+          <input id="videoUploadInput" type="file" accept="video/*" style="display:none;" onchange="handleVideoUpload(event)">
+        </div>
+        <div class="video-feed" id="videoFeed"></div>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="bottom-nav-item active" id="bottomChatBtn" onclick="showChatTab()">
+        <span class="icon">💬</span>
+        <span>Chat</span>
+      </button>
+      <button class="bottom-nav-item" id="bottomVideoBtn" onclick="showVideoTab()">
+        <span class="icon">🎬</span>
+        <span>Video</span>
+      </button>
+    </nav>
+
   </main>
 
   <!-- Profile Modal -->
@@ -1458,6 +1813,13 @@
             Prossimo cambio disponibile: <span id="nextNameChange"></span>
           </div>
         </div>
+      </div>
+
+      <div class="profile-social-grid">
+        <div class="profile-social-card"><strong id="profileFriendsCount">0</strong><span>Amici</span></div>
+        <div class="profile-social-card"><strong id="profileFollowersCount">0</strong><span>Follower</span></div>
+        <div class="profile-social-card"><strong id="profileVideosCount">0</strong><span>Video</span></div>
+        <div class="profile-social-card"><strong id="profileFriendCodeMini">---</strong><span>Codice</span></div>
       </div>
 
       <div class="box">
@@ -2641,6 +3003,7 @@
 
       updateNotificationsUI();
       updateNameChangeInfo();
+      updateProfileSocialStats();
       $('profileModal').classList.add('visible');
     }
 
@@ -4004,6 +4367,220 @@
       window.history.replaceState({}, '', window.location.pathname);
     }
 
+    // ===== Video feed stile TikTok =====
+    let localVideos = [];
+    let videoLikes = JSON.parse(localStorage.getItem('conversando_video_likes') || '{}');
+
+    function defaultVideos() {
+      return [
+        {
+          id: 'welcome',
+          type: 'placeholder',
+          author: 'Conversando',
+          title: 'Benvenuto nella nuova area Video. Carica un video dal telefono e scorri come su TikTok.',
+          likes: 128,
+          comments: 12
+        }
+      ];
+    }
+
+    function showChatTab() {
+      const app = $('appContainer');
+      app.classList.remove('video-mode');
+      $('bottomChatBtn')?.classList.add('active');
+      $('bottomVideoBtn')?.classList.remove('active');
+
+      if (window.innerWidth <= 768) {
+        $('mobileMenuBtnFixed').style.display = 'flex';
+      }
+
+      pauseAllReelVideos();
+    }
+
+    function showVideoTab() {
+      const app = $('appContainer');
+      app.classList.add('video-mode');
+      $('bottomChatBtn')?.classList.remove('active');
+      $('bottomVideoBtn')?.classList.add('active');
+      $('sidebar')?.classList.remove('mobile-visible');
+      $('mobileOverlay')?.classList.remove('visible');
+      $('mobileMenuBtnFixed').style.display = 'none';
+      renderVideoFeed();
+      setTimeout(playCurrentReelVideo, 250);
+    }
+
+    function renderVideoFeed() {
+      const feed = $('videoFeed');
+      if (!feed) return;
+
+      const videos = [...localVideos, ...defaultVideos()];
+
+      feed.innerHTML = videos.map(video => {
+        const liked = !!videoLikes[video.id];
+        const likeCount = (video.likes || 0) + (liked ? 1 : 0);
+
+        if (video.type === 'placeholder') {
+          return `
+            <article class="reel" data-video-id="${video.id}">
+              <div class="reel-placeholder">
+                <div class="big-icon">🎬</div>
+                <h3>Area Video</h3>
+                <p>${safeName(video.title)}</p>
+              </div>
+              <div class="reel-gradient"></div>
+              ${reelOverlayHTML(video, liked, likeCount)}
+            </article>
+          `;
+        }
+
+        return `
+          <article class="reel" data-video-id="${video.id}">
+            <video src="${video.url}" playsinline loop preload="metadata" onclick="toggleReelPlayback(this)"></video>
+            <div class="reel-gradient"></div>
+            ${reelOverlayHTML(video, liked, likeCount)}
+          </article>
+        `;
+      }).join('');
+    }
+
+    function reelOverlayHTML(video, liked, likeCount) {
+      return `
+        <div class="reel-actions">
+          <div class="reel-action">
+            <button class="${liked ? 'liked' : ''}" onclick="likeVideo('${video.id}')">❤</button>
+            <span id="like-${video.id}">${likeCount}</span>
+          </div>
+          <div class="reel-action">
+            <button onclick="commentVideo('${video.id}')">💬</button>
+            <span>${video.comments || 0}</span>
+          </div>
+          <div class="reel-action">
+            <button onclick="shareVideo('${video.id}')">↗</button>
+            <span>Share</span>
+          </div>
+        </div>
+        <div class="reel-info">
+          <div class="reel-author">@${safeName(video.author || currentUser?.name || 'utente')}</div>
+          <div class="reel-title">${safeName(video.title || 'Nuovo video')}</div>
+        </div>
+      `;
+    }
+
+    function handleVideoUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('video/')) {
+        alert('Seleziona un file video valido.');
+        return;
+      }
+
+      const maxSizeMb = 80;
+      if (file.size > maxSizeMb * 1024 * 1024) {
+        alert(`Video troppo grande. Per ora massimo ${maxSizeMb}MB.`);
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      const title = prompt('Titolo del video:', file.name.replace(/\.[^/.]+$/, '')) || 'Nuovo video';
+
+      localVideos.unshift({
+        id: 'local_' + Date.now(),
+        type: 'video',
+        url,
+        author: currentUser?.name || 'utente',
+        title,
+        likes: 0,
+        comments: 0
+      });
+
+      renderVideoFeed();
+      updateProfileSocialStats();
+      setTimeout(playCurrentReelVideo, 250);
+      event.target.value = '';
+    }
+
+    function likeVideo(videoId) {
+      videoLikes[videoId] = !videoLikes[videoId];
+      localStorage.setItem('conversando_video_likes', JSON.stringify(videoLikes));
+      renderVideoFeed();
+    }
+
+    function commentVideo(videoId) {
+      alert('Commenti video: prossimo step. Possiamo salvarli su Firestore in una collection videos/{id}/comments.');
+    }
+
+    function shareVideo(videoId) {
+      navigator.clipboard?.writeText(window.location.href)
+        .then(() => alert('Link copiato ✅'))
+        .catch(() => alert('Condividi questa pagina con i tuoi amici.'));
+    }
+
+    function pauseAllReelVideos() {
+      document.querySelectorAll('.reel video').forEach(video => video.pause());
+    }
+
+    function playCurrentReelVideo() {
+      const feed = $('videoFeed');
+      if (!feed) return;
+
+      const reels = [...feed.querySelectorAll('.reel')];
+      const center = feed.scrollTop + feed.clientHeight / 2;
+      let best = null;
+      let bestDistance = Infinity;
+
+      reels.forEach(reel => {
+        const reelCenter = reel.offsetTop + reel.offsetHeight / 2;
+        const distance = Math.abs(center - reelCenter);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = reel;
+        }
+      });
+
+      pauseAllReelVideos();
+      const video = best?.querySelector('video');
+      if (video) video.play().catch(() => {});
+    }
+
+    function toggleReelPlayback(video) {
+      if (video.paused) video.play().catch(() => {});
+      else video.pause();
+    }
+
+    function setupVideoScrollAutoplay() {
+      const feed = $('videoFeed');
+      if (!feed) return;
+
+      let timer = null;
+      feed.addEventListener('scroll', () => {
+        clearTimeout(timer);
+        timer = setTimeout(playCurrentReelVideo, 120);
+      });
+    }
+
+    async function updateProfileSocialStats() {
+      if (!currentUser) return;
+
+      try {
+        const friendsSnap = await db.collection('friends').where('userId', '==', currentUser.id).get();
+        $('profileFriendsCount') && ($('profileFriendsCount').textContent = friendsSnap.size);
+      } catch {
+        $('profileFriendsCount') && ($('profileFriendsCount').textContent = '0');
+      }
+
+      try {
+        const followersSnap = await db.collection('followers').where('toUserId', '==', currentUser.id).get();
+        $('profileFollowersCount') && ($('profileFollowersCount').textContent = followersSnap.size);
+      } catch {
+        $('profileFollowersCount') && ($('profileFollowersCount').textContent = '0');
+      }
+
+      $('profileVideosCount') && ($('profileVideosCount').textContent = String(localVideos.length));
+      $('profileFriendCodeMini') && ($('profileFriendCodeMini').textContent = currentUser.friendCode || '---');
+    }
+
+
     document.addEventListener('DOMContentLoaded', () => {
       $('messageInput').addEventListener('keypress', event => {
         if (event.key === 'Enter') {
@@ -4021,6 +4598,7 @@
       });
 
       initFirebase();
+      setupVideoScrollAutoplay();
     });
   </script>
 </body>
