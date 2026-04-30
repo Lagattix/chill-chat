@@ -1323,14 +1323,19 @@
     .bottom-nav-item { flex:1; height:48px; border:none; border-radius:16px; background:transparent; color:var(--text-secondary); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; font-size:11px; font-weight:700; transition: all .2s ease; }
     .bottom-nav-item .icon { font-size:20px; line-height:1; }
     .bottom-nav-item.active { background: linear-gradient(135deg, rgba(201,169,97,.24), rgba(201,169,97,.08)); color:var(--accent-primary); box-shadow: inset 0 0 0 1px rgba(201,169,97,.22); }
-    .postcard-page { display:none; height: calc(100vh - 49px - 74px); width:100%; background: radial-gradient(circle at 18% 8%, rgba(201,169,97,.16), transparent 30%), radial-gradient(circle at 82% 92%, rgba(155,89,182,.16), transparent 32%), #050509; overflow:hidden; position:relative; }
+
+    .postcard-page { display:none; height: calc(100vh - 49px - 74px); width:100%; background:
+      radial-gradient(circle at 18% 8%, rgba(0,224,255,.08), transparent 24%),
+      radial-gradient(circle at 82% 92%, rgba(255,0,102,.10), transparent 28%),
+      linear-gradient(180deg, #08080c 0%, #0d0d13 55%, #050509 100%);
+      overflow:hidden; position:relative; }
     .app-container.postcard-mode .postcard-page { display:flex; align-items:center; justify-content:center; }
-    .postcard-shell { width:min(520px,100%); height:100%; position:relative; overflow:hidden; background:rgba(10,10,15,.96); border-left:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.08); }
-    .postcard-topbar { position:sticky; top:0; z-index:8; padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(180deg, rgba(10,10,15,.98), rgba(10,10,15,.82)); border-bottom:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+    .postcard-shell { width:min(540px,100%); height:100%; position:relative; overflow:hidden; background:rgba(7,7,12,.98); border-left:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.08); }
+    .postcard-topbar { position:sticky; top:0; z-index:12; padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(180deg, rgba(8,8,12,.98), rgba(8,8,12,.72)); border-bottom:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
     .postcard-topbar h2 { font-size:21px; font-weight:900; letter-spacing:.02em; color:#fff; display:flex; align-items:center; gap:8px; }
     .postcard-subtitle { color:rgba(255,255,255,.55); font-size:11px; letter-spacing:.08em; text-transform:uppercase; margin-top:3px; }
     .postcard-upload-btn { border:1px solid rgba(201,169,97,.38); background:linear-gradient(135deg, rgba(201,169,97,.28), rgba(255,255,255,.08)); color:#fff; border-radius:999px; padding:10px 14px; font-size:13px; font-weight:900; cursor:pointer; backdrop-filter:blur(12px); box-shadow: 0 10px 24px rgba(201,169,97,.14); }
-    .postcard-feed { height:calc(100% - 72px); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 14px 28px; display:flex; flex-direction:column; gap:18px; }
+    .postcard-feed { height:calc(100% - 72px); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 10px 26px; display:flex; flex-direction:column; gap:14px; scroll-snap-type:y mandatory; }
     .postcard-feed::-webkit-scrollbar { width:0; }
     .postcard-empty { min-height:78%; display:flex; align-items:center; justify-content:center; text-align:center; padding:30px; color:rgba(255,255,255,.78); }
     .postcard-empty-card { border-radius:28px; border:2px solid rgba(255,255,255,.12); background:linear-gradient(145deg, rgba(201,169,97,.15), rgba(155,89,182,.16)), rgba(255,255,255,.05); padding:36px 24px; box-shadow:0 24px 70px rgba(0,0,0,.36); }
@@ -1338,46 +1343,54 @@
     .postcard-empty-card h3 { font-size:27px; margin-bottom:8px; color:#fff; }
     .postcard-empty-card p { font-size:15px; line-height:1.45; color:rgba(255,255,255,.72); }
 
-    .postcard-card { position:relative; border-radius:30px; padding:12px; background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(201,169,97,.28), rgba(155,89,182,.18)); box-shadow:0 22px 58px rgba(0,0,0,.38); overflow:hidden; isolation:isolate; }
-    .postcard-card::before { content:''; position:absolute; inset:1px; border-radius:29px; background:linear-gradient(180deg, rgba(18,18,28,.98), rgba(10,10,18,.94)); z-index:0; }
-    .postcard-card::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at top left, rgba(255,255,255,.18), transparent 28%), radial-gradient(circle at bottom right, rgba(201,169,97,.16), transparent 35%); z-index:0; pointer-events:none; }
-    .postcard-inner { position:relative; z-index:1; border-radius:24px; overflow:hidden; background:#101018; border:1px solid rgba(255,255,255,.08); }
-    .postcard-author-row { display:flex; align-items:center; gap:10px; padding:14px 14px 12px; }
-    .postcard-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display:flex; align-items:center; justify-content:center; color:var(--bg-primary); font-weight:900; background-size:cover; background-position:center; flex-shrink:0; }
-    .postcard-author-meta { min-width:0; flex:1; }
+    .postcard-card { position:relative; min-height:calc(100vh - 170px); scroll-snap-align:start; scroll-snap-stop:always; border-radius:34px; overflow:hidden; background:rgba(0,0,0,.18); box-shadow:0 18px 44px rgba(0,0,0,.38); }
+    .postcard-card::before { content:''; position:absolute; inset:0; border-radius:34px; padding:2px; background:linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,0,102,.24), rgba(0,224,255,.20), rgba(255,255,255,.10)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; z-index:5; }
+    .postcard-inner { position:relative; height:100%; min-height:calc(100vh - 170px); border-radius:32px; overflow:hidden; background:#111; }
+    .postcard-photo-stage { position:absolute; inset:0; }
+    .postcard-image { width:100%; height:100%; display:block; object-fit:cover; }
+    .postcard-image-overlay { position:absolute; inset:0; background:
+      linear-gradient(180deg, rgba(0,0,0,.46) 0%, rgba(0,0,0,.10) 28%, rgba(0,0,0,.12) 54%, rgba(0,0,0,.70) 100%),
+      radial-gradient(circle at center, transparent 36%, rgba(0,0,0,.10) 100%); z-index:1; }
+    .postcard-cartoon-outline { position:absolute; inset:10px; border-radius:28px; border:2px solid rgba(255,255,255,.26); box-shadow: inset 0 0 0 8px rgba(255,255,255,.04), inset 0 0 0 1px rgba(255,255,255,.08); z-index:2; pointer-events:none; }
+    .postcard-cartoon-outline::before, .postcard-cartoon-outline::after { content:''; position:absolute; width:68px; height:18px; border-radius:999px; background:rgba(255,255,255,.40); top:18px; box-shadow:0 4px 10px rgba(0,0,0,.12); }
+    .postcard-cartoon-outline::before { left:18px; transform:rotate(-12deg); }
+    .postcard-cartoon-outline::after { right:18px; transform:rotate(11deg); }
+
+    .postcard-top-meta { position:absolute; top:18px; left:18px; right:82px; z-index:4; display:flex; align-items:flex-start; gap:12px; }
+    .postcard-author-button { display:flex; align-items:center; gap:10px; border:none; background:rgba(10,10,14,.38); border:1px solid rgba(255,255,255,.10); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:#fff; border-radius:999px; padding:8px 12px 8px 8px; cursor:pointer; max-width:100%; }
+    .postcard-avatar { width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display:flex; align-items:center; justify-content:center; color:var(--bg-primary); font-weight:900; background-size:cover; background-position:center; flex-shrink:0; border:2px solid rgba(255,255,255,.95); box-shadow:0 8px 18px rgba(0,0,0,.28); }
+    .postcard-author-meta { min-width:0; flex:1; text-align:left; }
     .postcard-author-name { color:#fff; font-size:14px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .postcard-time { color:rgba(255,255,255,.45); font-size:12px; margin-top:2px; }
-    .postcard-header-actions { display:flex; align-items:center; gap:8px; }
-    .postcard-channel-chip { display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:999px; font-size:11px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; border:1px solid rgba(255,255,255,.10); color:#ffefc4; background:rgba(255,255,255,.06); white-space:nowrap; }
+    .postcard-time { color:rgba(255,255,255,.72); font-size:12px; margin-top:1px; }
+    .postcard-top-meta-spacer { flex:1; }
+    .postcard-delete-btn { border:none; width:38px; height:38px; border-radius:50%; background:rgba(12,12,16,.46); color:#fff; cursor:pointer; border:1px solid rgba(255,255,255,.12); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); font-size:15px; }
 
-    .postcard-visual-wrap { position:relative; padding:0 14px 16px; }
-    .postcard-cartoon-frame { position:relative; border-radius:28px; background:linear-gradient(180deg, #f8f0d7, #ebdfbf); padding:18px 18px 30px; box-shadow:inset 0 0 0 4px #2b1f10, inset 0 0 0 10px rgba(255,255,255,.55), 0 18px 40px rgba(0,0,0,.28); }
-    .postcard-cartoon-frame::before, .postcard-cartoon-frame::after { content:''; position:absolute; width:82px; height:24px; border-radius:8px; background:rgba(255,255,255,.42); border:2px dashed rgba(43,31,16,.42); top:14px; z-index:2; transform:rotate(-11deg); }
-    .postcard-cartoon-frame::before { left:16px; }
-    .postcard-cartoon-frame::after { right:16px; transform:rotate(9deg); }
-    .postcard-doodle { position:absolute; z-index:1; font-size:18px; opacity:.72; filter:drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
-    .postcard-doodle.star-a { top:50px; right:28px; }
-    .postcard-doodle.star-b { bottom:44px; left:20px; }
-    .postcard-photo-viewport { position:relative; overflow:hidden; border-radius:22px; min-height:290px; background:#0b0b0f; border:4px solid #2b1f10; box-shadow:0 8px 0 rgba(43,31,16,.18); }
-    .postcard-image { width:100%; display:block; object-fit:cover; max-height:620px; }
-    .postcard-action-rail { position:absolute; right:26px; bottom:46px; z-index:4; display:flex; flex-direction:column; gap:10px; }
-    .postcard-action-bubble { width:54px; min-height:54px; border-radius:18px; border:2px solid rgba(43,31,16,.18); background:rgba(255,255,255,.86); color:#1a1420; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:11px; font-weight:900; box-shadow:0 10px 26px rgba(0,0,0,.22); cursor:pointer; padding:6px 4px; }
-    .postcard-action-bubble span:first-child { font-size:20px; line-height:1; }
-    .postcard-action-bubble.liked { background:#ffe6ef; }
+    .postcard-action-rail { position:absolute; right:14px; bottom:110px; z-index:4; display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .postcard-creator-rail-btn { border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; color:#fff; }
+    .postcard-creator-rail-avatar { width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:var(--bg-primary); font-weight:900; border:3px solid #fff; box-shadow:0 12px 26px rgba(0,0,0,.34); position:relative; overflow:hidden; }
+    .postcard-creator-rail-avatar::after { content:'+'; position:absolute; right:-1px; bottom:-1px; width:22px; height:22px; border-radius:50%; background:linear-gradient(135deg, #ff0050, #00e0ff); color:#fff; font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; border:2px solid #111; }
+    .postcard-creator-rail-name { font-size:11px; font-weight:800; max-width:68px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 2px 8px rgba(0,0,0,.48); }
+    .postcard-action-bubble { width:60px; min-height:68px; border:none; background:transparent; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:11px; font-weight:900; cursor:pointer; padding:0; text-shadow:0 2px 8px rgba(0,0,0,.45); }
+    .postcard-action-icon { width:52px; height:52px; border-radius:50%; background:rgba(18,18,24,.54); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 10px 28px rgba(0,0,0,.28); }
+    .postcard-action-bubble.liked .postcard-action-icon { background:rgba(255,31,89,.22); }
+    .postcard-action-bubble.liked .postcard-action-icon span { transform:scale(1.05); }
+    .postcard-action-count { font-size:12px; font-weight:900; }
 
-    .postcard-body { padding:4px 16px 16px; }
-    .postcard-title-row { display:flex; align-items:flex-start; gap:10px; justify-content:space-between; margin-bottom:8px; }
-    .postcard-title { color:#fff; font-size:21px; line-height:1.08; font-weight:900; letter-spacing:.01em; }
-    .postcard-title-tag { flex-shrink:0; display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:999px; background:linear-gradient(135deg, rgba(201,169,97,.18), rgba(255,255,255,.06)); border:1px solid rgba(201,169,97,.22); color:#efd7a1; font-size:11px; font-weight:900; text-transform:uppercase; }
-    .postcard-caption { color:rgba(255,255,255,.90); font-size:15px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; margin-bottom:12px; }
-    .postcard-footer-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:12px; border-top:1px dashed rgba(255,255,255,.10); color:rgba(255,255,255,.58); font-size:12px; }
-    .postcard-footer-meta strong { color:#fff; font-weight:800; }
-    .postcard-inline-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .postcard-mini-btn { border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.06); color:#fff; border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .postcard-body { position:absolute; left:0; right:76px; bottom:0; z-index:4; padding:0 18px 18px 18px; }
+    .postcard-caption-shell { border-radius:24px; background:linear-gradient(180deg, rgba(6,6,10,.10), rgba(6,6,10,.34)); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
+    .postcard-channel-line { display:inline-flex; align-items:center; gap:7px; margin-bottom:8px; padding:7px 12px; border-radius:999px; background:rgba(0,0,0,.30); border:1px solid rgba(255,255,255,.12); color:#f9e3b0; font-size:12px; font-weight:900; letter-spacing:.04em; text-transform:uppercase; }
+    .postcard-title { color:#fff; font-size:25px; line-height:1.08; font-weight:900; letter-spacing:.01em; margin-bottom:8px; text-shadow:0 3px 14px rgba(0,0,0,.44); }
+    .postcard-caption { color:rgba(255,255,255,.94); font-size:14px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; margin-bottom:10px; max-width:92%; text-shadow:0 2px 10px rgba(0,0,0,.36); }
+    .postcard-bottom-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; color:rgba(255,255,255,.78); font-size:12px; }
+    .postcard-bottom-meta strong { color:#fff; font-weight:900; }
+    .postcard-mini-chip { display:inline-flex; align-items:center; gap:6px; padding:8px 11px; border-radius:999px; background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.10); font-weight:800; }
 
-    .postcard-composer-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:2600; background:rgba(6,8,12,.74); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:18px; }
-    .postcard-composer-modal.visible { display:flex; }
-    .postcard-composer-card { width:min(560px, 100%); max-height:calc(100vh - 36px); overflow:auto; border-radius:28px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(18,18,28,.98), rgba(8,8,14,.98)); box-shadow:0 28px 80px rgba(0,0,0,.48); padding:18px; }
+    .postcard-composer-modal,
+    .postcard-creator-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:2600; background:rgba(6,8,12,.74); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:18px; }
+    .postcard-composer-modal.visible,
+    .postcard-creator-modal.visible { display:flex; }
+    .postcard-composer-card,
+    .postcard-creator-card { width:min(560px, 100%); max-height:calc(100vh - 36px); overflow:auto; border-radius:28px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(18,18,28,.98), rgba(8,8,14,.98)); box-shadow:0 28px 80px rgba(0,0,0,.48); padding:18px; }
     .postcard-composer-card h3 { font-size:26px; color:#fff; margin-bottom:4px; }
     .postcard-composer-card p { color:rgba(255,255,255,.68); font-size:14px; margin-bottom:16px; }
     .postcard-form-grid { display:grid; gap:12px; }
@@ -1390,19 +1403,70 @@
     .postcard-preview-placeholder { color:rgba(255,255,255,.48); text-align:center; font-size:14px; line-height:1.5; }
     .postcard-preview-img { width:100%; max-height:360px; object-fit:cover; border-radius:18px; border:3px solid #2b1f10; display:none; }
     .postcard-composer-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; }
-    .postcard-secondary-btn, .postcard-primary-btn { border:none; border-radius:999px; padding:12px 16px; font-size:14px; font-weight:900; cursor:pointer; }
-    .postcard-secondary-btn { background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.10); }
+    .postcard-secondary-btn, .postcard-primary-btn, .postcard-close-btn { border:none; border-radius:999px; padding:12px 16px; font-size:14px; font-weight:900; cursor:pointer; }
+    .postcard-secondary-btn, .postcard-close-btn { background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.10); }
     .postcard-primary-btn { background:linear-gradient(135deg, #f5e5b8 0%, #d5b66b 58%, #c9a961 100%); color:#130f08; box-shadow:0 16px 34px rgba(201,169,97,.22); }
     .postcard-composer-status { color:rgba(255,255,255,.68); font-size:12px; }
+
+    .postcard-creator-card { width:min(840px, 100%); padding:20px; }
+    .postcard-creator-header { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:16px; }
+    .postcard-creator-hero { display:flex; align-items:center; gap:14px; min-width:0; }
+    .postcard-creator-avatar { width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:var(--bg-primary); font-weight:900; font-size:24px; border:3px solid rgba(255,255,255,.92); box-shadow:0 14px 34px rgba(0,0,0,.30); }
+    .postcard-creator-name { color:#fff; font-size:28px; font-weight:900; margin-bottom:3px; }
+    .postcard-creator-subtitle { color:rgba(255,255,255,.72); font-size:14px; }
+    .postcard-creator-stats { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .postcard-creator-stat { min-width:112px; border-radius:18px; padding:12px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); }
+    .postcard-creator-stat strong { display:block; color:#fff; font-size:20px; line-height:1.1; margin-bottom:4px; }
+    .postcard-creator-stat span { color:rgba(255,255,255,.64); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+    .postcard-creator-bio { margin-top:14px; color:rgba(255,255,255,.84); font-size:14px; line-height:1.5; }
+    .postcard-creator-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:14px; margin-top:18px; }
+    .postcard-creator-item { border:none; border-radius:22px; overflow:hidden; background:#111; cursor:pointer; text-align:left; box-shadow:0 14px 34px rgba(0,0,0,.26); }
+    .postcard-creator-thumb { position:relative; aspect-ratio:3/4; overflow:hidden; }
+    .postcard-creator-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .postcard-creator-thumb::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 36%, rgba(0,0,0,.70) 100%); }
+    .postcard-creator-thumb-title { position:absolute; left:10px; right:10px; bottom:10px; z-index:1; color:#fff; font-size:14px; font-weight:900; line-height:1.2; text-shadow:0 2px 10px rgba(0,0,0,.4); }
+    .postcard-creator-item-body { padding:10px 12px 12px; }
+    .postcard-creator-item-channel { color:#f3ddaa; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+    .postcard-creator-item-meta { color:rgba(255,255,255,.62); font-size:12px; display:flex; justify-content:space-between; gap:8px; }
+    .postcard-creator-empty { border:1px dashed rgba(255,255,255,.16); border-radius:22px; padding:28px; text-align:center; color:rgba(255,255,255,.76); margin-top:16px; }
 
     .profile-social-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin:14px 0; }
     .profile-social-card { background:var(--bg-tertiary); border:1px solid var(--border-subtle); border-radius:12px; padding:11px 7px; text-align:center; }
     .profile-social-card strong { display:block; color:var(--text-primary); font-size:17px; margin-bottom:4px; }
     .profile-social-card span { color:var(--text-secondary); font-size:11px; font-weight:700; }
-    @media (max-width: 768px) { .app-container{padding-bottom:72px;} .sidebar{height:calc(100dvh - 72px);} .chat-area{height:calc(100dvh - 72px);} .postcard-page{height:calc(100dvh - 72px);} .app-container.postcard-mode{padding-top:0;} .bottom-nav{bottom:10px;height:58px;} .postcard-shell{width:100%;} .postcard-feed{padding:13px 11px 24px;} .postcard-card{border-radius:24px;padding:8px;} .postcard-inner{border-radius:19px;} .postcard-cartoon-frame{padding:16px 16px 28px;} .postcard-photo-viewport{min-height:230px;} .postcard-action-rail{right:22px; bottom:38px;} .postcard-action-bubble{width:50px; min-height:50px; border-radius:16px;} .postcard-title{font-size:18px;} .postcard-title-row{flex-direction:column; align-items:flex-start;} .profile-social-grid{grid-template-columns:repeat(2,1fr);} .postcard-composer-card{padding:16px;} .postcard-composer-actions{flex-direction:column; align-items:stretch;} }
 
-
-
+    @media (max-width: 768px) {
+      .app-container{padding-bottom:72px;}
+      .sidebar{height:calc(100dvh - 72px);} 
+      .chat-area{height:calc(100dvh - 72px);} 
+      .postcard-page{height:calc(100dvh - 72px);} 
+      .app-container.postcard-mode{padding-top:0;} 
+      .bottom-nav{bottom:10px;height:58px;} 
+      .postcard-shell{width:100%;}
+      .postcard-feed{padding:8px 8px 24px; gap:10px;}
+      .postcard-card, .postcard-inner{min-height:calc(100dvh - 150px);} 
+      .postcard-card{border-radius:28px;} 
+      .postcard-inner{border-radius:26px;} 
+      .postcard-cartoon-outline{inset:8px; border-radius:22px;}
+      .postcard-top-meta{top:14px; left:14px; right:70px;}
+      .postcard-author-button{padding:7px 10px 7px 7px;}
+      .postcard-avatar{width:38px;height:38px;}
+      .postcard-action-rail{right:10px; bottom:108px; gap:12px;}
+      .postcard-creator-rail-avatar{width:54px;height:54px;}
+      .postcard-action-bubble{width:56px; min-height:64px;}
+      .postcard-action-icon{width:48px;height:48px; font-size:21px;}
+      .postcard-body{right:68px; padding:0 14px 14px 14px;}
+      .postcard-title{font-size:22px;} 
+      .postcard-caption{font-size:13px; max-width:100%;}
+      .profile-social-grid{grid-template-columns:repeat(2,1fr);} 
+      .postcard-composer-card, .postcard-creator-card{padding:16px;} 
+      .postcard-composer-actions{flex-direction:column; align-items:stretch;}
+      .postcard-creator-header{flex-direction:column; align-items:stretch;}
+      .postcard-creator-hero{align-items:flex-start;}
+      .postcard-creator-name{font-size:23px;}
+      .postcard-creator-avatar{width:64px;height:64px; font-size:22px;}
+      .postcard-creator-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;}
+    }
   </style>
 </head>
 
@@ -1532,7 +1596,7 @@
         <div class="postcard-topbar">
           <div>
             <h2>💌 Cartoline</h2>
-            <div class="postcard-subtitle">feed pubblico stile tiktok • foto, titolo, canale, like, share</div>
+            <div class="postcard-subtitle">feed verticale stile TikTok • avatar creator, like, commenti e profilo</div>
           </div>
           <button class="postcard-upload-btn" onclick="openPostcardComposer()">＋ Crea</button>
         </div>
@@ -1581,6 +1645,16 @@
             <button class="postcard-primary-btn" onclick="submitPostcard()">Pubblica</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="postcard-creator-modal" id="postcardCreatorModal" onclick="closePostcardCreator(event)">
+      <div class="postcard-creator-card" onclick="event.stopPropagation()">
+        <div class="postcard-creator-header">
+          <div id="postcardCreatorContent" style="flex:1; min-width:0;"></div>
+          <button class="postcard-close-btn" onclick="closePostcardCreator()">Chiudi</button>
+        </div>
+        <div id="postcardCreatorGrid"></div>
       </div>
     </div>
 
@@ -4342,49 +4416,56 @@
       const canDelete = currentUser && (currentUser.id === card.authorId || currentUser.isAdmin);
       const channel = formatChannelLabel(card.channel || 'community');
       const title = safeName(card.title || 'Cartolina');
+      const authorName = safeName(card.authorName || 'Utente');
 
       return `
         <article class="postcard-card" data-postcard-id="${card.id}">
           <div class="postcard-inner">
-            <div class="postcard-author-row">
-              <div class="postcard-avatar" ${avatarStyle}>${avatarText}</div>
-              <div class="postcard-author-meta">
-                <div class="postcard-author-name">${safeName(card.authorName || 'Utente')}</div>
-                <div class="postcard-time">${safeName(when)}</div>
-              </div>
-              <div class="postcard-header-actions">
-                <div class="postcard-channel-chip">#${safeName(channel)}</div>
-                ${canDelete ? `<button class="small-btn danger" onclick="deletePostcard('${card.id}')" title="Elimina">🗑️</button>` : ''}
-              </div>
+            <div class="postcard-photo-stage">
+              <img class="postcard-image" src="${card.imageBase64}" alt="${title}" loading="lazy">
+              <div class="postcard-image-overlay"></div>
+              <div class="postcard-cartoon-outline"></div>
             </div>
 
-            <div class="postcard-visual-wrap">
-              <div class="postcard-cartoon-frame">
-                <span class="postcard-doodle star-a">✨</span>
-                <span class="postcard-doodle star-b">💫</span>
-                <div class="postcard-photo-viewport">
-                  <img class="postcard-image" src="${card.imageBase64}" alt="${title}" loading="lazy">
+            <div class="postcard-top-meta">
+              <button class="postcard-author-button" onclick="openPostcardCreator('${card.authorId}')">
+                <div class="postcard-avatar" ${avatarStyle}>${avatarText}</div>
+                <div class="postcard-author-meta">
+                  <div class="postcard-author-name">${authorName}</div>
+                  <div class="postcard-time">${safeName(when)}</div>
                 </div>
-                <div class="postcard-action-rail">
-                  <button class="postcard-action-bubble ${liked ? 'liked' : ''}" onclick="togglePostcardLike('${card.id}')"><span>${liked ? '❤️' : '🤍'}</span><span>${likeCount}</span></button>
-                  <button class="postcard-action-bubble" onclick="openPostcardComments('${card.id}')"><span>💬</span><span>${commentCount}</span></button>
-                  <button class="postcard-action-bubble" onclick="sharePostcard('${card.id}')"><span>↗</span><span>${shareCount}</span></button>
-                </div>
-              </div>
+              </button>
+              <div class="postcard-top-meta-spacer"></div>
+              ${canDelete ? `<button class="postcard-delete-btn" onclick="deletePostcard('${card.id}')" title="Elimina">🗑️</button>` : ''}
+            </div>
+
+            <div class="postcard-action-rail">
+              <button class="postcard-creator-rail-btn" onclick="openPostcardCreator('${card.authorId}')" title="Apri profilo creator">
+                <div class="postcard-creator-rail-avatar" ${avatarStyle}>${avatarText}</div>
+                <div class="postcard-creator-rail-name">${authorName}</div>
+              </button>
+              <button class="postcard-action-bubble ${liked ? 'liked' : ''}" onclick="togglePostcardLike('${card.id}')">
+                <div class="postcard-action-icon"><span>${liked ? '❤️' : '🤍'}</span></div>
+                <div class="postcard-action-count">${formatCompactCount(likeCount)}</div>
+              </button>
+              <button class="postcard-action-bubble" onclick="openPostcardComments('${card.id}')">
+                <div class="postcard-action-icon"><span>💬</span></div>
+                <div class="postcard-action-count">${formatCompactCount(commentCount)}</div>
+              </button>
+              <button class="postcard-action-bubble" onclick="sharePostcard('${card.id}')">
+                <div class="postcard-action-icon"><span>↗</span></div>
+                <div class="postcard-action-count">${formatCompactCount(shareCount)}</div>
+              </button>
             </div>
 
             <div class="postcard-body">
-              <div class="postcard-title-row">
-                <h3 class="postcard-title">${title}</h3>
-                <div class="postcard-title-tag">Canale • #${safeName(channel)}</div>
-              </div>
-              ${card.caption ? `<div class="postcard-caption">${formatMessage(card.caption)}</div>` : ''}
-              <div class="postcard-footer-meta">
-                <div>Pubblicata da <strong>${safeName(card.authorName || 'Utente')}</strong></div>
-                <div class="postcard-inline-actions">
-                  <button class="postcard-mini-btn ${liked ? 'liked' : ''}" onclick="togglePostcardLike('${card.id}')">${liked ? '❤️ Ti piace' : '🤍 Like'}</button>
-                  <button class="postcard-mini-btn" onclick="openPostcardComments('${card.id}')">💬 Commenti</button>
-                  <button class="postcard-mini-btn" onclick="sharePostcard('${card.id}')">↗ Share</button>
+              <div class="postcard-caption-shell">
+                <div class="postcard-channel-line">#${safeName(channel)}</div>
+                <div class="postcard-title">${title}</div>
+                ${card.caption ? `<div class="postcard-caption">${formatMessage(card.caption)}</div>` : ''}
+                <div class="postcard-bottom-meta">
+                  <div class="postcard-mini-chip">📮 Creator <strong>${authorName}</strong></div>
+                  <div class="postcard-mini-chip">💌 ${safeName(when)}</div>
                 </div>
               </div>
             </div>
@@ -4392,7 +4473,104 @@
         </article>`;
     }
 
+    function formatCompactCount(value) {
+      const num = Number(value || 0);
+      if (num >= 1000000) return (num / 1000000).toFixed(num >= 10000000 ? 0 : 1).replace(/\.0$/, '') + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(num >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K';
+      return String(num);
+    }
+
+    function sortPostcardsNewestFirst(list) {
+      return [...(list || [])].sort((a, b) => {
+        const aTime = a?.createdAt?.seconds ? a.createdAt.seconds : 0;
+        const bTime = b?.createdAt?.seconds ? b.createdAt.seconds : 0;
+        return bTime - aTime;
+      });
+    }
+
+    function buildPostcardCreatorCard(post) {
+      const channel = formatChannelLabel(post.channel || 'community');
+      return `
+        <button class="postcard-creator-item" onclick="scrollToPostcard('${post.id}')">
+          <div class="postcard-creator-thumb">
+            <img src="${post.imageBase64}" alt="${safeName(post.title || 'Cartolina')}" loading="lazy">
+            <div class="postcard-creator-thumb-title">${safeName(post.title || 'Cartolina')}</div>
+          </div>
+          <div class="postcard-creator-item-body">
+            <div class="postcard-creator-item-channel">#${safeName(channel)}</div>
+            <div class="postcard-creator-item-meta">
+              <span>❤️ ${formatCompactCount(post.likeCount || Object.keys(post.likedBy || {}).length || 0)}</span>
+              <span>💬 ${formatCompactCount(post.commentCount || 0)}</span>
+            </div>
+          </div>
+        </button>`;
+    }
+
+    async function openPostcardCreator(authorId) {
+      if (!authorId) return;
+
+      const basePosts = postcardsCache.filter(post => post.authorId === authorId);
+      let posts = sortPostcardsNewestFirst(basePosts);
+
+      try {
+        const snap = await db.collection('postcards').where('authorId', '==', authorId).limit(100).get();
+        const merged = new Map();
+        posts.forEach(post => merged.set(post.id, post));
+        snap.forEach(doc => merged.set(doc.id, { id: doc.id, ...doc.data() }));
+        posts = sortPostcardsNewestFirst(Array.from(merged.values()));
+      } catch (error) {
+        console.warn('Profilo creator caricato da cache:', error?.message || error);
+      }
+
+      const creator = posts[0] || postcardsCache.find(post => post.authorId === authorId);
+      if (!creator) return;
+
+      const avatar = creator.authorAvatar || userInitial(creator.authorName);
+      const avatarStyle = avatar && String(avatar).startsWith('data:image') ? `style="background-image:url('${avatar}')"` : '';
+      const avatarText = avatarStyle ? '' : safeName(avatar);
+      const totalLikes = posts.reduce((sum, post) => sum + Number(post.likeCount || Object.keys(post.likedBy || {}).length || 0), 0);
+      const totalComments = posts.reduce((sum, post) => sum + Number(post.commentCount || 0), 0);
+      const uniqueChannels = new Set(posts.map(post => formatChannelLabel(post.channel || 'community'))).size || 1;
+
+      $('postcardCreatorContent').innerHTML = `
+        <div class="postcard-creator-hero">
+          <div class="postcard-creator-avatar" ${avatarStyle}>${avatarText}</div>
+          <div style="min-width:0;">
+            <div class="postcard-creator-name">${safeName(creator.authorName || 'Utente')}</div>
+            <div class="postcard-creator-subtitle">Profilo creator • tutte le cartoline pubbliche</div>
+            <div class="postcard-creator-stats">
+              <div class="postcard-creator-stat"><strong>${formatCompactCount(posts.length)}</strong><span>Cartoline</span></div>
+              <div class="postcard-creator-stat"><strong>${formatCompactCount(totalLikes)}</strong><span>Like</span></div>
+              <div class="postcard-creator-stat"><strong>${formatCompactCount(totalComments)}</strong><span>Commenti</span></div>
+              <div class="postcard-creator-stat"><strong>${formatCompactCount(uniqueChannels)}</strong><span>Canali</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="postcard-creator-bio">Tocca una cartolina per aprirla direttamente nel feed. L'avatar sopra i like porta sempre a questo profilo creator.</div>`;
+
+      $('postcardCreatorGrid').innerHTML = posts.length
+        ? `<div class="postcard-creator-grid">${posts.map(buildPostcardCreatorCard).join('')}</div>`
+        : `<div class="postcard-creator-empty">Questo creator non ha ancora pubblicato cartoline.</div>`;
+
+      $('postcardCreatorModal')?.classList.add('visible');
+    }
+
+    function closePostcardCreator(event) {
+      if (event && event.target !== $('postcardCreatorModal')) return;
+      $('postcardCreatorModal')?.classList.remove('visible');
+    }
+
+    function scrollToPostcard(postcardId) {
+      closePostcardCreator();
+      showPostcardTab();
+      setTimeout(() => {
+        const target = document.querySelector(`[data-postcard-id="${postcardId}"]`);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 80);
+    }
+
     function formatPostcardDate(timestamp) {
+
       if (!timestamp || !timestamp.seconds) return 'Ora';
       const date = new Date(timestamp.seconds * 1000);
       const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
