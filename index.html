@@ -1880,6 +1880,7 @@
     const VAPID_PUBLIC_KEY = 'BJymFYMqJUDtmbdE2x39atsqRScyu_jOIESRoCMAEcZ0OBJ6IiIGVhcIKzyEyWXOD5g-01AMju9G-gdrrRBRFKw';
     const CONVERSINA_ID = 'conversina_ai_bot';
     const ADMIN_ID = 'admin_conversando_official';
+    let OFFICIAL_ADMIN_UID = null;
     const BACKEND_URL = 'https://conversina-backend-ijue.vercel.app/api/chat';
 
     let currentUser = null;
@@ -1964,8 +1965,41 @@
       return (nameOrEmail || 'U').trim()[0]?.toUpperCase() || 'U';
     }
 
+    async function loadOfficialAdminUid() {
+      try {
+        if (currentUser?.isAdmin) {
+          OFFICIAL_ADMIN_UID = currentUser.id;
+          console.log('👑 Official admin UID:', OFFICIAL_ADMIN_UID);
+          return;
+        }
+
+        const snap = await db.collection('users')
+          .where('isAdmin', '==', true)
+          .limit(1)
+          .get();
+
+        if (!snap.empty) {
+          OFFICIAL_ADMIN_UID = snap.docs[0].id;
+          console.log('👑 Official admin UID:', OFFICIAL_ADMIN_UID);
+        } else {
+          console.warn('⚠️ Nessun admin trovato con isAdmin = true. Uso fallback ADMIN_ID.');
+        }
+      } catch (error) {
+        console.error('❌ Errore caricamento admin UID:', error);
+      }
+    }
+
+    function resolveChatId(id) {
+      if (id === ADMIN_ID && OFFICIAL_ADMIN_UID) {
+        return OFFICIAL_ADMIN_UID;
+      }
+      return id;
+    }
+
     function makeRoomId(a, b) {
-      return [a, b].sort().join('_');
+      const realA = resolveChatId(a);
+      const realB = resolveChatId(b);
+      return [realA, realB].sort().join('_');
     }
 
     function showError(message) {
@@ -2119,6 +2153,7 @@
         if (!user) {
           currentUser = null;
           activeChat = null;
+          OFFICIAL_ADMIN_UID = null;
           $('loginScreen').style.display = 'flex';
           $('topNav').style.display = 'none';
           $('appContainer').classList.remove('visible');
@@ -2154,6 +2189,8 @@
             friendCode: userData.friendCode,
             isAdmin: userData.isAdmin || false
           };
+
+          await loadOfficialAdminUid();
 
           if (currentUser.isAdmin && !userData.avatar) {
             currentUser.avatar = '👑';
@@ -2329,22 +2366,24 @@
         </div>
       `;
 
-      if (currentUser?.id !== ADMIN_ID) {
-        chatRegistry[ADMIN_ID] = {
-          id: ADMIN_ID,
+      if (currentUser?.id !== OFFICIAL_ADMIN_UID) {
+        const officialChatId = OFFICIAL_ADMIN_UID || ADMIN_ID;
+
+        chatRegistry[officialChatId] = {
+          id: officialChatId,
           name: 'Conversando Official',
           avatar: '👑',
           isAI: false
         };
 
         html += `
-          <div class="contact-item" data-name="conversando official" data-chat-id="${ADMIN_ID}">
+          <div class="contact-item" data-name="conversando official" data-chat-id="${officialChatId}">
             <div class="contact-avatar online" style="background:linear-gradient(135deg,#c9a961,#d4af37);color:#0a0a0f;">👑</div>
             <div class="contact-info">
               <div class="contact-name" style="color:var(--accent-primary);">Conversando Official</div>
-              <div class="contact-preview" id="preview-${ADMIN_ID}">Account ufficiale • Supporto & News</div>
+              <div class="contact-preview" id="preview-${officialChatId}">Account ufficiale • Supporto & News</div>
             </div>
-            <div class="contact-meta"><div class="contact-time" id="time-${ADMIN_ID}">🔔</div></div>
+            <div class="contact-meta"><div class="contact-time" id="time-${officialChatId}">🔔</div></div>
           </div>
         `;
       }
@@ -2869,7 +2908,7 @@
           const rooms = new Set();
           rooms.add(makeRoomId(currentUser.id, CONVERSINA_ID));
 
-          if (currentUser.id !== ADMIN_ID) {
+          if (currentUser.id !== OFFICIAL_ADMIN_UID) {
             rooms.add(makeRoomId(currentUser.id, ADMIN_ID));
           }
 
