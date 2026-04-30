@@ -2012,6 +2012,8 @@
     let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
     let lastSeenMessages = {};
     const userAvatarsCache = {};
+    const chatRegistry = {};
+    const groupRegistry = {};
 
     let localStream = null;
     let remoteStream = null;
@@ -2416,8 +2418,23 @@
 
     async function loadChats() {
       const contactsList = $('contactsList');
+
+      // FIX CHAT:
+      // niente più onclick inline con JSON/Base64 dentro l'HTML.
+      // Gli avatar salvati come data:image possono rompere l'attributo onclick.
+      // Ora salvo i dati reali in registry JS e nell'HTML metto solo ID sicuri.
+      Object.keys(chatRegistry).forEach(key => delete chatRegistry[key]);
+      Object.keys(groupRegistry).forEach(key => delete groupRegistry[key]);
+
+      chatRegistry[CONVERSINA_ID] = {
+        id: CONVERSINA_ID,
+        name: 'Conversina',
+        avatar: '🤖',
+        isAI: true
+      };
+
       let html = `
-        <div class="contact-item" data-name="conversina ai" onclick="selectChatMobile('${CONVERSINA_ID}', 'Conversina', '🤖', true)">
+        <div class="contact-item" data-name="conversina ai" data-chat-id="${CONVERSINA_ID}">
           <div class="contact-avatar ai online">🤖</div>
           <div class="contact-info">
             <div class="contact-name">Conversina AI</div>
@@ -2428,8 +2445,15 @@
       `;
 
       if (currentUser?.id !== ADMIN_ID) {
+        chatRegistry[ADMIN_ID] = {
+          id: ADMIN_ID,
+          name: 'Conversando Official',
+          avatar: '👑',
+          isAI: false
+        };
+
         html += `
-          <div class="contact-item" data-name="conversando official" onclick="selectChatMobile('${ADMIN_ID}', 'Conversando Official', '👑', false)">
+          <div class="contact-item" data-name="conversando official" data-chat-id="${ADMIN_ID}">
             <div class="contact-avatar online" style="background:linear-gradient(135deg,#c9a961,#d4af37);color:#0a0a0f;">👑</div>
             <div class="contact-info">
               <div class="contact-name" style="color:var(--accent-primary);">Conversando Official</div>
@@ -2451,11 +2475,17 @@
           groupsSnapshot.forEach(doc => {
             const group = doc.data();
             const groupName = group.name || 'Gruppo';
-            const icon = group.icon;
+            const icon = group.icon || '';
             const memberCount = group.members?.length || 0;
 
+            groupRegistry[doc.id] = {
+              id: doc.id,
+              name: groupName,
+              icon
+            };
+
             html += `
-              <div class="contact-item" data-name="${safeName(groupName).toLowerCase()}" onclick="selectGroupChat('${doc.id}', ${JSON.stringify(groupName)}, ${JSON.stringify(icon || '')})">
+              <div class="contact-item" data-name="${safeName(groupName).toLowerCase()}" data-group-id="${safeName(doc.id)}">
                 <div class="contact-avatar" style="${icon ? `background-image:url('${icon}')` : ''}">${icon ? '' : '👥'}</div>
                 <div class="contact-info">
                   <div class="contact-name">${safeName(groupName)}</div>
@@ -2508,17 +2538,28 @@
         }
 
         contactsList.innerHTML = html;
+        bindChatClicks();
+        bindGroupClicks();
       } catch (error) {
         console.error('❌ Errore caricamento chat:', error);
         contactsList.innerHTML = html;
+        bindChatClicks();
+        bindGroupClicks();
       }
     }
 
     function contactHTML(id, name, avatar, isAI, preview = 'Inizia una conversazione', time = '', subtitle = '') {
+      chatRegistry[id] = {
+        id,
+        name,
+        avatar,
+        isAI
+      };
+
       const avatarStyle = avatar && String(avatar).startsWith('data:image') ? `background-image:url('${avatar}')` : '';
       const avatarText = avatarStyle ? '' : safeName(avatar);
       return `
-        <div class="contact-item" data-name="${safeName(name).toLowerCase()}" onclick="selectChatMobile('${id}', ${JSON.stringify(name)}, ${JSON.stringify(avatar)}, ${isAI})">
+        <div class="contact-item" data-name="${safeName(name).toLowerCase()}" data-chat-id="${safeName(id)}">
           <div class="contact-avatar online ${isAI ? 'ai' : ''}" style="${avatarStyle}">${avatarText}</div>
           <div class="contact-info">
             <div class="contact-name">${safeName(name)}</div>
@@ -2528,6 +2569,26 @@
           <div class="contact-meta"><div class="contact-time" id="time-${id}">${safeName(time)}</div></div>
         </div>
       `;
+    }
+
+    function bindChatClicks() {
+      document.querySelectorAll('.contact-item[data-chat-id]').forEach(item => {
+        item.addEventListener('click', () => {
+          const chat = chatRegistry[item.dataset.chatId];
+          if (!chat) return;
+          selectChatMobile(chat.id, chat.name, chat.avatar, chat.isAI);
+        });
+      });
+    }
+
+    function bindGroupClicks() {
+      document.querySelectorAll('.contact-item[data-group-id]').forEach(item => {
+        item.addEventListener('click', () => {
+          const group = groupRegistry[item.dataset.groupId];
+          if (!group) return;
+          selectGroupChat(group.id, group.name, group.icon || '');
+        });
+      });
     }
 
     async function getLastMessage(roomId) {
@@ -2590,7 +2651,9 @@
       $('callButtons').style.display = (!isAI && !activeChat.isGroup) ? 'flex' : 'none';
 
       document.querySelectorAll('.contact-item').forEach(item => item.classList.remove('active'));
-      if (event?.currentTarget) event.currentTarget.classList.add('active');
+      document.querySelectorAll('.contact-item[data-chat-id]').forEach(item => {
+        if (item.dataset.chatId === chatId) item.classList.add('active');
+      });
 
       loadMessages(chatId);
       setTimeout(() => $('messageInput').focus(), 100);
@@ -2612,6 +2675,11 @@
       $('chatUserName').textContent = groupName;
       $('chatUserStatus').textContent = 'Gruppo';
       $('callButtons').style.display = 'none';
+
+      document.querySelectorAll('.contact-item').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.contact-item[data-group-id]').forEach(item => {
+        if (item.dataset.groupId === groupId) item.classList.add('active');
+      });
 
       loadGroupMessages(groupId);
       closeMobileSidebar();
