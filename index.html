@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conversando - Chat, chiamate e video in stile social" />
+  <meta name="description" content="Conversando - Chat, chiamate e cartoline social" />
   <meta name="theme-color" content="#0a0a0f" />
 
   <link rel="manifest" href="manifest.json" />
@@ -1312,338 +1312,52 @@
         display: none;
       }
     }
-    /* ===== Bottom Nav + Video Feed ===== */
-    .app-container {
-      padding-bottom: 74px;
-    }
+    /* ===== Bottom Nav + Cartoline Feed ===== */
+    .app-container { padding-bottom: 74px; }
+    .sidebar, .chat-area { height: calc(100vh - 49px - 74px); }
+    .app-container.visible.postcard-mode { display: block; }
+    .app-container.postcard-mode .sidebar,
+    .app-container.postcard-mode .chat-area,
+    .app-container.postcard-mode .mobile-overlay { display: none !important; }
+    .bottom-nav { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(430px, calc(100% - 28px)); height: 60px; background: rgba(18,18,26,.88); border: 1px solid rgba(255,255,255,.12); border-radius: 22px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 18px 48px rgba(0,0,0,.42); z-index: 160; display: flex; align-items: center; justify-content: space-around; padding: 6px; }
+    .bottom-nav-item { flex:1; height:48px; border:none; border-radius:16px; background:transparent; color:var(--text-secondary); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; font-size:11px; font-weight:700; transition: all .2s ease; }
+    .bottom-nav-item .icon { font-size:20px; line-height:1; }
+    .bottom-nav-item.active { background: linear-gradient(135deg, rgba(201,169,97,.24), rgba(201,169,97,.08)); color:var(--accent-primary); box-shadow: inset 0 0 0 1px rgba(201,169,97,.22); }
+    .postcard-page { display:none; height: calc(100vh - 49px - 74px); width:100%; background: radial-gradient(circle at 18% 8%, rgba(201,169,97,.16), transparent 30%), radial-gradient(circle at 82% 92%, rgba(155,89,182,.16), transparent 32%), #050509; overflow:hidden; position:relative; }
+    .app-container.postcard-mode .postcard-page { display:flex; align-items:center; justify-content:center; }
+    .postcard-shell { width:min(520px,100%); height:100%; position:relative; overflow:hidden; background:rgba(10,10,15,.96); border-left:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.08); }
+    .postcard-topbar { position:sticky; top:0; z-index:8; padding:15px 16px 12px; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(180deg, rgba(10,10,15,.98), rgba(10,10,15,.82)); border-bottom:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+    .postcard-topbar h2 { font-size:21px; font-weight:900; letter-spacing:.02em; color:#fff; display:flex; align-items:center; gap:8px; }
+    .postcard-upload-btn { border:1px solid rgba(201,169,97,.38); background:linear-gradient(135deg, rgba(201,169,97,.28), rgba(255,255,255,.08)); color:#fff; border-radius:999px; padding:10px 13px; font-size:13px; font-weight:900; cursor:pointer; backdrop-filter:blur(12px); }
+    .postcard-feed { height:calc(100% - 58px); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 14px 28px; display:flex; flex-direction:column; gap:18px; }
+    .postcard-feed::-webkit-scrollbar { width:0; }
+    .postcard-empty { min-height:78%; display:flex; align-items:center; justify-content:center; text-align:center; padding:30px; color:rgba(255,255,255,.78); }
+    .postcard-empty-card { border-radius:28px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(145deg, rgba(201,169,97,.15), rgba(155,89,182,.16)), rgba(255,255,255,.05); padding:36px 24px; box-shadow:0 24px 70px rgba(0,0,0,.36); }
+    .postcard-empty-card .big-icon { font-size:66px; margin-bottom:12px; }
+    .postcard-empty-card h3 { font-size:27px; margin-bottom:8px; color:#fff; }
+    .postcard-empty-card p { font-size:15px; line-height:1.45; color:rgba(255,255,255,.72); }
+    .postcard-card { position:relative; border-radius:28px; padding:10px; background:linear-gradient(135deg, rgba(255,255,255,.18), rgba(201,169,97,.22), rgba(155,89,182,.18)); box-shadow:0 22px 58px rgba(0,0,0,.38); overflow:hidden; }
+    .postcard-card::before { content:''; position:absolute; inset:1px; border-radius:27px; background:rgba(12,12,18,.96); z-index:0; }
+    .postcard-inner { position:relative; z-index:1; border-radius:22px; overflow:hidden; background:#101018; border:1px solid rgba(255,255,255,.08); }
+    .postcard-author-row { display:flex; align-items:center; gap:10px; padding:12px 13px; }
+    .postcard-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, var(--accent-secondary), var(--accent-primary)); display:flex; align-items:center; justify-content:center; color:var(--bg-primary); font-weight:900; background-size:cover; background-position:center; flex-shrink:0; }
+    .postcard-author-meta { min-width:0; flex:1; }
+    .postcard-author-name { color:#fff; font-size:14px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .postcard-time { color:rgba(255,255,255,.45); font-size:12px; margin-top:2px; }
+    .postcard-image-wrap { position:relative; background:#060608; min-height:260px; display:flex; align-items:center; justify-content:center; }
+    .postcard-image-wrap::after { content:''; position:absolute; inset:0; border:1px solid rgba(255,255,255,.08); pointer-events:none; }
+    .postcard-image { width:100%; display:block; object-fit:cover; max-height:620px; }
+    .postcard-caption { padding:12px 14px 4px; color:rgba(255,255,255,.92); font-size:15px; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .postcard-actions { display:flex; align-items:center; gap:10px; padding:12px 12px 14px; }
+    .postcard-action-btn { border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.07); color:#fff; border-radius:999px; padding:9px 12px; font-size:13px; font-weight:900; cursor:pointer; display:flex; align-items:center; gap:6px; transition:transform .15s ease, background .15s ease; }
+    .postcard-action-btn:active { transform:scale(.94); }
+    .postcard-action-btn.liked { background:rgba(255,48,94,.26); border-color:rgba(255,48,94,.44); }
+    .profile-social-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin:14px 0; }
+    .profile-social-card { background:var(--bg-tertiary); border:1px solid var(--border-subtle); border-radius:12px; padding:11px 7px; text-align:center; }
+    .profile-social-card strong { display:block; color:var(--text-primary); font-size:17px; margin-bottom:4px; }
+    .profile-social-card span { color:var(--text-secondary); font-size:11px; font-weight:700; }
+    @media (max-width: 768px) { .app-container{padding-bottom:72px;} .sidebar{height:calc(100dvh - 72px);} .chat-area{height:calc(100dvh - 72px);} .postcard-page{height:calc(100dvh - 72px);} .app-container.postcard-mode{padding-top:0;} .bottom-nav{bottom:10px;height:58px;} .postcard-shell{width:100%;} .postcard-feed{padding:13px 11px 24px;} .postcard-card{border-radius:24px;padding:8px;} .postcard-inner{border-radius:19px;} .postcard-image-wrap{min-height:230px;} .profile-social-grid{grid-template-columns:repeat(2,1fr);} }
 
-    .sidebar,
-    .chat-area {
-      height: calc(100vh - 49px - 74px);
-    }
-
-    .app-container.visible.video-mode {
-      display: block;
-    }
-
-    .app-container.video-mode .sidebar,
-    .app-container.video-mode .chat-area,
-    .app-container.video-mode .mobile-overlay {
-      display: none !important;
-    }
-
-    .bottom-nav {
-      position: fixed;
-      left: 50%;
-      bottom: 14px;
-      transform: translateX(-50%);
-      width: min(420px, calc(100% - 28px));
-      height: 60px;
-      background: rgba(18, 18, 26, 0.86);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 22px;
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
-      z-index: 160;
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      padding: 6px;
-    }
-
-    .bottom-nav-item {
-      flex: 1;
-      height: 48px;
-      border: none;
-      border-radius: 16px;
-      background: transparent;
-      color: var(--text-secondary);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 700;
-      transition: all 0.2s ease;
-    }
-
-    .bottom-nav-item .icon {
-      font-size: 20px;
-      line-height: 1;
-    }
-
-    .bottom-nav-item.active {
-      background: linear-gradient(135deg, rgba(201,169,97,0.24), rgba(201,169,97,0.08));
-      color: var(--accent-primary);
-      box-shadow: inset 0 0 0 1px rgba(201,169,97,0.22);
-    }
-
-    .video-page {
-      display: none;
-      height: calc(100vh - 49px - 74px);
-      width: 100%;
-      background:
-        radial-gradient(circle at 20% 10%, rgba(201,169,97,0.12), transparent 30%),
-        radial-gradient(circle at 80% 90%, rgba(155,89,182,0.14), transparent 32%),
-        #050509;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .app-container.video-mode .video-page {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .video-shell {
-      width: min(440px, 100%);
-      height: 100%;
-      position: relative;
-      overflow: hidden;
-      background: #000;
-      border-left: 1px solid rgba(255,255,255,0.08);
-      border-right: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .video-topbar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 6;
-      padding: 18px 16px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: linear-gradient(180deg, rgba(0,0,0,0.72), transparent);
-      pointer-events: none;
-    }
-
-    .video-topbar h2 {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      color: #fff;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.65);
-    }
-
-    .video-upload-btn {
-      pointer-events: auto;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.12);
-      color: #fff;
-      border-radius: 999px;
-      padding: 9px 12px;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-      backdrop-filter: blur(12px);
-    }
-
-    .video-feed {
-      height: 100%;
-      overflow-y: auto;
-      scroll-snap-type: y mandatory;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .video-feed::-webkit-scrollbar {
-      width: 0;
-    }
-
-    .reel {
-      position: relative;
-      height: 100%;
-      min-height: 100%;
-      scroll-snap-align: start;
-      background: #050505;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .reel video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      background: #000;
-    }
-
-    .reel-placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 32px;
-      background:
-        linear-gradient(145deg, rgba(201,169,97,0.16), rgba(155,89,182,0.18)),
-        radial-gradient(circle at 50% 30%, rgba(255,255,255,0.16), transparent 28%),
-        #090911;
-    }
-
-    .reel-placeholder .big-icon {
-      font-size: 72px;
-      margin-bottom: 16px;
-      filter: drop-shadow(0 10px 30px rgba(0,0,0,0.35));
-    }
-
-    .reel-placeholder h3 {
-      font-size: 28px;
-      margin-bottom: 8px;
-      color: #fff;
-    }
-
-    .reel-placeholder p {
-      font-size: 15px;
-      line-height: 1.45;
-      color: rgba(255,255,255,0.72);
-      max-width: 320px;
-    }
-
-    .reel-gradient {
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(180deg, rgba(0,0,0,0.45), transparent 28%, transparent 58%, rgba(0,0,0,0.78)),
-        linear-gradient(90deg, transparent 62%, rgba(0,0,0,0.30));
-      pointer-events: none;
-    }
-
-    .reel-info {
-      position: absolute;
-      left: 16px;
-      right: 86px;
-      bottom: 22px;
-      z-index: 4;
-      color: #fff;
-    }
-
-    .reel-author {
-      font-size: 15px;
-      font-weight: 900;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .reel-title {
-      font-size: 16px;
-      line-height: 1.35;
-      font-weight: 600;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.7);
-    }
-
-    .reel-actions {
-      position: absolute;
-      right: 14px;
-      bottom: 82px;
-      z-index: 5;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      color: #fff;
-    }
-
-    .reel-action {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 800;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.7);
-    }
-
-    .reel-action button {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.13);
-      color: #fff;
-      font-size: 22px;
-      cursor: pointer;
-      backdrop-filter: blur(12px);
-      transition: transform 0.18s ease, background 0.18s ease;
-    }
-
-    .reel-action button:active {
-      transform: scale(0.92);
-    }
-
-    .reel-action button.liked {
-      background: rgba(255, 48, 94, 0.30);
-      border-color: rgba(255, 48, 94, 0.50);
-    }
-
-    .profile-social-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin: 14px 0;
-    }
-
-    .profile-social-card {
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 11px 7px;
-      text-align: center;
-    }
-
-    .profile-social-card strong {
-      display: block;
-      color: var(--text-primary);
-      font-size: 17px;
-      margin-bottom: 4px;
-    }
-
-    .profile-social-card span {
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    @media (max-width: 768px) {
-      .app-container {
-        padding-bottom: 72px;
-      }
-
-      .sidebar {
-        height: calc(100dvh - 72px);
-      }
-
-      .chat-area {
-        height: calc(100dvh - 72px);
-      }
-
-      .video-page {
-        height: calc(100dvh - 72px);
-      }
-
-      .app-container.video-mode {
-        padding-top: 0;
-      }
-
-      .bottom-nav {
-        bottom: 10px;
-        height: 58px;
-      }
-
-      .profile-social-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
 
   </style>
 </head>
@@ -1769,14 +1483,14 @@
         </div>
       </div>
     </section>
-    <section class="video-page" id="videoPage">
-      <div class="video-shell">
-        <div class="video-topbar">
-          <h2>Video</h2>
-          <button class="video-upload-btn" onclick="document.getElementById('videoUploadInput').click()">＋ Carica</button>
-          <input id="videoUploadInput" type="file" accept="video/*" style="display:none;" onchange="handleVideoUpload(event)">
+    <section class="postcard-page" id="postcardPage">
+      <div class="postcard-shell">
+        <div class="postcard-topbar">
+          <h2>💌 Cartoline</h2>
+          <button class="postcard-upload-btn" onclick="document.getElementById('postcardImageInput').click()">＋ Crea</button>
+          <input id="postcardImageInput" type="file" accept="image/*" style="display:none;" onchange="handlePostcardImage(event)">
         </div>
-        <div class="video-feed" id="videoFeed"></div>
+        <div class="postcard-feed" id="postcardFeed"></div>
       </div>
     </section>
 
@@ -1785,9 +1499,9 @@
         <span class="icon">💬</span>
         <span>Chat</span>
       </button>
-      <button class="bottom-nav-item" id="bottomVideoBtn" onclick="showVideoTab()">
-        <span class="icon">🎬</span>
-        <span>Video</span>
+      <button class="bottom-nav-item" id="bottomPostcardBtn" onclick="showPostcardTab()">
+        <span class="icon">💌</span>
+        <span>Cartoline</span>
       </button>
     </nav>
 
@@ -1818,7 +1532,7 @@
       <div class="profile-social-grid">
         <div class="profile-social-card"><strong id="profileFriendsCount">0</strong><span>Amici</span></div>
         <div class="profile-social-card"><strong id="profileFollowersCount">0</strong><span>Follower</span></div>
-        <div class="profile-social-card"><strong id="profileVideosCount">0</strong><span>Video</span></div>
+        <div class="profile-social-card"><strong id="profilePostcardsCount">0</strong><span>Cartoline</span></div>
         <div class="profile-social-card"><strong id="profileFriendCodeMini">---</strong><span>Codice</span></div>
       </div>
 
@@ -4435,196 +4149,254 @@
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    // ===== Video feed stile TikTok =====
-    let localVideos = [];
-    let videoLikes = JSON.parse(localStorage.getItem('conversando_video_likes') || '{}');
-
-    function defaultVideos() {
-      return [
-        {
-          id: 'welcome',
-          type: 'placeholder',
-          author: 'Conversando',
-          title: 'Benvenuto nella nuova area Video. Carica un video dal telefono e scorri come su TikTok.',
-          likes: 128,
-          comments: 12
-        }
-      ];
-    }
+    // ===== Cartoline social senza Storage =====
+    let postcardsCache = [];
+    let postcardUnsubscribe = null;
 
     function showChatTab() {
       const app = $('appContainer');
-      app.classList.remove('video-mode');
+      app.classList.remove('postcard-mode');
       $('bottomChatBtn')?.classList.add('active');
-      $('bottomVideoBtn')?.classList.remove('active');
-
-      if (window.innerWidth <= 768) {
-        $('mobileMenuBtnFixed').style.display = 'flex';
-      }
-
-      pauseAllReelVideos();
+      $('bottomPostcardBtn')?.classList.remove('active');
+      if (window.innerWidth <= 768) $('mobileMenuBtnFixed').style.display = 'flex';
     }
 
-    function showVideoTab() {
+    function showPostcardTab() {
       const app = $('appContainer');
-      app.classList.add('video-mode');
+      app.classList.add('postcard-mode');
       $('bottomChatBtn')?.classList.remove('active');
-      $('bottomVideoBtn')?.classList.add('active');
+      $('bottomPostcardBtn')?.classList.add('active');
       $('sidebar')?.classList.remove('mobile-visible');
       $('mobileOverlay')?.classList.remove('visible');
       $('mobileMenuBtnFixed').style.display = 'none';
-      renderVideoFeed();
-      setTimeout(playCurrentReelVideo, 250);
+      listenPostcards();
     }
 
-    function renderVideoFeed() {
-      const feed = $('videoFeed');
+    function listenPostcards() {
+      if (!db || postcardUnsubscribe) { renderPostcards(); return; }
+
+      postcardUnsubscribe = db.collection('postcards')
+        .orderBy('createdAt', 'desc')
+        .limit(40)
+        .onSnapshot(snapshot => {
+          postcardsCache = [];
+          snapshot.forEach(doc => postcardsCache.push({ id: doc.id, ...doc.data() }));
+          renderPostcards();
+          updateProfileSocialStats();
+        }, error => {
+          console.error('Errore caricamento cartoline:', error);
+          renderPostcardError(error.message);
+        });
+    }
+
+    function renderPostcards() {
+      const feed = $('postcardFeed');
       if (!feed) return;
 
-      const videos = [...localVideos, ...defaultVideos()];
+      if (!postcardsCache.length) {
+        feed.innerHTML = `
+          <div class="postcard-empty">
+            <div class="postcard-empty-card">
+              <div class="big-icon">💌</div>
+              <h3>Prime cartoline</h3>
+              <p>Crea una cartolina con una foto. Niente Firebase Storage: l'immagine viene compressa e salvata direttamente in Firestore.</p>
+            </div>
+          </div>`;
+        return;
+      }
 
-      feed.innerHTML = videos.map(video => {
-        const liked = !!videoLikes[video.id];
-        const likeCount = (video.likes || 0) + (liked ? 1 : 0);
-
-        if (video.type === 'placeholder') {
-          return `
-            <article class="reel" data-video-id="${video.id}">
-              <div class="reel-placeholder">
-                <div class="big-icon">🎬</div>
-                <h3>Area Video</h3>
-                <p>${safeName(video.title)}</p>
-              </div>
-              <div class="reel-gradient"></div>
-              ${reelOverlayHTML(video, liked, likeCount)}
-            </article>
-          `;
-        }
-
-        return `
-          <article class="reel" data-video-id="${video.id}">
-            <video src="${video.url}" playsinline loop preload="metadata" onclick="toggleReelPlayback(this)"></video>
-            <div class="reel-gradient"></div>
-            ${reelOverlayHTML(video, liked, likeCount)}
-          </article>
-        `;
-      }).join('');
+      feed.innerHTML = postcardsCache.map(postcardHTML).join('');
     }
 
-    function reelOverlayHTML(video, liked, likeCount) {
+    function renderPostcardError(message) {
+      const feed = $('postcardFeed');
+      if (!feed) return;
+      feed.innerHTML = `<div class="postcard-empty"><div class="postcard-empty-card"><div class="big-icon">⚠️</div><h3>Errore cartoline</h3><p>${safeName(message || 'Controlla le regole Firestore.')}</p></div></div>`;
+    }
+
+    function postcardHTML(card) {
+      const likedBy = card.likedBy || {};
+      const liked = !!likedBy[currentUser?.id];
+      const likeCount = Object.keys(likedBy).filter(k => likedBy[k]).length || card.likeCount || 0;
+      const commentCount = card.commentCount || 0;
+      const avatar = card.authorAvatar || userInitial(card.authorName);
+      const avatarStyle = avatar && String(avatar).startsWith('data:image') ? `style="background-image:url('${avatar}')"` : '';
+      const avatarText = avatarStyle ? '' : safeName(avatar);
+      const when = formatPostcardDate(card.createdAt);
+      const canDelete = currentUser && (currentUser.id === card.authorId || currentUser.isAdmin);
+
       return `
-        <div class="reel-actions">
-          <div class="reel-action">
-            <button class="${liked ? 'liked' : ''}" onclick="likeVideo('${video.id}')">❤</button>
-            <span id="like-${video.id}">${likeCount}</span>
+        <article class="postcard-card" data-postcard-id="${card.id}">
+          <div class="postcard-inner">
+            <div class="postcard-author-row">
+              <div class="postcard-avatar" ${avatarStyle}>${avatarText}</div>
+              <div class="postcard-author-meta"><div class="postcard-author-name">${safeName(card.authorName || 'Utente')}</div><div class="postcard-time">${safeName(when)}</div></div>
+              ${canDelete ? `<button class="small-btn danger" onclick="deletePostcard('${card.id}')" title="Elimina">🗑️</button>` : ''}
+            </div>
+            <div class="postcard-image-wrap"><img class="postcard-image" src="${card.imageBase64}" alt="Cartolina" loading="lazy"></div>
+            ${card.caption ? `<div class="postcard-caption">${formatMessage(card.caption)}</div>` : ''}
+            <div class="postcard-actions">
+              <button class="postcard-action-btn ${liked ? 'liked' : ''}" onclick="togglePostcardLike('${card.id}')"><span>${liked ? '❤️' : '🤍'}</span><span>${likeCount}</span></button>
+              <button class="postcard-action-btn" onclick="openPostcardComments('${card.id}')"><span>💬</span><span>${commentCount}</span></button>
+              <button class="postcard-action-btn" onclick="sharePostcard('${card.id}')"><span>↗</span><span>Share</span></button>
+            </div>
           </div>
-          <div class="reel-action">
-            <button onclick="commentVideo('${video.id}')">💬</button>
-            <span>${video.comments || 0}</span>
-          </div>
-          <div class="reel-action">
-            <button onclick="shareVideo('${video.id}')">↗</button>
-            <span>Share</span>
-          </div>
-        </div>
-        <div class="reel-info">
-          <div class="reel-author">@${safeName(video.author || currentUser?.name || 'utente')}</div>
-          <div class="reel-title">${safeName(video.title || 'Nuovo video')}</div>
-        </div>
-      `;
+        </article>`;
     }
 
-    function handleVideoUpload(event) {
+    function formatPostcardDate(timestamp) {
+      if (!timestamp || !timestamp.seconds) return 'Ora';
+      const date = new Date(timestamp.seconds * 1000);
+      const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+      if (diffMin < 1) return 'Ora';
+      if (diffMin < 60) return `${diffMin} min fa`;
+      const diffHours = Math.floor(diffMin / 60);
+      if (diffHours < 24) return `${diffHours} h fa`;
+      return date.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+
+    async function handlePostcardImage(event) {
       const file = event.target.files?.[0];
-      if (!file) return;
-
-      if (!file.type.startsWith('video/')) {
-        alert('Seleziona un file video valido.');
-        return;
-      }
-
-      const maxSizeMb = 80;
-      if (file.size > maxSizeMb * 1024 * 1024) {
-        alert(`Video troppo grande. Per ora massimo ${maxSizeMb}MB.`);
-        return;
-      }
-
-      const url = URL.createObjectURL(file);
-      const title = prompt('Titolo del video:', file.name.replace(/\.[^/.]+$/, '')) || 'Nuovo video';
-
-      localVideos.unshift({
-        id: 'local_' + Date.now(),
-        type: 'video',
-        url,
-        author: currentUser?.name || 'utente',
-        title,
-        likes: 0,
-        comments: 0
-      });
-
-      renderVideoFeed();
-      updateProfileSocialStats();
-      setTimeout(playCurrentReelVideo, 250);
       event.target.value = '';
-    }
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { alert('Seleziona una foto valida.'); return; }
 
-    function likeVideo(videoId) {
-      videoLikes[videoId] = !videoLikes[videoId];
-      localStorage.setItem('conversando_video_likes', JSON.stringify(videoLikes));
-      renderVideoFeed();
-    }
-
-    function commentVideo(videoId) {
-      alert('Commenti video: prossimo step. Possiamo salvarli su Firestore in una collection videos/{id}/comments.');
-    }
-
-    function shareVideo(videoId) {
-      navigator.clipboard?.writeText(window.location.href)
-        .then(() => alert('Link copiato ✅'))
-        .catch(() => alert('Condividi questa pagina con i tuoi amici.'));
-    }
-
-    function pauseAllReelVideos() {
-      document.querySelectorAll('.reel video').forEach(video => video.pause());
-    }
-
-    function playCurrentReelVideo() {
-      const feed = $('videoFeed');
-      if (!feed) return;
-
-      const reels = [...feed.querySelectorAll('.reel')];
-      const center = feed.scrollTop + feed.clientHeight / 2;
-      let best = null;
-      let bestDistance = Infinity;
-
-      reels.forEach(reel => {
-        const reelCenter = reel.offsetTop + reel.offsetHeight / 2;
-        const distance = Math.abs(center - reelCenter);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          best = reel;
+      try {
+        const imageBase64 = await compressImageToBase64(file, 1080, 0.72);
+        if (imageBase64.length > 950000) {
+          alert('Foto ancora troppo grande dopo la compressione. Prova con una foto più leggera o ritagliata.');
+          return;
         }
-      });
-
-      pauseAllReelVideos();
-      const video = best?.querySelector('video');
-      if (video) video.play().catch(() => {});
+        const caption = prompt('Scrivi una frase per la cartolina:', '') || '';
+        await createPostcard(imageBase64, caption.trim());
+      } catch (error) {
+        console.error('Errore creazione cartolina:', error);
+        alert('Errore creazione cartolina: ' + error.message);
+      }
     }
 
-    function toggleReelPlayback(video) {
-      if (video.paused) video.play().catch(() => {});
-      else video.pause();
+    function compressImageToBase64(file, maxSide = 1080, quality = 0.72) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Impossibile leggere la foto'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Formato immagine non supportato'));
+          img.onload = () => {
+            let { width, height } = img;
+            const scale = Math.min(1, maxSide / Math.max(width, height));
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
     }
 
-    function setupVideoScrollAutoplay() {
-      const feed = $('videoFeed');
-      if (!feed) return;
+    async function createPostcard(imageBase64, caption) {
+      if (!currentUser) return;
 
-      let timer = null;
-      feed.addEventListener('scroll', () => {
-        clearTimeout(timer);
-        timer = setTimeout(playCurrentReelVideo, 120);
+      await db.collection('postcards').add({
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        authorAvatar: currentUser.avatar || userInitial(currentUser.name),
+        imageBase64,
+        caption,
+        likedBy: {},
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+
+      alert('Cartolina pubblicata ✅');
+    }
+
+    async function togglePostcardLike(postcardId) {
+      if (!currentUser) return;
+
+      const card = postcardsCache.find(p => p.id === postcardId);
+      if (!card) return;
+
+      const likedBy = { ...(card.likedBy || {}) };
+      likedBy[currentUser.id] = !likedBy[currentUser.id];
+      Object.keys(likedBy).forEach(uid => { if (!likedBy[uid]) delete likedBy[uid]; });
+
+      try {
+        await db.collection('postcards').doc(postcardId).update({
+          likedBy,
+          likeCount: Object.keys(likedBy).length
+        });
+      } catch (error) {
+        console.error(error);
+        alert('Errore like: controlla le regole Firestore.');
+      }
+    }
+
+    async function openPostcardComments(postcardId) {
+      try {
+        const snap = await db.collection('postcards').doc(postcardId)
+          .collection('comments')
+          .orderBy('createdAt', 'asc')
+          .limit(10)
+          .get();
+
+        let existing = '';
+        snap.forEach(doc => {
+          const c = doc.data();
+          existing += `• ${c.authorName || 'Utente'}: ${c.text || ''}\n`;
+        });
+
+        const text = prompt((existing ? existing + '\n' : '') + 'Scrivi un commento:', '');
+        if (!text || !text.trim()) return;
+
+        await addPostcardComment(postcardId, text.trim());
+      } catch (error) {
+        console.error(error);
+        alert('Errore commenti: ' + error.message);
+      }
+    }
+
+    async function addPostcardComment(postcardId, text) {
+      const ref = db.collection('postcards').doc(postcardId);
+
+      await ref.collection('comments').add({
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        authorAvatar: currentUser.avatar || userInitial(currentUser.name),
+        text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await db.runTransaction(async transaction => {
+        const doc = await transaction.get(ref);
+        const current = doc.exists ? (doc.data().commentCount || 0) : 0;
+        transaction.update(ref, { commentCount: current + 1 });
+      });
+    }
+
+    async function deletePostcard(postcardId) {
+      if (!confirm('Eliminare questa cartolina?')) return;
+
+      try {
+        await db.collection('postcards').doc(postcardId).delete();
+      } catch (error) {
+        console.error(error);
+        alert('Errore eliminazione cartolina.');
+      }
+    }
+
+    function sharePostcard(postcardId) {
+      const text = `Guarda questa cartolina su Conversando: ${window.location.href}`;
+      navigator.clipboard?.writeText(text)
+        .then(() => alert('Link copiato ✅'))
+        .catch(() => alert(text));
     }
 
     async function updateProfileSocialStats() {
@@ -4644,10 +4416,15 @@
         $('profileFollowersCount') && ($('profileFollowersCount').textContent = '0');
       }
 
-      $('profileVideosCount') && ($('profileVideosCount').textContent = String(localVideos.length));
+      try {
+        const postcardsSnap = await db.collection('postcards').where('authorId', '==', currentUser.id).get();
+        $('profilePostcardsCount') && ($('profilePostcardsCount').textContent = postcardsSnap.size);
+      } catch {
+        $('profilePostcardsCount') && ($('profilePostcardsCount').textContent = String(postcardsCache.filter(p => p.authorId === currentUser.id).length));
+      }
+
       $('profileFriendCodeMini') && ($('profileFriendCodeMini').textContent = currentUser.friendCode || '---');
     }
-
 
     document.addEventListener('DOMContentLoaded', () => {
       $('messageInput').addEventListener('keypress', event => {
@@ -4666,7 +4443,6 @@
       });
 
       initFirebase();
-      setupVideoScrollAutoplay();
     });
   </script>
 </body>
