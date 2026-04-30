@@ -4549,12 +4549,10 @@
         let existing = '';
         snap.forEach(doc => {
           const c = doc.data();
-          existing += `• ${c.authorName || 'Utente'}: ${c.text || ''}
-`;
+          existing += `• ${c.authorName || 'Utente'}: ${c.text || ''}\n`;
         });
 
-        const text = prompt((existing ? existing + '
-' : '') + 'Scrivi un commento:', '');
+        const text = prompt((existing ? existing + '\n' : '') + 'Scrivi un commento:', '');
         if (!text || !text.trim()) return;
 
         await addPostcardComment(postcardId, text.trim());
