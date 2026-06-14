@@ -43,6 +43,7 @@
       --message-received: #242435;
       --ai-message: #2a1f3d;
       --ai-accent: #9b59b6;
+      --install-banner-height: 68px;
     }
 
     body {
@@ -72,6 +73,59 @@
 
     button {
       -webkit-tap-highlight-color: transparent;
+    }
+
+    .install-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      min-height: var(--install-banner-height);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 12px 18px;
+      background: rgba(10, 10, 15, 0.96);
+      border-bottom: 1px solid rgba(201, 169, 97, 0.28);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      z-index: 5000;
+    }
+
+    body.install-banner-visible .install-banner {
+      display: flex;
+    }
+
+    .install-banner-text {
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .install-banner-button {
+      border: none;
+      border-radius: 8px;
+      padding: 11px 18px;
+      background: linear-gradient(135deg, #f4e4b1 0%, #d8b86b 55%, #c9a961 100%);
+      color: #0a0a0f;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 900;
+      min-width: 104px;
+      box-shadow: 0 10px 26px rgba(201, 169, 97, 0.25);
+    }
+
+    .install-banner-button:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+    }
+
+    body.install-banner-visible .login-screen {
+      padding-top: calc(var(--install-banner-height) + 20px);
     }
 
     .login-screen {
@@ -249,6 +303,10 @@
       z-index: 100;
     }
 
+    body.install-banner-visible .top-nav {
+      top: var(--install-banner-height);
+    }
+
     .top-nav-left,
     .top-nav-right {
       display: flex;
@@ -299,6 +357,10 @@
       z-index: 1;
     }
 
+    body.install-banner-visible .app-container {
+      padding-top: calc(49px + var(--install-banner-height));
+    }
+
     .app-container.visible {
       display: grid;
     }
@@ -310,6 +372,11 @@
       flex-direction: column;
       height: calc(100vh - 49px);
       overflow: hidden;
+    }
+
+    body.install-banner-visible .sidebar,
+    body.install-banner-visible .chat-area {
+      height: calc(100vh - 49px - var(--install-banner-height));
     }
 
     .sidebar-header {
@@ -1202,8 +1269,28 @@
     }
 
     @media (max-width: 768px) {
+      :root {
+        --install-banner-height: 76px;
+      }
+
       body {
         height: 100dvh;
+      }
+
+      .install-banner {
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+      }
+
+      .install-banner-text {
+        text-align: left;
+        font-size: 14px;
+      }
+
+      .install-banner-button {
+        min-width: 96px;
+        padding: 10px 14px;
       }
 
       .top-nav {
@@ -1216,8 +1303,16 @@
         padding-top: 0;
       }
 
+      body.install-banner-visible .app-container {
+        padding-top: var(--install-banner-height);
+      }
+
       .mobile-menu-fixed {
         display: flex;
+      }
+
+      body.install-banner-visible .mobile-menu-fixed {
+        top: calc(var(--install-banner-height) + 10px);
       }
 
       .sidebar {
@@ -1239,6 +1334,12 @@
 
       .chat-area {
         height: 100dvh;
+      }
+
+      body.install-banner-visible .chat-area,
+      body.install-banner-visible .sidebar,
+      body.install-banner-visible .postcard-page {
+        height: calc(100dvh - var(--install-banner-height) - 72px);
       }
 
       .chat-header {
@@ -1475,6 +1576,13 @@
 </head>
 
 <body>
+  <div id="installBanner" class="install-banner" aria-live="polite">
+    <div class="install-banner-text">Installa l'app</div>
+    <button id="installAppButton" class="install-banner-button" type="button" onclick="installApp()">
+      Installa
+    </button>
+  </div>
+
   <button id="mobileMenuBtnFixed" class="mobile-menu-fixed" onclick="toggleMobileSidebar()" title="Menu">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -1895,6 +2003,7 @@
     let auth = null;
     let messaging = null;
     let swRegistration = null;
+    let deferredInstallPrompt = null;
     let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
     let lastSeenMessages = {};
     const userAvatarsCache = {};
@@ -1930,6 +2039,64 @@
 
     function $(id) {
       return document.getElementById(id);
+    }
+
+    function isAppInstalled() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function updateInstallBanner() {
+      const banner = $('installBanner');
+      if (!banner) return;
+
+      if (isAppInstalled()) {
+        document.body.classList.remove('install-banner-visible');
+        banner.setAttribute('aria-hidden', 'true');
+        return;
+      }
+
+      document.body.classList.add('install-banner-visible');
+      banner.setAttribute('aria-hidden', 'false');
+    }
+
+    async function installApp() {
+      if (isAppInstalled()) {
+        updateInstallBanner();
+        return;
+      }
+
+      if (!deferredInstallPrompt) {
+        alert('Per installare l’app, apri il menu del browser e scegli "Installa app" o "Aggiungi alla schermata Home".');
+        return;
+      }
+
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+
+      if (choice.outcome === 'accepted') {
+        document.body.classList.remove('install-banner-visible');
+      } else {
+        updateInstallBanner();
+      }
+    }
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      updateInstallBanner();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      updateInstallBanner();
+    });
+
+    const standaloneModeQuery = window.matchMedia('(display-mode: standalone)');
+    if (standaloneModeQuery.addEventListener) {
+      standaloneModeQuery.addEventListener('change', updateInstallBanner);
+    } else if (standaloneModeQuery.addListener) {
+      standaloneModeQuery.addListener(updateInstallBanner);
     }
 
     function escapeHTML(value) {
@@ -4860,6 +5027,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      updateInstallBanner();
+
       $('messageInput').addEventListener('keypress', event => {
         if (event.key === 'Enter') {
           sendMessage();
