@@ -1,54 +1,170 @@
-// Service Worker - Conversando
-// Gestisce notifiche chiamate ANCHE con app chiusa
+// Conversando PWA service worker.
+// Handles app install/offline cache and Firebase background notifications.
+
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
+
+const APP_VERSION = '2026-06-14-pwa-1';
+const STATIC_CACHE = `conversando-static-${APP_VERSION}`;
+const RUNTIME_CACHE = `conversando-runtime-${APP_VERSION}`;
+const APP_SCOPE = '/chill-chat/';
+const APP_URL = self.registration.scope;
+
+const APP_SHELL = [
+  APP_SCOPE,
+  `${APP_SCOPE}index.html`,
+  `${APP_SCOPE}manifest.json`,
+  `${APP_SCOPE}icons/icon-192.png`,
+  `${APP_SCOPE}icons/icon-512.png`,
+  `${APP_SCOPE}icons/apple-touch-icon.png`
+];
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCp2SjlW-JX9FeW1csVslhJm4qW51kzSKg",
-  projectId: "chill-chat-4945d"
+  apiKey: 'AIzaSyCp2SjlW-JX9FeW1csVslhJm4qW51kzSKg',
+  authDomain: 'chill-chat-4945d.firebaseapp.com',
+  projectId: 'chill-chat-4945d',
+  storageBucket: 'chill-chat-4945d.firebasestorage.app',
+  messagingSenderId: '803118071656',
+  appId: '1:803118071656:web:90708d615b96cdfd31e0dd'
 };
 
-// Stato persistente
+let messaging = null;
 let currentUserId = null;
 let pollingInterval = null;
 let knownCalls = new Set();
 
-self.addEventListener('install', (event) => {
-  console.log('🔧 SW installato');
-  self.skipWaiting();
-});
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  messaging = firebase.messaging();
 
-self.addEventListener('activate', (event) => {
-  console.log('✅ SW attivato');
+  messaging.onBackgroundMessage((payload) => {
+    const { notification, data } = payload || {};
+    const callData = data || {};
+
+    return showCallNotification({
+      callId: callData.callId,
+      fromId: callData.fromId,
+      fromName: callData.fromName || notification?.title || 'Chiamata in arrivo',
+      callType: callData.callType || 'audio',
+      title: notification?.title || 'Chiamata in arrivo',
+      body: notification?.body || 'Chiamata in arrivo'
+    });
+  });
+} catch (err) {
+  console.warn('[SW] Firebase Messaging non disponibile:', err.message);
+}
+
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    self.clients.claim().then(() => {
-      // Appena attivato, controlla se c'è un userId salvato e inizia polling
-      return self.clients.matchAll().then(clients => {
-        if (clients.length > 0) {
-          console.log('📱 App aperta, aspetto messaggio INIT');
-        } else {
-          console.log('📱 App chiusa, provo a caricare userId da IndexedDB');
-          tryLoadUserIdAndStartPolling();
-        }
-      });
-    })
+    caches.open(STATIC_CACHE)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
 });
 
-// ─── Carica userId da IndexedDB se app è chiusa ───
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const cacheNames = await caches.keys();
+    await Promise.all(
+      cacheNames
+        .filter(name => name.startsWith('conversando-') && ![STATIC_CACHE, RUNTIME_CACHE].includes(name))
+        .map(name => caches.delete(name))
+    );
+
+    await self.clients.claim();
+
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (!clients.length) {
+      tryLoadUserIdAndStartPolling();
+    }
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || !url.pathname.startsWith(APP_SCOPE)) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirst(request, `${APP_SCOPE}index.html`));
+    return;
+  }
+
+  event.respondWith(staleWhileRevalidate(request));
+});
+
+self.addEventListener('message', async (event) => {
+  const { type, userId } = event.data || {};
+
+  if (type === 'INIT') {
+    currentUserId = userId;
+    await saveUserId(userId);
+    startCallPolling();
+  }
+
+  if (type === 'STOP') {
+    stopCallPolling();
+  }
+
+  if (type === 'LOGOUT') {
+    currentUserId = null;
+    stopCallPolling();
+    await deleteUserId();
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  const { action, notification } = event;
+  const { callId, fromId, fromName, callType } = notification.data || {};
+
+  notification.close();
+
+  if (action === 'decline') {
+    event.waitUntil(declineCall(callId));
+    return;
+  }
+
+  event.waitUntil(openCall(callId, fromId, fromName, callType));
+});
+
+async function networkFirst(request, fallbackPath) {
+  try {
+    const response = await fetch(request);
+    const cache = await caches.open(RUNTIME_CACHE);
+    cache.put(request, response.clone());
+    return response;
+  } catch (err) {
+    const cached = await caches.match(request);
+    return cached || caches.match(fallbackPath);
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  const cached = await caches.match(request);
+  const fresh = fetch(request)
+    .then(async response => {
+      if (response && response.ok) {
+        const cache = await caches.open(RUNTIME_CACHE);
+        cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => cached);
+
+  return cached || fresh;
+}
+
 async function tryLoadUserIdAndStartPolling() {
   try {
-    // Usa IndexedDB per leggere l'ultimo userId
-    const db = await openDB();
-    const userId = await getUserIdFromDB(db);
-    
+    const userId = await getUserId();
     if (userId) {
-      console.log('📱 userId caricato da storage:', userId);
       currentUserId = userId;
       startCallPolling();
-    } else {
-      console.log('⚠️ Nessun userId trovato, aspetto login');
     }
   } catch (err) {
-    console.log('❌ Errore caricamento userId:', err);
+    console.warn('[SW] Impossibile caricare userId:', err.message);
   }
 }
 
@@ -66,115 +182,43 @@ function openDB() {
   });
 }
 
-function getUserIdFromDB(db) {
+async function getUserId() {
+  const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('settings', 'readonly');
-    const store = tx.objectStore('settings');
-    const request = store.get('userId');
+    const request = tx.objectStore('settings').get('userId');
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
 
-// ─── Ricevi messaggio dall'app ───
-self.addEventListener('message', async (event) => {
-  console.log('📨 [SW] Messaggio ricevuto:', event.data);
-  const { type, config, userId } = event.data || {};
+async function saveUserId(userId) {
+  if (!userId) return;
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('settings', 'readwrite');
+    tx.objectStore('settings').put(userId, 'userId');
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
-  if (type === 'INIT') {
-    console.log('📨 [SW] Messaggio INIT ricevuto per userId:', userId);
-    currentUserId = userId;
-    console.log('📱 SW inizializzato per user:', userId);
-    
-    // Salva userId in IndexedDB per uso quando app è chiusa
-    try {
-      const db = await openDB();
-      const tx = db.transaction('settings', 'readwrite');
-      tx.objectStore('settings').put(userId, 'userId');
-      await new Promise(resolve => { tx.oncomplete = resolve; });
-      console.log('💾 userId salvato in IndexedDB');
-    } catch (err) {
-      console.log('❌ Errore salvataggio userId:', err);
-    }
-    
-    startCallPolling();
-  }
+async function deleteUserId() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('settings', 'readwrite');
+    tx.objectStore('settings').delete('userId');
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
-  if (type === 'STOP') {
-    stopCallPolling();
-  }
-  
-  if (type === 'LOGOUT') {
-    currentUserId = null;
-    stopCallPolling();
-    // Cancella userId da IndexedDB
-    try {
-      const db = await openDB();
-      const tx = db.transaction('settings', 'readwrite');
-      tx.objectStore('settings').delete('userId');
-    } catch (err) {}
-  }
-});
-
-// ─── Polling chiamate in arrivo ───
 function startCallPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
-  if (!currentUserId) {
-    console.log('❌ startCallPolling: nessun userId, esco');
-    return;
-  }
-  
-  console.log('🔄 Avvio polling chiamate per:', currentUserId);
-  console.log('🔄 Firebase config:', FIREBASE_CONFIG);
-  
-  pollingInterval = setInterval(async () => {
-    if (!FIREBASE_CONFIG.apiKey || !currentUserId) return;
-    
-    try {
-      const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/calls?key=${FIREBASE_CONFIG.apiKey}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) return;
-      
-      const data = await response.json();
-      const docs = data.documents || [];
-      
-      console.log('📞 [SW Polling] Trovati', docs.length, 'documenti in calls');
-      
-      for (const doc of docs) {
-        const fields = doc.fields || {};
-        const callId = doc.name.split('/').pop();
-        console.log('📞 [SW] Esamino chiamata:', callId);
-        
-        const toUser = fields.to?.stringValue;
-        const status = fields.status?.stringValue;
-        const fromName = fields.fromName?.stringValue || 'Sconosciuto';
-        const callType = fields.type?.stringValue || 'audio';
-        const fromAvatar = fields.fromAvatar?.stringValue || '👤';
-        const fromId = fields.from?.stringValue;
-        const createdAt = fields.createdAt?.timestampValue;
-        
-        // Solo chiamate per noi, in ringing, non già viste
-        if (toUser !== currentUserId) continue;
-        if (status !== 'ringing') continue;
-        if (knownCalls.has(callId)) continue;
-        
-        // Ignora chiamate più vecchie di 30 secondi
-        if (createdAt) {
-          const callTime = new Date(createdAt).getTime();
-          if (Date.now() - callTime > 30000) continue;
-        }
-        
-        knownCalls.add(callId);
-        
-        // Mostra notifica SEMPRE (anche se app chiusa)
-        console.log('📞 Nuova chiamata rilevata da SW:', fromName);
-        await showIncomingCallNotification(callId, fromName, callType, fromAvatar, fromId);
-      }
-    } catch (err) {
-      // Silenzioso - normale se offline
-    }
-  }, 3000); // ogni 3 secondi
+  if (!currentUserId) return;
+
+  pollingInterval = setInterval(checkIncomingCalls, 3000);
+  checkIncomingCalls();
 }
 
 function stopCallPolling() {
@@ -185,72 +229,75 @@ function stopCallPolling() {
   knownCalls.clear();
 }
 
-async function showIncomingCallNotification(callId, fromName, callType, fromAvatar, fromId) {
-  const isVideo = callType === 'video';
-  
-  await self.registration.showNotification(
-    `📞 ${fromName} sta chiamando`,
-    {
-      body: isVideo ? '📹 Videochiamata in arrivo' : '📞 Chiamata audio in arrivo',
-      icon: '/chill-chat/icon-192.png',
-      badge: '/chill-chat/icon-192.png',
-      tag: `call-${callId}`,
-      requireInteraction: true,
-      vibrate: [300, 200, 300, 200, 300, 200, 1000, 300, 200, 300],
-      silent: false,
-      renotify: true,
-      data: {
-        callId,
-        fromId,
-        fromName,
-        callType,
-        url: `https://lagattix.github.io/chill-chat/`
-      },
-      actions: [
-        { action: 'accept', title: '✅ Accetta' },
-        { action: 'decline', title: '❌ Rifiuta' }
-      ]
+async function checkIncomingCalls() {
+  if (!FIREBASE_CONFIG.apiKey || !currentUserId) return;
+
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/calls?key=${FIREBASE_CONFIG.apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const docs = data.documents || [];
+
+    for (const doc of docs) {
+      const fields = doc.fields || {};
+      const callId = doc.name.split('/').pop();
+      const toUser = fields.to?.stringValue;
+      const status = fields.status?.stringValue;
+      const fromName = fields.fromName?.stringValue || 'Sconosciuto';
+      const callType = fields.type?.stringValue || 'audio';
+      const fromId = fields.from?.stringValue;
+      const createdAt = fields.createdAt?.timestampValue;
+
+      if (toUser !== currentUserId || status !== 'ringing' || knownCalls.has(callId)) continue;
+      if (createdAt && Date.now() - new Date(createdAt).getTime() > 30000) continue;
+
+      knownCalls.add(callId);
+      await showCallNotification({ callId, fromId, fromName, callType });
     }
-  );
-  
-  console.log('🔔 Notifica chiamata mostrata per:', fromName);
+  } catch (err) {
+    // Offline or transient network errors are expected for an installed PWA.
+  }
 }
 
-// ─── Click su notifica ───
-self.addEventListener('notificationclick', (event) => {
-  const { action, notification } = event;
-  const { callId, fromId, fromName, callType, url } = notification.data || {};
-  
-  notification.close();
+async function showCallNotification({ callId, fromId, fromName, callType, title, body }) {
+  const isVideo = callType === 'video';
 
-  if (action === 'decline') {
-    event.waitUntil(declineCall(callId));
+  return self.registration.showNotification(title || `${fromName} sta chiamando`, {
+    body: body || (isVideo ? 'Videochiamata in arrivo' : 'Chiamata audio in arrivo'),
+    icon: `${APP_SCOPE}icons/icon-192.png`,
+    badge: `${APP_SCOPE}icons/icon-192.png`,
+    tag: `call-${callId || Date.now()}`,
+    requireInteraction: true,
+    vibrate: [300, 200, 300, 200, 300, 200, 1000, 300, 200, 300],
+    silent: false,
+    renotify: true,
+    data: { callId, fromId, fromName, callType, url: APP_URL },
+    actions: [
+      { action: 'accept', title: 'Accetta' },
+      { action: 'decline', title: 'Rifiuta' }
+    ]
+  });
+}
+
+async function openCall(callId, fromId, fromName, callType) {
+  const appUrl = `${APP_URL}?acceptCall=${callId || ''}&from=${fromId || ''}&fromName=${encodeURIComponent(fromName || '')}&type=${callType || 'audio'}`;
+  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const existing = clientList.find(client => client.url.startsWith(APP_URL));
+
+  if (existing) {
+    await existing.focus();
+    existing.postMessage({ type: 'ACCEPT_CALL', callId, fromId, fromName, callType });
     return;
   }
 
-  // Accetta → apri app
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      const appUrl = `${url}?acceptCall=${callId}&from=${fromId}&fromName=${encodeURIComponent(fromName)}&type=${callType}`;
-      
-      const existing = clients.find(c => c.url.includes('lagattix.github.io'));
-      if (existing) {
-        existing.focus();
-        existing.postMessage({
-          type: 'ACCEPT_CALL',
-          callId, fromId, fromName, callType
-        });
-        return;
-      }
-      
-      return self.clients.openWindow(appUrl);
-    })
-  );
-});
+  return self.clients.openWindow(appUrl);
+}
 
 async function declineCall(callId) {
   if (!FIREBASE_CONFIG.apiKey || !callId) return;
-  
+
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/calls/${callId}?key=${FIREBASE_CONFIG.apiKey}&updateMask.fieldPaths=status`;
     await fetch(url, {
@@ -260,12 +307,7 @@ async function declineCall(callId) {
         fields: { status: { stringValue: 'declined' } }
       })
     });
-    console.log('📵 Chiamata rifiutata dal SW');
   } catch (err) {
-    console.error('Errore rifiuto:', err);
+    console.error('[SW] Errore rifiuto chiamata:', err.message);
   }
 }
-
-self.addEventListener('notificationclose', (event) => {
-  console.log('🔕 Notifica chiusa');
-});

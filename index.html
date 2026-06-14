@@ -7,9 +7,9 @@
   <meta name="theme-color" content="#0a0a0f" />
 
   <link rel="manifest" href="manifest.json" />
-  <link rel="icon" type="image/png" href="/chill-chat/logo.png" />
-  <link rel="shortcut icon" type="image/png" href="/chill-chat/logo.png" />
-  <link rel="apple-touch-icon" href="/chill-chat/logo.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/chill-chat/icons/icon-192.png" />
+  <link rel="shortcut icon" type="image/png" href="/chill-chat/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/chill-chat/icons/apple-touch-icon.png" />
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -2042,22 +2042,16 @@
 
         if ('serviceWorker' in navigator) {
           try {
-            const genericReg = await navigator.serviceWorker.register('/chill-chat/sw.js');
-            swRegistration = genericReg;
-            console.log('✅ Service Worker registrato:', genericReg.scope);
-          } catch (err) {
-            console.warn('⚠️ Service Worker generico non registrato:', err.message);
-          }
-
-          try {
-            const fcmReg = await navigator.serviceWorker.register('/chill-chat/firebase-messaging-sw.js', {
+            swRegistration = await navigator.serviceWorker.register('/chill-chat/sw.js', {
               scope: '/chill-chat/'
             });
+            console.log('✅ PWA Service Worker registrato:', swRegistration.scope);
+
             messaging = firebase.messaging();
-            messaging.useServiceWorker(fcmReg);
-            console.log('✅ Firebase Messaging SW registrato:', fcmReg.scope);
+            messaging.useServiceWorker(swRegistration);
+            console.log('✅ Firebase Messaging collegato al Service Worker PWA');
           } catch (err) {
-            console.warn('⚠️ Firebase Messaging non disponibile:', err.message);
+            console.warn('⚠️ Service Worker PWA non disponibile:', err.message);
           }
         }
 
@@ -3642,8 +3636,8 @@
         if (swRegistration?.showNotification) {
           await swRegistration.showNotification(title, {
             body,
-            icon: '/chill-chat/logo.png',
-            badge: '/chill-chat/logo.png',
+            icon: '/chill-chat/icons/icon-192.png',
+            badge: '/chill-chat/icons/icon-192.png',
             tag: 'conversando-' + Date.now(),
             requireInteraction: false,
             silent: false,
@@ -3653,7 +3647,7 @@
         } else {
           const notification = new Notification(title, {
             body,
-            icon: '/chill-chat/logo.png',
+            icon: '/chill-chat/icons/icon-192.png',
             tag: 'conversando-' + Date.now()
           });
 
@@ -3679,7 +3673,7 @@
         if (document.hidden && Notification.permission === 'granted') {
           new Notification(notification.title || '📞 Chiamata in arrivo', {
             body: notification.body || 'Nuova chiamata',
-            icon: '/chill-chat/logo.png',
+            icon: '/chill-chat/icons/icon-192.png',
             tag: `call-${data.callId || Date.now()}`,
             requireInteraction: true,
             data

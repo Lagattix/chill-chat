@@ -3,18 +3,40 @@
   "short_name": "Conversando",
   "description": "Chat in tempo reale con amici e Conversina AI",
   "start_url": "/chill-chat/",
+  "scope": "/chill-chat/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/chill-chat/logo.png",
-      "sizes": "1024x924",
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "categories": ["social", "communication"],
+  "shortcuts": [
+    {
+      "name": "Apri chat",
+      "short_name": "Chat",
+      "url": "/chill-chat/",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "screenshots": []
 }
