@@ -276,6 +276,19 @@
       text-decoration: underline;
     }
 
+    .forgot-password-link {
+      display: inline-block;
+      margin-top: 10px;
+      color: #f2d38b;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .forgot-password-link:hover {
+      text-decoration: underline;
+    }
+
     .auth-error {
       display: none;
       margin-top: 16px;
@@ -286,6 +299,88 @@
       color: #ff9b9b;
       font-size: 13px;
       text-align: center;
+    }
+
+    .password-reset-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 6000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .password-reset-modal.visible {
+      display: flex;
+    }
+
+    .password-reset-card {
+      width: min(520px, 100%);
+      max-height: calc(100dvh - 40px);
+      overflow-y: auto;
+      border-radius: 8px;
+      padding: 24px;
+      background: rgba(18, 18, 26, 0.98);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+    }
+
+    .password-reset-title {
+      color: var(--text-primary);
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .password-reset-copy {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    .password-reset-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .password-reset-secondary {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 12px 15px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .password-reset-status {
+      display: none;
+      margin: 12px 0;
+      padding: 11px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .password-reset-status.success {
+      display: block;
+      background: rgba(78, 204, 163, 0.12);
+      color: #9df0d1;
+      border: 1px solid rgba(78, 204, 163, 0.28);
+    }
+
+    .password-reset-status.error {
+      display: block;
+      background: rgba(255, 107, 107, 0.12);
+      color: #ff9b9b;
+      border: 1px solid rgba(255, 107, 107, 0.28);
     }
 
     .top-nav {
@@ -1625,6 +1720,8 @@
         <div class="login-link">
           Non hai un account?
           <a href="#" onclick="showRegister(); return false;">Registrati</a>
+          <br>
+          <a href="#" class="forgot-password-link" onclick="showPasswordReset(); return false;">Non ricordo la mia password</a>
         </div>
       </div>
 
@@ -1642,6 +1739,27 @@
       <div id="authError" class="auth-error"></div>
     </div>
   </section>
+
+  <div id="passwordResetModal" class="password-reset-modal">
+    <div class="password-reset-card">
+      <div class="password-reset-title">Recupero password</div>
+      <p class="password-reset-copy">
+        Inserisci l'email dell'account e alcuni dati di verifica. La richiesta verra inviata all'amministratore,
+        che controllera le informazioni prima di cambiare manualmente la password.
+      </p>
+      <input type="email" id="resetEmailInput" class="login-input" placeholder="Email account" autocomplete="email" />
+      <input type="text" id="resetNameInput" class="login-input" placeholder="Nome profilo usato nell'app" />
+      <input type="text" id="resetFriendCodeInput" class="login-input" placeholder="Codice amico, se lo ricordi" />
+      <input type="text" id="resetKnownContactInput" class="login-input" placeholder="Nome di un amico o gruppo presente nell'account" />
+      <input type="text" id="resetLastLoginInput" class="login-input" placeholder="Ultimo accesso indicativo (es. ieri, settimana scorsa)" />
+      <input type="text" id="resetProfileDetailInput" class="login-input" placeholder="Un dettaglio del profilo (avatar, bio, chat recente)" />
+      <div id="passwordResetStatus" class="password-reset-status"></div>
+      <div class="password-reset-actions">
+        <button class="password-reset-secondary" type="button" onclick="closePasswordReset()">Annulla</button>
+        <button id="passwordResetSubmitBtn" class="login-button" type="button" onclick="submitPasswordReset()">Invia richiesta</button>
+      </div>
+    </div>
+  </div>
 
   <main class="app-container" id="appContainer">
     <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileSidebar()"></div>
@@ -1990,6 +2108,7 @@
     const ADMIN_ID = 'admin_conversando_official';
     let OFFICIAL_ADMIN_UID = null;
     const BACKEND_URL = 'https://conversina-backend-ijue.vercel.app/api/chat';
+    const PASSWORD_RESET_URL = 'https://conversina-backend-ijue.vercel.app/api/password-reset-request';
 
     let currentUser = null;
     let activeChat = null;
@@ -2185,6 +2304,95 @@
       $('loginForm').style.display = 'none';
       $('registerForm').style.display = 'block';
       $('authError').style.display = 'none';
+    }
+
+    function showPasswordReset() {
+      $('authError').style.display = 'none';
+      $('resetEmailInput').value = $('emailInput').value.trim();
+      $('passwordResetStatus').className = 'password-reset-status';
+      $('passwordResetStatus').textContent = '';
+      $('passwordResetModal').classList.add('visible');
+    }
+
+    function closePasswordReset() {
+      $('passwordResetModal').classList.remove('visible');
+    }
+
+    function setPasswordResetStatus(message, type) {
+      const status = $('passwordResetStatus');
+      status.textContent = message;
+      status.className = `password-reset-status ${type}`;
+    }
+
+    async function submitPasswordReset() {
+      const email = $('resetEmailInput').value.trim().toLowerCase();
+      const displayName = $('resetNameInput').value.trim();
+      const friendCode = $('resetFriendCodeInput').value.trim();
+      const knownContact = $('resetKnownContactInput').value.trim();
+      const lastLogin = $('resetLastLoginInput').value.trim();
+      const profileDetail = $('resetProfileDetailInput').value.trim();
+      const verificationFields = [displayName, friendCode, knownContact, lastLogin, profileDetail].filter(Boolean);
+
+      if (!email || !email.includes('@')) {
+        setPasswordResetStatus('Inserisci una email valida.', 'error');
+        return;
+      }
+
+      if (!displayName) {
+        setPasswordResetStatus('Inserisci anche il nome profilo usato nell app.', 'error');
+        return;
+      }
+
+      if (verificationFields.length < 3) {
+        setPasswordResetStatus('Per sicurezza servono almeno altri 2 dati di verifica oltre all email.', 'error');
+        return;
+      }
+
+      const submitBtn = $('passwordResetSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Invio...';
+      setPasswordResetStatus('Invio richiesta in corso...', 'success');
+
+      const payload = {
+        email,
+        displayName,
+        friendCode,
+        knownContact,
+        lastLogin,
+        profileDetail,
+        pageUrl: window.location.href,
+        userAgent: navigator.userAgent,
+        requestedAt: new Date().toISOString()
+      };
+
+      try {
+        if (db) {
+          await db.collection('passwordResetRequests').add({
+            ...payload,
+            status: 'pending',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
+        const response = await fetch(PASSWORD_RESET_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || 'Email non inviata');
+        }
+
+        setPasswordResetStatus('Richiesta inviata. Se i dati coincidono, l amministratore ti aiutera con il cambio password.', 'success');
+      } catch (error) {
+        console.error('Errore recupero password:', error);
+        setPasswordResetStatus('Richiesta salvata, ma l email admin potrebbe non essere partita: ' + error.message, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Invia richiesta';
+      }
     }
 
     function showHome() {
