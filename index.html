@@ -2899,17 +2899,10 @@
       });
     }
 
-    function messageQuery(roomId) {
-      let query = db.collection('messages').where('roomId', '==', roomId);
-      if (roomId.startsWith('group_')) {
-        return query.where('groupId', '==', roomId.slice(6));
-      }
-      return query.where('participants', 'array-contains', currentUser.id);
-    }
-
     async function getLastMessage(roomId) {
       try {
-        const snap = await messageQuery(roomId)
+        const snap = await db.collection('messages')
+          .where('roomId', '==', roomId)
           .orderBy('timestamp', 'desc')
           .limit(1)
           .get();
@@ -3064,7 +3057,8 @@
     }
 
     async function fetchMessages(roomId) {
-      const snapshot = await messageQuery(roomId)
+      const snapshot = await db.collection('messages')
+        .where('roomId', '==', roomId)
         .orderBy('timestamp', 'asc')
         .get();
 
@@ -3216,7 +3210,8 @@
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const snapshot = await messageQuery(roomId)
+        const snapshot = await db.collection('messages')
+          .where('roomId', '==', roomId)
           .where('timestamp', '>', firebase.firestore.Timestamp.fromDate(thirtyDaysAgo))
           .orderBy('timestamp', 'asc')
           .get();
@@ -3336,7 +3331,8 @@
 
             if (isActive) continue;
 
-            const snap = await messageQuery(roomId)
+            const snap = await db.collection('messages')
+              .where('roomId', '==', roomId)
               .orderBy('timestamp', 'desc')
               .limit(1)
               .get();
@@ -3767,7 +3763,7 @@
 
       try {
         const roomId = activeChat.isGroup ? `group_${activeChat.id}` : makeRoomId(currentUser.id, activeChat.id);
-        const snapshot = await messageQuery(roomId).get();
+        const snapshot = await db.collection('messages').where('roomId', '==', roomId).get();
         const batch = db.batch();
 
         snapshot.forEach(doc => batch.delete(doc.ref));
