@@ -4,7 +4,7 @@
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-const APP_VERSION = '2026-06-14-pwa-1';
+const APP_VERSION = '2026-11-13-firebase-migration-1';
 const STATIC_CACHE = `conversando-static-${APP_VERSION}`;
 const RUNTIME_CACHE = `conversando-runtime-${APP_VERSION}`;
 const APP_SCOPE = '/chill-chat/';
@@ -20,12 +20,12 @@ const APP_SHELL = [
 ];
 
 const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyCp2SjlW-JX9FeW1csVslhJm4qW51kzSKg',
-  authDomain: 'chill-chat-4945d.firebaseapp.com',
-  projectId: 'chill-chat-4945d',
-  storageBucket: 'chill-chat-4945d.firebasestorage.app',
-  messagingSenderId: '803118071656',
-  appId: '1:803118071656:web:90708d615b96cdfd31e0dd'
+  apiKey: 'AIzaSyDRn6D2VwbXlScu6rC1Fnxij5Ug8PSTHjY',
+  authDomain: 'conversando-b96c6.firebaseapp.com',
+  projectId: 'conversando-b96c6',
+  storageBucket: 'conversando-b96c6.firebasestorage.app',
+  messagingSenderId: '377472120688',
+  appId: '1:377472120688:web:1f11d4470d7bf72d4701b5'
 };
 
 let messaging = null;
