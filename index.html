@@ -2121,7 +2121,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-messaging.js"></script>
 
   <script>
-    const PIPEDREAM_WEBHOOK_URL = 'https://eodprhvejk2u9b4.m.pipedream.net';
     const VAPID_PUBLIC_KEY = 'BJymFYMqJUDtmbdE2x39atsqRScyu_jOIESRoCMAEcZ0OBJ6IiIGVhcIKzyEyWXOD5g-01AMju9G-gdrrRBRFKw';
     const CONVERSINA_ID = 'conversina_ai_bot';
     const ADMIN_ID = 'admin_conversando_official';
@@ -2129,6 +2128,7 @@
     const BACKEND_URL = 'https://chill-chat-backend-yskn.vercel.app/api/chat';
     const PASSWORD_RESET_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-request';
     const MESSAGE_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-message';
+    const CALL_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-call';
 
     let currentUser = null;
     let activeChat = null;
@@ -4322,18 +4322,27 @@
       }
     }
 
-    function sendCallWebhook(callId, to, type) {
-      fetch(PIPEDREAM_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          callId,
-          from: currentUser.id,
-          fromName: currentUser.name,
-          to,
-          type
-        })
-      }).catch(error => console.warn('Webhook chiamata non inviato:', error.message));
+    async function sendCallWebhook(callId) {
+      if (!auth?.currentUser || !callId) return;
+
+      try {
+        const idToken = await auth.currentUser.getIdToken();
+        const response = await fetch(CALL_NOTIFICATION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ callId })
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Invio push chiamata non riuscito');
+        }
+      } catch (error) {
+        console.warn('Notifica push chiamata non inviata:', error.message);
+      }
     }
 
     function listenForAnswer() {
