@@ -41,6 +41,15 @@ try {
     const { notification, data } = payload || {};
     const callData = data || {};
 
+    if (callData.type === 'message') {
+      return showMessageNotification({
+        title: notification?.title || callData.title || 'Nuovo messaggio',
+        body: notification?.body || callData.body || 'Hai ricevuto un nuovo messaggio',
+        roomId: callData.roomId,
+        fromId: callData.fromId
+      });
+    }
+
     return showCallNotification({
       callId: callData.callId,
       fromId: callData.fromId,
@@ -117,9 +126,14 @@ self.addEventListener('message', async (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   const { action, notification } = event;
-  const { callId, fromId, fromName, callType } = notification.data || {};
+  const { callId, fromId, fromName, callType, type } = notification.data || {};
 
   notification.close();
+
+  if (type === 'message') {
+    event.waitUntil(openApp());
+    return;
+  }
 
   if (action === 'decline') {
     event.waitUntil(declineCall(callId));
@@ -279,6 +293,24 @@ async function showCallNotification({ callId, fromId, fromName, callType, title,
       { action: 'decline', title: 'Rifiuta' }
     ]
   });
+}
+
+async function showMessageNotification({ title, body, roomId, fromId }) {
+  return self.registration.showNotification(title, {
+    body,
+    icon: `${APP_SCOPE}icons/icon-192.png`,
+    badge: `${APP_SCOPE}icons/icon-192.png`,
+    tag: `message-${roomId || fromId || Date.now()}`,
+    renotify: true,
+    data: { type: 'message', roomId, fromId, url: APP_URL }
+  });
+}
+
+async function openApp() {
+  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const existing = clientList.find(client => client.url.startsWith(APP_URL));
+  if (existing) return existing.focus();
+  return self.clients.openWindow(APP_URL);
 }
 
 async function openCall(callId, fromId, fromName, callType) {

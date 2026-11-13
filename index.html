@@ -1761,6 +1761,17 @@
     </div>
   </div>
 
+  <div class="profile-modal" id="notificationPermissionModal">
+    <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="notificationPermissionTitle">
+      <h2 id="notificationPermissionTitle" style="margin:0 0 10px;font-size:22px;">🔔 Non perdere nessun messaggio</h2>
+      <p style="color:var(--text-secondary);line-height:1.5;margin:0 0 22px;">Attiva le notifiche per ricevere subito messaggi e chiamate, anche quando Conversando è chiuso.</p>
+      <div class="profile-actions">
+        <button class="profile-button profile-button-secondary" type="button" onclick="dismissNotificationPermissionPrompt()">Non ora</button>
+        <button class="profile-button profile-button-primary" type="button" onclick="enablePushNotifications()">Attiva notifiche</button>
+      </div>
+    </div>
+  </div>
+
   <main class="app-container" id="appContainer">
     <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileSidebar()"></div>
 
@@ -2109,6 +2120,7 @@
     let OFFICIAL_ADMIN_UID = null;
     const BACKEND_URL = 'https://conversina-backend-ijue.vercel.app/api/chat';
     const PASSWORD_RESET_URL = 'https://conversina-backend-ijue.vercel.app/api/password-reset-request';
+    const MESSAGE_NOTIFICATION_URL = 'https://conversina-backend-ijue.vercel.app/api/notify-message';
 
     let currentUser = null;
     let activeChat = null;
@@ -2582,6 +2594,9 @@
             notificationsEnabled = true;
             localStorage.setItem('notificationsEnabled', 'true');
           }
+
+          updateNotificationsUI();
+          showNotificationPermissionPrompt();
 
           if (currentUser.isAdmin) {
             showAdminBadge();
@@ -3166,6 +3181,10 @@
         });
 
         input.value = '';
+
+        if (!activeChat.isAI) {
+          sendMessagePushNotification(activeChat, text, roomId);
+        }
 
         if (window.reloadMessages) {
           setTimeout(window.reloadMessages, 300);
@@ -3970,6 +3989,25 @@
       return false;
     }
 
+    function showNotificationPermissionPrompt() {
+      if (!('Notification' in window) || Notification.permission !== 'default') return;
+      if (sessionStorage.getItem('conversando-notification-prompt-dismissed') === 'true') return;
+      setTimeout(() => $('notificationPermissionModal')?.classList.add('visible'), 450);
+    }
+
+    function dismissNotificationPermissionPrompt() {
+      sessionStorage.setItem('conversando-notification-prompt-dismissed', 'true');
+      $('notificationPermissionModal')?.classList.remove('visible');
+    }
+
+    async function enablePushNotifications() {
+      const enabled = await requestNotificationPermission();
+      if (enabled || Notification.permission !== 'default') {
+        dismissNotificationPermissionPrompt();
+      }
+      updateNotificationsUI();
+    }
+
     async function toggleNotifications() {
       const btn = $('notificationsToggle');
 
@@ -4044,13 +4082,14 @@
       messaging.onMessage((payload) => {
         const notification = payload.notification || {};
         const data = payload.data || {};
+        const isMessage = data.type === 'message';
 
         if (document.hidden && Notification.permission === 'granted') {
-          new Notification(notification.title || '📞 Chiamata in arrivo', {
-            body: notification.body || 'Nuova chiamata',
+          new Notification(notification.title || data.title || (isMessage ? 'Nuovo messaggio' : '📞 Chiamata in arrivo'), {
+            body: notification.body || data.body || (isMessage ? 'Hai ricevuto un nuovo messaggio' : 'Nuova chiamata'),
             icon: '/chill-chat/icons/icon-192.png',
-            tag: `call-${data.callId || Date.now()}`,
-            requireInteraction: true,
+            tag: isMessage ? `message-${data.roomId || Date.now()}` : `call-${data.callId || Date.now()}`,
+            requireInteraction: !isMessage,
             data
           });
         }
@@ -4071,6 +4110,34 @@
         }
       } catch (error) {
         console.warn('FCM token non registrato:', error.message);
+      }
+    }
+
+    async function sendMessagePushNotification(chat, text, roomId) {
+      if (!auth?.currentUser || !chat?.id || !text) return;
+
+      try {
+        const idToken = await auth.currentUser.getIdToken();
+        const response = await fetch(MESSAGE_NOTIFICATION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            recipientId: chat.isGroup ? undefined : chat.id,
+            groupId: chat.isGroup ? chat.id : undefined,
+            roomId,
+            text: text.slice(0, 240)
+          })
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Invio push non riuscito');
+        }
+      } catch (error) {
+        console.warn('Notifica push messaggio non inviata:', error.message);
       }
     }
 
