@@ -1907,9 +1907,17 @@
         <span class="icon">💬</span>
         <span>Chat</span>
       </button>
+      <button class="bottom-nav-item" id="bottomFriendsBtn" onclick="showFriends()">
+        <span class="icon">👥</span>
+        <span>Amici</span>
+      </button>
       <button class="bottom-nav-item" id="bottomPostcardBtn" onclick="showPostcardTab()">
         <span class="icon">💌</span>
         <span>Cartoline</span>
+      </button>
+      <button class="bottom-nav-item" id="bottomProfileBtn" onclick="showProfile()">
+        <span class="icon">👤</span>
+        <span>Profilo</span>
       </button>
     </nav>
 
@@ -2413,6 +2421,7 @@
       $('navFriends')?.classList.remove('active');
       $('profileModal')?.classList.remove('visible');
       $('friendsModal')?.classList.remove('visible');
+      setBottomNavActive('bottomChatBtn');
     }
 
     async function initFirebase() {
@@ -3381,6 +3390,7 @@
       $('navHome')?.classList.remove('active');
       $('navFriends')?.classList.remove('active');
       $('navProfile')?.classList.add('active');
+      setBottomNavActive('bottomProfileBtn');
 
       if (currentUser) {
         setAvatar($('profileAvatar'), currentUser.avatar, userInitial(currentUser.name));
@@ -3400,6 +3410,7 @@
         $('profileModal').classList.remove('visible');
         $('navProfile')?.classList.remove('active');
         $('navHome')?.classList.add('active');
+        setBottomNavActive('bottomChatBtn');
       }
     }
 
@@ -3617,6 +3628,7 @@
       $('navHome')?.classList.remove('active');
       $('navProfile')?.classList.remove('active');
       $('navFriends')?.classList.add('active');
+      setBottomNavActive('bottomFriendsBtn');
       $('friendsModal').classList.add('visible');
       await loadFriendRequests();
     }
@@ -3626,6 +3638,7 @@
         $('friendsModal').classList.remove('visible');
         $('navFriends')?.classList.remove('active');
         $('navHome')?.classList.add('active');
+        setBottomNavActive('bottomChatBtn');
       }
     }
 
@@ -4811,16 +4824,20 @@
     function showChatTab() {
       const app = $('appContainer');
       app.classList.remove('postcard-mode');
-      $('bottomChatBtn')?.classList.add('active');
-      $('bottomPostcardBtn')?.classList.remove('active');
+      setBottomNavActive('bottomChatBtn');
       if (window.innerWidth <= 768) $('mobileMenuBtnFixed').style.display = 'flex';
+    }
+
+    function setBottomNavActive(activeId) {
+      document.querySelectorAll('.bottom-nav-item').forEach(item => {
+        item.classList.toggle('active', item.id === activeId);
+      });
     }
 
     function showPostcardTab() {
       const app = $('appContainer');
       app.classList.add('postcard-mode');
-      $('bottomChatBtn')?.classList.remove('active');
-      $('bottomPostcardBtn')?.classList.add('active');
+      setBottomNavActive('bottomPostcardBtn');
       $('sidebar')?.classList.remove('mobile-visible');
       $('mobileOverlay')?.classList.remove('visible');
       $('mobileMenuBtnFixed').style.display = 'none';
