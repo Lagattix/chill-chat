@@ -2899,10 +2899,17 @@
       });
     }
 
+    function messageQuery(roomId) {
+      let query = db.collection('messages').where('roomId', '==', roomId);
+      if (roomId.startsWith('group_')) {
+        return query.where('groupId', '==', roomId.slice(6));
+      }
+      return query.where('participants', 'array-contains', currentUser.id);
+    }
+
     async function getLastMessage(roomId) {
       try {
-        const snap = await db.collection('messages')
-          .where('roomId', '==', roomId)
+        const snap = await messageQuery(roomId)
           .orderBy('timestamp', 'desc')
           .limit(1)
           .get();
@@ -3057,8 +3064,7 @@
     }
 
     async function fetchMessages(roomId) {
-      const snapshot = await db.collection('messages')
-        .where('roomId', '==', roomId)
+      const snapshot = await messageQuery(roomId)
         .orderBy('timestamp', 'asc')
         .get();
 
@@ -3172,6 +3178,8 @@
       try {
         await db.collection('messages').add({
           roomId,
+          participants: activeChat.isGroup ? [] : [currentUser.id, activeChat.id],
+          groupId: activeChat.isGroup ? activeChat.id : null,
           senderId: currentUser.id,
           senderName: currentUser.name,
           senderAvatar: userInitial(currentUser.name),
@@ -3208,8 +3216,7 @@
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const snapshot = await db.collection('messages')
-          .where('roomId', '==', roomId)
+        const snapshot = await messageQuery(roomId)
           .where('timestamp', '>', firebase.firestore.Timestamp.fromDate(thirtyDaysAgo))
           .orderBy('timestamp', 'asc')
           .get();
@@ -3238,11 +3245,14 @@
 
         await db.collection('messages').add({
           roomId,
+          participants: [currentUser.id, CONVERSINA_ID],
+          groupId: null,
           senderId: CONVERSINA_ID,
           senderName: 'Conversina',
           senderAvatar: '🤖',
           text: data.response || 'Mi dispiace, non sono riuscita a generare una risposta.',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          isGroup: false
         });
 
         if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
@@ -3251,11 +3261,14 @@
 
         await db.collection('messages').add({
           roomId,
+          participants: [currentUser.id, CONVERSINA_ID],
+          groupId: null,
           senderId: CONVERSINA_ID,
           senderName: 'Conversina',
           senderAvatar: '🤖',
           text: '⚠️ Backend non disponibile o non configurato. La chat tra utenti continua a funzionare.',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          isGroup: false
         });
 
         if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
@@ -3323,8 +3336,7 @@
 
             if (isActive) continue;
 
-            const snap = await db.collection('messages')
-              .where('roomId', '==', roomId)
+            const snap = await messageQuery(roomId)
               .orderBy('timestamp', 'desc')
               .limit(1)
               .get();
@@ -3755,7 +3767,7 @@
 
       try {
         const roomId = activeChat.isGroup ? `group_${activeChat.id}` : makeRoomId(currentUser.id, activeChat.id);
-        const snapshot = await db.collection('messages').where('roomId', '==', roomId).get();
+        const snapshot = await messageQuery(roomId).get();
         const batch = db.batch();
 
         snapshot.forEach(doc => batch.delete(doc.ref));
