@@ -2196,6 +2196,16 @@
     let audioCtx = null;
     let pendingIceCandidates = [];
 
+    // Browsers only allow background audio after the user has activated it in the page.
+    document.addEventListener('pointerdown', () => {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      } catch (error) {
+        console.warn('Audio chiamate non disponibile:', error.message);
+      }
+    });
+
     async function addRemoteIceCandidate(candidate) {
       if (!peerConnection || !candidate) return;
       if (!peerConnection.remoteDescription) {
@@ -4793,36 +4803,15 @@
     */
     function startRingtone() {
       stopRingtone();
-
-      try {
-        ringtoneAudio = new Audio('/chill-chat/ringtone.wav');
-        ringtoneAudio.loop = true;
-        ringtoneAudio.volume = 1.0;
-
-        ringtoneAudio.onerror = () => {
-          console.log('ringtone.wav non trovato, uso suoneria sintetica');
-          startSyntheticRingtone();
-        };
-
-        const playPromise = ringtoneAudio.play();
-
-        if (playPromise) {
-          playPromise.catch(() => {
-            console.log('Autoplay bloccato, uso suoneria sintetica');
-            startSyntheticRingtone();
-          });
-        }
-      } catch (error) {
-        console.log('Errore avvio ringtone, uso suoneria sintetica');
-        startSyntheticRingtone();
-      }
+      startSyntheticRingtone();
     }
 
     function startSyntheticRingtone() {
       stopSyntheticRingtone();
 
       try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(console.warn);
 
         function playPattern() {
           if (!audioCtx) return;
@@ -4872,10 +4861,6 @@
         syntheticRingtoneInterval = null;
       }
 
-      if (audioCtx) {
-        audioCtx.close().catch(() => {});
-        audioCtx = null;
-      }
     }
 
     function stopRingtone() {
