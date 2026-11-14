@@ -5145,7 +5145,8 @@
 
     async function handleOpenFromCallNotification() {
       const params = new URLSearchParams(window.location.search);
-      const callId = params.get('acceptCall');
+      const autoAnswer = !!params.get('answerCall');
+      const callId = params.get('answerCall') || params.get('acceptCall');
 
       if (!callId) return;
 
@@ -5166,7 +5167,8 @@
           };
 
           listenForCallEnd(callId);
-          showIncomingCall(data);
+          if (autoAnswer) await acceptCall();
+          else showIncomingCall(data);
         }
       } catch (error) {
         console.warn(error.message);

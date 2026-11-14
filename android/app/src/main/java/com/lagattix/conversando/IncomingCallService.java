@@ -10,7 +10,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
-import android.media.RingtoneManager;
+import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -19,7 +19,7 @@ import android.os.Looper;
 import android.Manifest;
 
 public class IncomingCallService extends Service {
-    private static final String CHANNEL = "incoming_calls_v1";
+    private static final String CHANNEL = "incoming_calls_v2";
     private static final int NOTIFICATION_ID = 5171;
     private MediaPlayer player;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -38,14 +38,17 @@ public class IncomingCallService extends Service {
         Notification notification = buildNotification(this, intent, CHANNEL);
         startForeground(NOTIFICATION_ID, notification);
         try {
-            Uri ringtone = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
             player = new MediaPlayer();
-            player.setDataSource(this, ringtone);
+            try (AssetFileDescriptor ringtone = getResources().openRawResourceFd(R.raw.incoming_call)) {
+                player.setDataSource(ringtone.getFileDescriptor(), ringtone.getStartOffset(), ringtone.getLength());
+            }
             player.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build());
             player.setLooping(true);
             player.prepare();
             player.start();
-        } catch (Exception ignored) { }
+        } catch (Exception error) {
+            if (player != null) { player.release(); player = null; }
+        }
         handler.removeCallbacks(timeout);
         handler.postDelayed(timeout, 45000);
         return START_NOT_STICKY;
@@ -53,7 +56,7 @@ public class IncomingCallService extends Service {
 
     @Override public void onDestroy() {
         handler.removeCallbacks(timeout);
-        if (player != null) { player.stop(); player.release(); player = null; }
+        if (player != null) { if (player.isPlaying()) player.stop(); player.release(); player = null; }
         ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(NOTIFICATION_ID);
         super.onDestroy();
     }
@@ -64,15 +67,15 @@ public class IncomingCallService extends Service {
         createChannel(context, true);
         NotificationManager manager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-            manager.notify(NOTIFICATION_ID, buildNotification(context, intent, "incoming_calls_fallback_v1"));
+            manager.notify(NOTIFICATION_ID, buildNotification(context, intent, "incoming_calls_fallback_v2"));
     }
 
     private static void createChannel(Context context, boolean fallback) {
         if (Build.VERSION.SDK_INT < 26) return;
-        String id = fallback ? "incoming_calls_fallback_v1" : CHANNEL;
+        String id = fallback ? "incoming_calls_fallback_v2" : CHANNEL;
         NotificationChannel channel = new NotificationChannel(id, "Chiamate in arrivo", NotificationManager.IMPORTANCE_HIGH);
         if (!fallback) channel.setSound(null, null);
-        else channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
+        else channel.setSound(Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.incoming_call),
             new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build());
         channel.enableVibration(true);
         ((NotificationManager) context.getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(channel);
@@ -83,6 +86,18 @@ public class IncomingCallService extends Service {
         open.putExtra("callId", source.getStringExtra("callId"));
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pending = PendingIntent.getActivity(context, source.getStringExtra("callId").hashCode(), open,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent answer = new Intent(open);
+        answer.putExtra("autoAnswer", true);
+        PendingIntent answerPending = PendingIntent.getActivity(context, source.getStringExtra("callId").hashCode() ^ 0x51, answer,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent reject = new Intent(context, CallActionReceiver.class);
+        reject.setAction("com.lagattix.conversando.REJECT_CALL");
+        reject.putExtra("callId", source.getStringExtra("callId"));
+        reject.putExtra("toUserId", source.getStringExtra("toUserId"));
+        reject.putExtra("rejectExpiresAt", source.getStringExtra("rejectExpiresAt"));
+        reject.putExtra("rejectToken", source.getStringExtra("rejectToken"));
+        PendingIntent rejectPending = PendingIntent.getBroadcast(context, source.getStringExtra("callId").hashCode() ^ 0x52, reject,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String fromName = source.getStringExtra("fromName");
         if (fromName == null || fromName.isEmpty()) fromName = "Qualcuno";
@@ -96,7 +111,9 @@ public class IncomingCallService extends Service {
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(pending)
             .setFullScreenIntent(pending, true)
-            .setOngoing(true);
+            .setOngoing(true)
+            .addAction(new Notification.Action.Builder(android.R.drawable.sym_call_incoming, "Rispondi", answerPending).build())
+            .addAction(new Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel, "Rifiuta", rejectPending).build());
         return builder.build();
     }
 }

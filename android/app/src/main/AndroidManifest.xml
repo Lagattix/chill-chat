@@ -19,5 +19,6 @@
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
         </service>
         <service android:name=".IncomingCallService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+        <receiver android:name=".CallActionReceiver" android:exported="false" />
     </application>
 </manifest>

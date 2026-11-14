@@ -31,6 +31,9 @@ public class CallMessagingService extends FirebaseMessagingService {
         intent.putExtra("callId", callId);
         intent.putExtra("fromName", data.get("fromName"));
         intent.putExtra("callType", data.get("callType"));
+        intent.putExtra("toUserId", data.get("toUserId"));
+        intent.putExtra("rejectExpiresAt", data.get("rejectExpiresAt"));
+        intent.putExtra("rejectToken", data.get("rejectToken"));
         try {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent); else startService(intent);
         } catch (RuntimeException error) {

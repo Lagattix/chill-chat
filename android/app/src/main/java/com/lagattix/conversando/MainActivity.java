@@ -87,7 +87,7 @@ public class MainActivity extends Activity {
         pendingCallId = intent == null ? null : intent.getStringExtra("callId");
         String url = APP_URL;
         if (pendingCallId != null && pendingCallId.matches("[A-Za-z0-9]{1,128}")) {
-            url += "?acceptCall=" + pendingCallId;
+            url += (intent.getBooleanExtra("autoAnswer", false) ? "?answerCall=" : "?acceptCall=") + pendingCallId;
             if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
             stopService(new Intent(this, IncomingCallService.class));
         } else {
