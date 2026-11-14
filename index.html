@@ -2159,6 +2159,25 @@
     let ringtoneAudio = null;
     let syntheticRingtoneInterval = null;
     let audioCtx = null;
+    let pendingIceCandidates = [];
+
+    async function addRemoteIceCandidate(candidate) {
+      if (!peerConnection || !candidate) return;
+      if (!peerConnection.remoteDescription) {
+        pendingIceCandidates.push(candidate);
+        return;
+      }
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.warn('ICE candidate non aggiunto:', error.message);
+      }
+    }
+
+    async function flushRemoteIceCandidates() {
+      const candidates = pendingIceCandidates.splice(0);
+      for (const candidate of candidates) await addRemoteIceCandidate(candidate);
+    }
 
     const iceServers = {
       iceServers: [
@@ -4241,6 +4260,7 @@
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
 
         peerConnection = new RTCPeerConnection(iceServers);
+        pendingIceCandidates = [];
         remoteStream = new MediaStream();
 
         $('localVideo').srcObject = localStream;
@@ -4358,6 +4378,7 @@
 
         if (data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
           await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+          await flushRemoteIceCandidates();
           showCallUI(true);
           startCallDuration();
         }
@@ -4374,11 +4395,7 @@
           const data = change.doc.data();
           if (data.from === currentUser.id) return;
 
-          try {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } catch (error) {
-            console.warn('ICE candidate non aggiunto:', error.message);
-          }
+          await addRemoteIceCandidate(data.candidate);
         });
       });
     }
@@ -4467,6 +4484,7 @@
         });
 
         peerConnection = new RTCPeerConnection(iceServers);
+        pendingIceCandidates = [];
         remoteStream = new MediaStream();
 
         $('localVideo').srcObject = localStream;
@@ -4504,15 +4522,12 @@
               const data = change.doc.data();
               if (data.from === currentUser.id) return;
 
-              try {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-              } catch (error) {
-                console.warn('ICE candidate non aggiunto:', error.message);
-              }
+              await addRemoteIceCandidate(data.candidate);
             });
           });
 
         await peerConnection.setRemoteDescription(new RTCSessionDescription(currentCall.offer));
+        await flushRemoteIceCandidates();
 
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
