@@ -1406,6 +1406,10 @@
         display: flex;
       }
 
+      body.android-app .mobile-menu-fixed { top: 18px; }
+      body.android-app .chat-header { padding-top: 20px; min-height: 76px; }
+      body.android-app .postcard-topbar { padding-top: 20px; }
+
       body.install-banner-visible .mobile-menu-fixed {
         top: calc(var(--install-banner-height) + 10px);
       }
@@ -2159,6 +2163,7 @@
     const MESSAGE_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-message';
     const ONESIGNAL_APP_ID = '810baf6d-ce56-4ee1-aa81-e6cd5c5d5d34';
     const isDesktopPushDevice = !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (window.ConversandoAndroid) document.body.classList.add('android-app');
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       if (window.ConversandoAndroid) return;
@@ -4454,7 +4459,10 @@
             recipientId: chat.isGroup ? undefined : chat.id,
             groupId: chat.isGroup ? chat.id : undefined,
             roomId,
-            text: text.slice(0, 240)
+            text: text.slice(0, 240),
+            fromName: currentUser.name,
+            androidFcmToken: chat.isGroup ? '' : (chatRegistry[chat.id]?.androidFcmToken || ''),
+            subscriptions: chat.isGroup ? [] : (chatRegistry[chat.id]?.subscriptions || [])
           })
         });
 

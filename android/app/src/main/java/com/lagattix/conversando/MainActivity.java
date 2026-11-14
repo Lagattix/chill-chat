@@ -6,8 +6,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.WindowInsets;
-import android.graphics.Insets;
 import android.net.Uri;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -33,20 +31,6 @@ public class MainActivity extends Activity {
         }
         webView = new WebView(this);
         setContentView(webView);
-        webView.setOnApplyWindowInsetsListener((view, insets) -> {
-            int top;
-            int bottom;
-            if (Build.VERSION.SDK_INT >= 30) {
-                Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
-                top = bars.top;
-                bottom = bars.bottom;
-            } else {
-                top = insets.getSystemWindowInsetTop();
-                bottom = insets.getSystemWindowInsetBottom();
-            }
-            view.setPadding(0, top, 0, bottom);
-            return insets;
-        });
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
