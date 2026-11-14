@@ -3304,7 +3304,7 @@
       const roomId = activeChat.isGroup ? `group_${activeChat.id}` : makeRoomId(currentUser.id, activeChat.id);
 
       try {
-        await db.collection('messages').add({
+        const sentMessage = await db.collection('messages').add({
           roomId,
           participants: activeChat.isGroup ? [] : [currentUser.id, activeChat.id],
           groupId: activeChat.isGroup ? activeChat.id : null,
@@ -3327,7 +3327,7 @@
         }
 
         if (activeChat.id === CONVERSINA_ID || text.toLowerCase().includes('@conversina')) {
-          await getConversinaResponse(text, roomId);
+          await getConversinaResponse(text, roomId, sentMessage.id);
         }
       } catch (error) {
         console.error('❌ Errore invio messaggio:', error);
@@ -3335,7 +3335,7 @@
       }
     }
 
-    async function getConversinaResponse(userMessage, roomId) {
+    async function getConversinaResponse(userMessage, roomId, sentMessageId) {
       const status = $('chatUserStatus');
       const originalStatus = status.innerHTML;
       status.innerHTML = '<span class="typing-indicator">Sta scrivendo...</span>';
@@ -3352,17 +3352,24 @@
 
         const history = [];
         snapshot.forEach(doc => {
+          if (doc.id === sentMessageId) return;
           const data = doc.data();
-          const role = data.senderId === currentUser.id ? 'Utente' : 'Conversina';
-          history.push(`${role}: ${data.text}`);
+          if (!data.text) return;
+          history.push({
+            role: data.senderId === CONVERSINA_ID ? 'assistant' : 'user',
+            content: data.senderId === CONVERSINA_ID ? data.text : `${data.senderName || 'Utente'}: ${data.text}`
+          });
         });
+
+        const idToken = await auth.currentUser.getIdToken();
 
         const response = await fetch(BACKEND_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
           body: JSON.stringify({
             message: userMessage,
-            history
+            sourceMessageId: sentMessageId,
+            history: history.slice(-20)
           })
         });
 
@@ -3372,35 +3379,11 @@
           throw new Error(data.error || response.statusText);
         }
 
-        await db.collection('messages').add({
-          roomId,
-          participants: [currentUser.id, CONVERSINA_ID],
-          groupId: null,
-          senderId: CONVERSINA_ID,
-          senderName: 'Conversina',
-          senderAvatar: '🤖',
-          text: data.response || 'Mi dispiace, non sono riuscita a generare una risposta.',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          isGroup: false
-        });
-
+        // The backend stores Conversina's reply in the same room.
         if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
       } catch (error) {
         console.error('❌ Errore Conversina:', error);
-
-        await db.collection('messages').add({
-          roomId,
-          participants: [currentUser.id, CONVERSINA_ID],
-          groupId: null,
-          senderId: CONVERSINA_ID,
-          senderName: 'Conversina',
-          senderAvatar: '🤖',
-          text: '⚠️ Backend non disponibile o non configurato. La chat tra utenti continua a funzionare.',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          isGroup: false
-        });
-
-        if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
+        alert('Conversina non è disponibile al momento. Riprova tra poco.');
       } finally {
         status.innerHTML = originalStatus;
       }
