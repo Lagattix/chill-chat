@@ -3252,7 +3252,7 @@
     }
 
     async function preloadAvatars(messages) {
-      const userIds = [...new Set(messages.map(m => m.senderId))]
+      const userIds = [...new Set(messages.filter(m => !m.isAIResponse).map(m => m.senderId))]
         .filter(id => id && id !== CONVERSINA_ID && !userAvatarsCache[id]);
 
       for (const userId of userIds) {
@@ -3269,8 +3269,8 @@
     }
 
     function messageHTML(msg) {
-      const isSent = msg.senderId === currentUser.id;
-      const isAI = msg.senderId === CONVERSINA_ID;
+      const isAI = msg.senderId === CONVERSINA_ID || msg.isAIResponse === true;
+      const isSent = msg.senderId === currentUser.id && !isAI;
       const time = msg.timestamp
         ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
         : 'Ora';
@@ -3327,7 +3327,7 @@
         }
 
         if (activeChat.id === CONVERSINA_ID || text.toLowerCase().includes('@conversina')) {
-          await getConversinaResponse(text, roomId, sentMessage.id);
+          await getConversinaResponse(text, roomId, sentMessage.id, activeChat);
         }
       } catch (error) {
         console.error('❌ Errore invio messaggio:', error);
@@ -3335,7 +3335,7 @@
       }
     }
 
-    async function getConversinaResponse(userMessage, roomId, sentMessageId) {
+    async function getConversinaResponse(userMessage, roomId, sentMessageId, conversation) {
       const status = $('chatUserStatus');
       const originalStatus = status.innerHTML;
       status.innerHTML = '<span class="typing-indicator">Sta scrivendo...</span>';
@@ -3344,22 +3344,23 @@
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const snapshot = await db.collection('messages')
-          .where('roomId', '==', roomId)
-          .where('timestamp', '>', firebase.firestore.Timestamp.fromDate(thirtyDaysAgo))
-          .orderBy('timestamp', 'asc')
-          .get();
-
         const history = [];
-        snapshot.forEach(doc => {
-          if (doc.id === sentMessageId) return;
-          const data = doc.data();
-          if (!data.text) return;
-          history.push({
-            role: data.senderId === CONVERSINA_ID ? 'assistant' : 'user',
-            content: data.senderId === CONVERSINA_ID ? data.text : `${data.senderName || 'Utente'}: ${data.text}`
+        try {
+          const snapshot = await db.collection('messages')
+            .where('roomId', '==', roomId)
+            .where('timestamp', '>', firebase.firestore.Timestamp.fromDate(thirtyDaysAgo))
+            .orderBy('timestamp', 'asc')
+            .get();
+          snapshot.forEach(doc => {
+            if (doc.id === sentMessageId) return;
+            const data = doc.data();
+            if (!data.text) return;
+            const isAI = data.senderId === CONVERSINA_ID || data.isAIResponse === true;
+            history.push({ role: isAI ? 'assistant' : 'user', content: isAI ? data.text : `${data.senderName || 'Utente'}: ${data.text}` });
           });
-        });
+        } catch (error) {
+          console.warn('Cronologia Conversina non disponibile:', error.message);
+        }
 
         const idToken = await auth.currentUser.getIdToken();
 
@@ -3368,7 +3369,6 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
           body: JSON.stringify({
             message: userMessage,
-            sourceMessageId: sentMessageId,
             history: history.slice(-20)
           })
         });
@@ -3379,11 +3379,29 @@
           throw new Error(data.error || response.statusText);
         }
 
-        // The backend stores Conversina's reply in the same room.
+        const isGroupRoom = !!conversation.isGroup;
+        const reply = {
+          roomId,
+          participants: isGroupRoom ? [currentUser.id] : [currentUser.id, conversation.id],
+          groupId: isGroupRoom ? conversation.id : null,
+          senderId: CONVERSINA_ID,
+          senderName: 'Conversina',
+          senderAvatar: '🤖',
+          text: data.response,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          isGroup: isGroupRoom,
+          isAIResponse: true
+        };
+        try {
+          await db.collection('messages').add(reply);
+        } catch (error) {
+          if (error.code !== 'permission-denied') throw error;
+          await db.collection('messages').add({ ...reply, senderId: currentUser.id });
+        }
         if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
       } catch (error) {
         console.error('❌ Errore Conversina:', error);
-        alert('Conversina non è disponibile al momento. Riprova tra poco.');
+        alert(error.message || 'Conversina non è disponibile al momento. Riprova tra poco.');
       } finally {
         status.innerHTML = originalStatus;
       }
