@@ -4331,6 +4331,7 @@
       if (!notificationsEnabled || Notification.permission !== 'granted') return;
 
       if (!document.hidden && activeChat) return;
+      const isCall = tag.startsWith('call-');
 
       try {
         if (swRegistration?.showNotification) {
@@ -4339,16 +4340,19 @@
             icon: '/chill-chat/icons/icon-192.png',
             badge: '/chill-chat/icons/icon-192.png',
             tag,
-            requireInteraction: false,
+            requireInteraction: isCall,
             silent: false,
-            vibrate: [200, 100, 200],
+            vibrate: isCall ? [300, 200, 300, 200, 700, 300, 700] : [200, 100, 200],
             data: { url: window.location.href, icon }
           });
         } else {
           const notification = new Notification(title, {
             body,
             icon: '/chill-chat/icons/icon-192.png',
-            tag
+            tag,
+            requireInteraction: isCall,
+            silent: false,
+            vibrate: isCall ? [300, 200, 300, 200, 700, 300, 700] : [200, 100, 200]
           });
 
           notification.onclick = () => {
