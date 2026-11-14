@@ -2197,6 +2197,7 @@
     let unsubscribeMessages = null;
     let unsubscribeIncomingCalls = null;
     let unsubscribeAnswer = null;
+    let unsubscribeCallStatus = null;
     let unsubscribeIce = null;
     let globalPollingInterval = null;
 
@@ -2632,6 +2633,7 @@
       if (unsubscribeMessages) unsubscribeMessages();
       if (unsubscribeIncomingCalls) unsubscribeIncomingCalls();
       if (unsubscribeAnswer) unsubscribeAnswer();
+      if (unsubscribeCallStatus) unsubscribeCallStatus();
       if (unsubscribeIce) unsubscribeIce();
 
       stopGlobalMessagePolling();
@@ -4417,6 +4419,7 @@
             type: callType || 'audio',
             isInitiator: false
           };
+          listenForCallEnd(callId);
           acceptCall();
         }
       });
@@ -4591,6 +4594,11 @@
 
         if (!data) return;
 
+        if (['ended', 'declined'].includes(data.status)) {
+          endCall(false);
+          return;
+        }
+
         if (data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
           await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
           await flushRemoteIceCandidates();
@@ -4598,9 +4606,6 @@
           startCallDuration();
         }
 
-        if (['ended', 'declined'].includes(data.status)) {
-          endCall(false);
-        }
       });
 
       unsubscribeIce = callRef.collection('candidates').onSnapshot(snapshot => {
@@ -4613,6 +4618,16 @@
           await addRemoteIceCandidate(data.candidate);
         });
       });
+    }
+
+    function listenForCallEnd(callId) {
+      if (unsubscribeCallStatus) unsubscribeCallStatus();
+      unsubscribeCallStatus = db.collection('calls').doc(callId).onSnapshot(snapshot => {
+        if (!currentCall || currentCall.id !== callId) return;
+        if (!snapshot.exists || ['ended', 'declined'].includes(snapshot.data().status)) {
+          endCall(false);
+        }
+      }, error => console.warn('Stato chiamata non disponibile:', error.message));
     }
 
     function listenForIncomingCalls() {
@@ -4645,6 +4660,7 @@
               isInitiator: false
             };
 
+            listenForCallEnd(currentCall.id);
             showIncomingCall(data);
           });
         });
@@ -4800,6 +4816,10 @@
       $('incomingCallModal').style.display = 'none';
       stopRingtone();
       clearCallNotifications(currentCall.id);
+      if (unsubscribeCallStatus) {
+        unsubscribeCallStatus();
+        unsubscribeCallStatus = null;
+      }
       currentCall = null;
     }
 
@@ -4830,6 +4850,11 @@
       if (unsubscribeAnswer) {
         unsubscribeAnswer();
         unsubscribeAnswer = null;
+      }
+
+      if (unsubscribeCallStatus) {
+        unsubscribeCallStatus();
+        unsubscribeCallStatus = null;
       }
 
       if (unsubscribeIce) {
@@ -5053,6 +5078,7 @@
             isInitiator: false
           };
 
+          listenForCallEnd(callId);
           showIncomingCall(data);
         }
       } catch (error) {
