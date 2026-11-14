@@ -2186,6 +2186,19 @@
       ]
     };
 
+    async function getCallIceServers() {
+      try {
+        const response = await fetch('https://conversando.metered.live/api/v1/turn/credentials?apiKey=374f3129e639e533e6788d58e180c7833709');
+        if (!response.ok) throw new Error(`TURN HTTP ${response.status}`);
+        const servers = await response.json();
+        if (!Array.isArray(servers) || !servers.length) throw new Error('Nessun server TURN disponibile');
+        return { iceServers: servers };
+      } catch (error) {
+        console.warn('TURN non disponibile, provo STUN:', error.message);
+        return iceServers;
+      }
+    }
+
     const firebaseConfig = {
       apiKey: "AIzaSyCp2SjlW-JX9FeW1csVslhJm4qW51kzSKg",
       authDomain: "chill-chat-4945d.firebaseapp.com",
@@ -4259,7 +4272,7 @@
 
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-        peerConnection = new RTCPeerConnection(iceServers);
+        peerConnection = new RTCPeerConnection(await getCallIceServers());
         pendingIceCandidates = [];
         remoteStream = new MediaStream();
 
@@ -4483,7 +4496,7 @@
           video: currentCall.type === 'video'
         });
 
-        peerConnection = new RTCPeerConnection(iceServers);
+        peerConnection = new RTCPeerConnection(await getCallIceServers());
         pendingIceCandidates = [];
         remoteStream = new MediaStream();
 
