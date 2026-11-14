@@ -2300,7 +2300,7 @@
     }
 
     function isAppInstalled() {
-      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      return Boolean(window.ConversandoAndroid) || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     }
 
     function updateInstallBanner() {
