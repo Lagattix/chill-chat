@@ -13,6 +13,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.ValueCallback;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.JSONObject;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://lagattix.github.io/chill-chat/";
     private WebView webView;
     private PermissionRequest mediaRequest;
+    private ValueCallback<Uri[]> fileChooserCallback;
     private String pendingCallId;
 
     @Override public void onCreate(Bundle state) {
@@ -46,6 +48,18 @@ public class MainActivity extends Activity {
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
+                fileChooserCallback = callback;
+                try {
+                    startActivityForResult(params.createIntent(), 202);
+                    return true;
+                } catch (RuntimeException error) {
+                    fileChooserCallback = null;
+                    callback.onReceiveValue(null);
+                    return false;
+                }
+            }
             @Override public void onPermissionRequest(PermissionRequest request) {
                 if (!APP_URL.startsWith(request.getOrigin().toString())) { request.deny(); return; }
                 mediaRequest = request;
@@ -59,6 +73,14 @@ public class MainActivity extends Activity {
             }
         });
         openCall(getIntent());
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 202 && fileChooserCallback != null) {
+            fileChooserCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            fileChooserCallback = null;
+        }
     }
 
     private void openCall(Intent intent) {
