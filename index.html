@@ -3187,7 +3187,6 @@
     function setupMessagePolling(roomId, isStillActive) {
       if (unsubscribeMessages) unsubscribeMessages();
 
-      let intervalId = null;
       let lastMessageId = null;
 
       window.reloadMessages = async function () {
@@ -3200,38 +3199,30 @@
         }
       };
 
-      window.reloadMessages();
-
-      intervalId = setInterval(async () => {
-        if (!isStillActive()) {
-          clearInterval(intervalId);
-          return;
-        }
-
-        try {
-          const allMessages = await fetchMessages(roomId);
-          if (!allMessages.length) return;
-
+      const stopListening = db.collection('messages')
+        .where('roomId', '==', roomId)
+        .orderBy('timestamp', 'asc')
+        .onSnapshot(async snapshot => {
+          if (!isStillActive()) return;
+          const allMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const latestId = allMessages.length ? allMessages[allMessages.length - 1].id : null;
           if (!lastMessageId) {
-            lastMessageId = allMessages[allMessages.length - 1].id;
-            return;
+            await renderMessages(allMessages);
+          } else if (latestId !== lastMessageId) {
+            const lastIndex = allMessages.findIndex(msg => msg.id === lastMessageId);
+            if (lastIndex === -1) {
+              await renderMessages(allMessages);
+            } else if (lastIndex < allMessages.length - 1) {
+              const newMessages = allMessages.slice(lastIndex + 1);
+              await appendMessages(newMessages);
+              checkForNewMessages(roomId, newMessages);
+            }
           }
-
-          const lastIndex = allMessages.findIndex(msg => msg.id === lastMessageId);
-
-          if (lastIndex !== -1 && lastIndex < allMessages.length - 1) {
-            const newMessages = allMessages.slice(lastIndex + 1);
-            await appendMessages(newMessages);
-            checkForNewMessages(roomId, newMessages);
-            lastMessageId = allMessages[allMessages.length - 1].id;
-          }
-        } catch (error) {
-          console.error('❌ Errore polling chat:', error);
-        }
-      }, 5000);
+          lastMessageId = latestId;
+        }, error => console.error('❌ Errore ascolto chat:', error));
 
       unsubscribeMessages = () => {
-        clearInterval(intervalId);
+        stopListening();
         lastMessageId = null;
       };
     }
@@ -3504,7 +3495,7 @@
       lastSeenMessages = {};
 
       globalPollingInterval = setInterval(async () => {
-        if (!currentUser) return;
+        if (!currentUser || document.hidden || window.ConversandoAndroid) return;
 
         try {
           const rooms = new Set();
@@ -3557,7 +3548,7 @@
         } catch (error) {
           console.warn('Polling globale errore:', error.message);
         }
-      }, 10000);
+      }, 60000);
     }
 
     function stopGlobalMessagePolling() {
