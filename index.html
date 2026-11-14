@@ -2209,6 +2209,7 @@
     let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
     let lastSeenMessages = {};
     let notificationSessionStartedAt = Date.now();
+    const pendingConversinaReplies = {};
     const userAvatarsCache = {};
     const chatRegistry = {};
     const groupRegistry = {};
@@ -3204,6 +3205,9 @@
     async function renderMessages(messages) {
       const container = $('messagesContainer');
       const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 120;
+      const roomId = activeChat?.isGroup ? `group_${activeChat.id}` : activeChat ? makeRoomId(currentUser.id, activeChat.id) : null;
+      const pending = pendingConversinaReplies[roomId] || [];
+      messages = [...messages, ...pending.filter(reply => !messages.some(message => message.id === reply.id))];
 
       if (!messages.length) {
         container.innerHTML = `
@@ -3289,6 +3293,7 @@
           <div class="message-content">
             ${!isSent ? `<div class="message-sender">${safeName(msg.senderName)}</div>` : ''}
             <div class="message-bubble">${formatMessage(msg.text || '')}</div>
+            ${msg.unsaved ? '<div class="message-time">Risposta non salvata: riprova più tardi</div>' : ''}
             <div class="message-time">${safeName(time)}</div>
           </div>
         </div>
@@ -3338,6 +3343,7 @@
     async function getConversinaResponse(userMessage, roomId, sentMessageId, conversation) {
       const status = $('chatUserStatus');
       const originalStatus = status.innerHTML;
+      let replyVisible = false;
       status.innerHTML = '<span class="typing-indicator">Sta scrivendo...</span>';
 
       try {
@@ -3392,16 +3398,24 @@
           isGroup: isGroupRoom,
           isAIResponse: true
         };
+        const replyId = `conversina_${sentMessageId}`;
+        const visibleReply = { ...reply, id: replyId, timestamp: firebase.firestore.Timestamp.now(), unsaved: true };
+        (pendingConversinaReplies[roomId] ||= []).push(visibleReply);
+        replyVisible = true;
+        if (activeChat?.id === conversation.id) await appendMessages([visibleReply]);
         try {
-          await db.collection('messages').add(reply);
+          await db.collection('messages').doc(replyId).set(reply);
         } catch (error) {
           if (error.code !== 'permission-denied') throw error;
-          await db.collection('messages').add({ ...reply, senderId: currentUser.id });
+          await db.collection('messages').doc(replyId).set({ ...reply, senderId: currentUser.id });
         }
+        pendingConversinaReplies[roomId] = pendingConversinaReplies[roomId].filter(item => item.id !== replyId);
         if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
       } catch (error) {
         console.error('❌ Errore Conversina:', error);
-        alert(error.message || 'Conversina non è disponibile al momento. Riprova tra poco.');
+        if (!replyVisible) {
+          alert(error.message || 'Conversina non è disponibile al momento. Riprova tra poco.');
+        }
       } finally {
         status.innerHTML = originalStatus;
       }
