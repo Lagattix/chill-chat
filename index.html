@@ -2161,6 +2161,7 @@
     const isDesktopPushDevice = !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
+      if (window.ConversandoAndroid) return;
       try {
         await OneSignal.init({
           appId: ONESIGNAL_APP_ID,
@@ -2641,6 +2642,10 @@
     }
 
     async function logout() {
+      if (window.ConversandoAndroid) {
+        window.ConversandoAndroid.dismissCall(currentCall?.id || '');
+        window.ConversandoAndroid.clearUser();
+      }
       if (unsubscribeMessages) unsubscribeMessages();
       if (unsubscribeIncomingCalls) unsubscribeIncomingCalls();
       if (unsubscribeAnswer) unsubscribeAnswer();
@@ -2656,11 +2661,13 @@
 
       try {
         if (currentUser) {
-          const field = isDesktopPushDevice ? 'onesignalDesktopSubscriptionId' : 'onesignalSubscriptionId';
-          await db.collection('users').doc(currentUser.id).update({
-            [field]: firebase.firestore.FieldValue.delete(),
-            ...(!isDesktopPushDevice ? { fcmToken: firebase.firestore.FieldValue.delete() } : {})
-          });
+          const fields = window.ConversandoAndroid
+            ? { androidFcmToken: firebase.firestore.FieldValue.delete() }
+            : {
+                [isDesktopPushDevice ? 'onesignalDesktopSubscriptionId' : 'onesignalSubscriptionId']: firebase.firestore.FieldValue.delete(),
+                ...(!isDesktopPushDevice ? { fcmToken: firebase.firestore.FieldValue.delete() } : {})
+              };
+          await db.collection('users').doc(currentUser.id).update(fields);
         }
         await window.OneSignal?.User?.PushSubscription?.optOut?.();
         await window.OneSignal?.logout?.();
@@ -2713,6 +2720,8 @@
             isAdmin: userData.isAdmin || false
           };
 
+          if (window.ConversandoAndroid) window.ConversandoAndroid.registerUser(user.uid);
+
           await loadOfficialAdminUid();
 
           if (currentUser.isAdmin && !userData.avatar) {
@@ -2728,21 +2737,23 @@
           await loadFriendRequests();
           startGlobalMessagePolling();
           listenForIncomingCalls();
-          setupFCMListener();
-          registerFCMToken();
-          syncOneSignalUser().then(registerOneSignalSubscription);
-          if (Notification.permission === 'granted' && window.OneSignal?.User?.PushSubscription) {
+          if (!window.ConversandoAndroid) {
+            setupFCMListener();
+            registerFCMToken();
+            syncOneSignalUser().then(registerOneSignalSubscription);
+          }
+          if (!window.ConversandoAndroid && Notification.permission === 'granted' && window.OneSignal?.User?.PushSubscription) {
             window.OneSignal.User.PushSubscription.optIn().catch(console.warn);
           }
           initServiceWorkerUser();
 
-          if (Notification.permission === 'granted') {
+          if (!window.ConversandoAndroid && Notification.permission === 'granted') {
             notificationsEnabled = true;
             localStorage.setItem('notificationsEnabled', 'true');
           }
 
           updateNotificationsUI();
-          showNotificationPermissionPrompt();
+          if (!window.ConversandoAndroid) showNotificationPermissionPrompt();
 
           if (currentUser.isAdmin) {
             showAdminBadge();
@@ -2755,6 +2766,16 @@
           console.error('❌ Errore caricamento utente:', error);
         }
       });
+    }
+
+    async function registerAndroidPushToken(token) {
+      if (!window.ConversandoAndroid || !currentUser || !auth?.currentUser) return;
+      if (typeof token !== 'string' || token.length < 20 || token.length > 4096) return;
+      try {
+        await db.collection('users').doc(currentUser.id).update({ androidFcmToken: token });
+      } catch (error) {
+        console.warn('Registrazione notifiche Android:', error.message);
+      }
     }
 
     function showAdminBadge() {
@@ -4318,7 +4339,7 @@
       const btn = $('notificationsToggle');
       if (!btn) return;
 
-      if (notificationsEnabled && Notification.permission === 'granted') {
+      if (window.ConversandoAndroid || (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted')) {
         btn.textContent = '✅ Attive';
         btn.style.background = '#4ecca3';
       } else {
@@ -4328,6 +4349,7 @@
     }
 
     async function showNotification(title, body, icon = '💬', tag = 'conversando-' + Date.now()) {
+      if (window.ConversandoAndroid) return;
       if (!notificationsEnabled || Notification.permission !== 'granted') return;
 
       if (!document.hidden && activeChat) return;
@@ -4741,6 +4763,7 @@
     }
 
     async function clearCallNotifications(callId) {
+      if (window.ConversandoAndroid) window.ConversandoAndroid.dismissCall(callId || '');
       if (!callId || !('serviceWorker' in navigator)) return;
       try {
         const registrations = await navigator.serviceWorker.getRegistrations();
