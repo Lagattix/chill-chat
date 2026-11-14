@@ -2720,7 +2720,10 @@
             isAdmin: userData.isAdmin || false
           };
 
-          if (window.ConversandoAndroid) window.ConversandoAndroid.registerUser(user.uid);
+          if (window.ConversandoAndroid) {
+            window.androidPushRegistrationStatus = 'in corso';
+            window.ConversandoAndroid.registerUser(user.uid);
+          }
 
           await loadOfficialAdminUid();
 
@@ -2762,6 +2765,7 @@
           }
 
           handleOpenFromCallNotification();
+          handleOpenFromMessageNotification();
         } catch (error) {
           console.error('❌ Errore caricamento utente:', error);
         }
@@ -2773,7 +2777,9 @@
       if (typeof token !== 'string' || token.length < 20 || token.length > 4096) return;
       try {
         await db.collection('users').doc(currentUser.id).update({ androidFcmToken: token });
+        window.androidPushRegistrationStatus = 'registrato';
       } catch (error) {
+        window.androidPushRegistrationStatus = 'errore: ' + (error.code || error.message);
         console.warn('Registrazione notifiche Android:', error.message);
       }
     }
@@ -4256,6 +4262,11 @@
     }
 
     async function requestNotificationPermission() {
+      if (window.ConversandoAndroid) {
+        const allowed = window.ConversandoAndroid.notificationsAllowed();
+        if (!allowed) alert('Consenti le notifiche di Conversando nelle impostazioni Android.');
+        return allowed;
+      }
       if (!('Notification' in window)) {
         alert('Il browser non supporta le notifiche push.');
         return false;
@@ -4340,7 +4351,8 @@
       const btn = $('notificationsToggle');
       if (!btn) return;
 
-      if (window.ConversandoAndroid || (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted')) {
+      if ((window.ConversandoAndroid && window.ConversandoAndroid.notificationsAllowed()) ||
+          (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted')) {
         btn.textContent = '✅ Attive';
         btn.style.background = '#4ecca3';
       } else {
@@ -4488,6 +4500,13 @@
     }
 
     async function runNotificationDiagnostic() {
+      if (window.ConversandoAndroid) {
+        const allowed = window.ConversandoAndroid.notificationsAllowed();
+        const tokenReady = window.ConversandoAndroid.hasFcmToken();
+        if (allowed) window.ConversandoAndroid.testNotification();
+        alert(`📊 DIAGNOSTICA ANDROID\n\nPermesso notifiche: ${allowed ? '✅' : '❌'}\nToken push: ${tokenReady ? '✅' : '❌'}\nRegistrazione: ${window.androidPushRegistrationStatus || 'non avviata'}\n${allowed ? 'Ho inviato una notifica di prova.' : 'Consenti le notifiche nelle impostazioni Android.'}`);
+        return;
+      }
       let report = '📊 DIAGNOSTICA NOTIFICHE\n\n';
       const ua = navigator.userAgent;
       const isIOS = /iPad|iPhone|iPod/.test(ua);
@@ -5154,6 +5173,19 @@
         console.warn(error.message);
       }
 
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    function handleOpenFromMessageNotification() {
+      const roomId = new URLSearchParams(window.location.search).get('roomId');
+      if (!roomId || !currentUser) return;
+      if (roomId.startsWith('group_')) {
+        const group = groupRegistry[roomId.slice(6)];
+        if (group) selectGroupChat(group.id, group.name, group.icon || '');
+      } else {
+        const chat = Object.values(chatRegistry).find(item => item.id !== currentUser.id && makeRoomId(currentUser.id, item.id) === roomId);
+        if (chat) selectChatMobile(chat.id, chat.name, chat.avatar, chat.isAI);
+      }
       window.history.replaceState({}, '', window.location.pathname);
     }
 

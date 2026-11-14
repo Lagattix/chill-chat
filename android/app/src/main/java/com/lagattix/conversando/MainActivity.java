@@ -6,6 +6,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowInsets;
+import android.graphics.Insets;
+import android.net.Uri;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -14,6 +17,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.JSONObject;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://lagattix.github.io/chill-chat/";
@@ -28,6 +33,20 @@ public class MainActivity extends Activity {
         }
         webView = new WebView(this);
         setContentView(webView);
+        webView.setOnApplyWindowInsetsListener((view, insets) -> {
+            int top;
+            int bottom;
+            if (Build.VERSION.SDK_INT >= 30) {
+                Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
+                top = bars.top;
+                bottom = bars.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            view.setPadding(0, top, 0, bottom);
+            return insets;
+        });
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -65,6 +84,9 @@ public class MainActivity extends Activity {
             url += "?acceptCall=" + pendingCallId;
             if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
             stopService(new Intent(this, IncomingCallService.class));
+        } else {
+            String roomId = intent == null ? null : intent.getStringExtra("roomId");
+            if (roomId != null && roomId.matches("[A-Za-z0-9_-]{1,300}")) url += "?roomId=" + Uri.encode(roomId);
         }
         webView.loadUrl(url);
     }
@@ -92,9 +114,23 @@ public class MainActivity extends Activity {
     private class AndroidBridge {
         @JavascriptInterface public void registerUser(String uid) {
             if (uid == null || !uid.matches("[A-Za-z0-9_-]{1,128}")) return;
-            FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token ->
+            FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token -> {
+                getSharedPreferences("push", MODE_PRIVATE).edit().putBoolean("tokenReady", true).apply();
                 runOnUiThread(() -> webView.evaluateJavascript(
-                    "window.registerAndroidPushToken(" + JSONObject.quote(token) + ")", null)));
+                    "window.registerAndroidPushToken(" + JSONObject.quote(token) + ")", null));
+            }).addOnFailureListener(error -> getSharedPreferences("push", MODE_PRIVATE).edit().putBoolean("tokenReady", false).apply());
+        }
+        @JavascriptInterface public boolean notificationsAllowed() {
+            return Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        }
+        @JavascriptInterface public boolean hasFcmToken() {
+            return getSharedPreferences("push", MODE_PRIVATE).getBoolean("tokenReady", false);
+        }
+        @JavascriptInterface public void testNotification() {
+            Map<String, String> data = new HashMap<>();
+            data.put("title", "Conversando");
+            data.put("body", "Notifiche Android attive");
+            CallMessagingService.showMessage(MainActivity.this, data);
         }
         @JavascriptInterface public void clearUser() { }
         @JavascriptInterface public void dismissCall(String callId) {
