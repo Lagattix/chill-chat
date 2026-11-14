@@ -3029,6 +3029,7 @@
         name,
         avatar,
         isAI,
+        androidFcmToken: userData.androidFcmToken || '',
         subscriptions: [...new Set([userData.onesignalSubscriptionId, userData.onesignalDesktopSubscriptionId].filter(Boolean))]
       };
 
@@ -4634,7 +4635,8 @@
           },
           body: JSON.stringify({
             callId, to: toUserId, type: callType, fromName: currentUser.name,
-            subscriptions: chatRegistry[toUserId]?.subscriptions || []
+            subscriptions: chatRegistry[toUserId]?.subscriptions || [],
+            androidFcmToken: chatRegistry[toUserId]?.androidFcmToken || ''
           })
         });
 
