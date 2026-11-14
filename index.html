@@ -3293,7 +3293,7 @@
           <div class="message-content">
             ${!isSent ? `<div class="message-sender">${safeName(msg.senderName)}</div>` : ''}
             <div class="message-bubble">${formatMessage(msg.text || '')}</div>
-            ${msg.unsaved ? '<div class="message-time">Risposta non salvata: riprova più tardi</div>' : ''}
+            ${msg.saving ? '<div class="message-time">Salvataggio...</div>' : msg.unsaved ? '<div class="message-time">Risposta non salvata: riprova più tardi</div>' : ''}
             <div class="message-time">${safeName(time)}</div>
           </div>
         </div>
@@ -3399,7 +3399,7 @@
           isAIResponse: true
         };
         const replyId = `conversina_${sentMessageId}`;
-        const visibleReply = { ...reply, id: replyId, timestamp: firebase.firestore.Timestamp.now(), unsaved: true };
+        const visibleReply = { ...reply, id: replyId, timestamp: firebase.firestore.Timestamp.now(), saving: true };
         (pendingConversinaReplies[roomId] ||= []).push(visibleReply);
         replyVisible = true;
         if (activeChat?.id === conversation.id) await appendMessages([visibleReply]);
@@ -3413,6 +3413,14 @@
         if (window.reloadMessages) setTimeout(window.reloadMessages, 400);
       } catch (error) {
         console.error('❌ Errore Conversina:', error);
+        if (replyVisible) {
+          const pendingReply = (pendingConversinaReplies[roomId] || []).find(item => item.id === `conversina_${sentMessageId}`);
+          if (pendingReply) {
+            pendingReply.saving = false;
+            pendingReply.unsaved = true;
+            if (activeChat?.id === conversation.id && window.reloadMessages) window.reloadMessages();
+          }
+        }
         if (!replyVisible) {
           alert(error.message || 'Conversina non è disponibile al momento. Riprova tra poco.');
         }
