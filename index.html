@@ -2193,6 +2193,7 @@
     let isVideoOff = false;
     let ringtoneAudio = null;
     let syntheticRingtoneInterval = null;
+    let ringtoneGains = [];
     let audioCtx = null;
     let pendingIceCandidates = [];
 
@@ -4163,7 +4164,7 @@
       }
     }
 
-    async function showNotification(title, body, icon = '💬') {
+    async function showNotification(title, body, icon = '💬', tag = 'conversando-' + Date.now()) {
       if (!notificationsEnabled || Notification.permission !== 'granted') return;
 
       if (!document.hidden && activeChat) return;
@@ -4174,7 +4175,7 @@
             body,
             icon: '/chill-chat/icons/icon-192.png',
             badge: '/chill-chat/icons/icon-192.png',
-            tag: 'conversando-' + Date.now(),
+            tag,
             requireInteraction: false,
             silent: false,
             vibrate: [200, 100, 200],
@@ -4184,7 +4185,7 @@
           const notification = new Notification(title, {
             body,
             icon: '/chill-chat/icons/icon-192.png',
-            tag: 'conversando-' + Date.now()
+            tag
           });
 
           notification.onclick = () => {
@@ -4547,8 +4548,26 @@
         showNotification(
           callData.fromName || 'Chiamata',
           callData.type === 'video' ? '📹 Videochiamata in arrivo' : '📞 Chiamata in arrivo',
-          '📞'
+          '📞',
+          `call-${currentCall.id}`
         );
+      }
+    }
+
+    async function clearCallNotifications(callId) {
+      if (!callId || !('serviceWorker' in navigator)) return;
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          const notifications = await registration.getNotifications();
+          notifications.forEach(notification => {
+            if (notification.tag === `call-${callId}` || notification.data?.callId === callId) {
+              notification.close();
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('Chiusura notifica chiamata non riuscita:', error.message);
       }
     }
 
@@ -4557,6 +4576,7 @@
 
       try {
         stopRingtone();
+        clearCallNotifications(currentCall.id);
 
         const callDoc = await db.collection('calls').doc(currentCall.id).get();
         if (callDoc.exists) {
@@ -4653,11 +4673,13 @@
 
       $('incomingCallModal').style.display = 'none';
       stopRingtone();
+      clearCallNotifications(currentCall.id);
       currentCall = null;
     }
 
     async function endCall(updateFirestore = true) {
       stopRingtone();
+      if (currentCall) clearCallNotifications(currentCall.id);
 
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
@@ -4836,6 +4858,8 @@
             gain.gain.setValueAtTime(0.30, t + duration - 0.03);
             gain.gain.linearRampToValueAtTime(0, t + duration);
 
+            ringtoneGains.push(gain);
+
             osc1.start(t);
             osc1.stop(t + duration);
             osc2.start(t);
@@ -4860,6 +4884,14 @@
         clearInterval(syntheticRingtoneInterval);
         syntheticRingtoneInterval = null;
       }
+
+      ringtoneGains.forEach(gain => {
+        try {
+          gain.gain.cancelScheduledValues(audioCtx.currentTime);
+          gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        } catch (error) {}
+      });
+      ringtoneGains = [];
 
     }
 
