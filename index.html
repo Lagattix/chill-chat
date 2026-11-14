@@ -2179,6 +2179,7 @@
     let deferredInstallPrompt = null;
     let notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
     let lastSeenMessages = {};
+    let notificationSessionStartedAt = Date.now();
     const userAvatarsCache = {};
     const chatRegistry = {};
     const groupRegistry = {};
@@ -3370,7 +3371,9 @@
       const newMessages = messages.filter(msg => {
         const isFromOther = msg.senderId !== currentUser.id;
         const lastSeen = lastSeenMessages[roomId];
-        const isNew = !lastSeen || (msg.timestamp && msg.timestamp.seconds > lastSeen.seconds);
+        const sentAt = msg.timestamp && msg.timestamp.toMillis ? msg.timestamp.toMillis() : 0;
+        const isNew = sentAt > notificationSessionStartedAt &&
+          (!lastSeen || sentAt > lastSeen.toMillis());
         return isFromOther && isNew;
       });
 
@@ -3388,6 +3391,8 @@
 
     function startGlobalMessagePolling() {
       if (globalPollingInterval) return;
+      notificationSessionStartedAt = Date.now();
+      lastSeenMessages = {};
 
       globalPollingInterval = setInterval(async () => {
         if (!currentUser) return;
