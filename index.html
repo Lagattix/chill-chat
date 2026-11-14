@@ -2170,11 +2170,21 @@
           notifyButton: { enable: false }
         });
         OneSignal.User.PushSubscription.addEventListener('change', registerOneSignalSubscription);
+        await syncOneSignalUser(OneSignal);
         await registerOneSignalSubscription();
       } catch (error) {
         console.warn('OneSignal non disponibile:', error.message);
       }
     });
+
+    async function syncOneSignalUser(oneSignal = window.OneSignal) {
+      if (!currentUser || !oneSignal?.login) return;
+      try {
+        if (oneSignal.User.externalId !== currentUser.id) await oneSignal.login(currentUser.id);
+      } catch (error) {
+        console.warn('Identità OneSignal non collegata:', error.message);
+      }
+    }
 
     async function registerOneSignalSubscription() {
       if (!currentUser || !window.OneSignal) return;
@@ -2653,6 +2663,7 @@
           });
         }
         await window.OneSignal?.User?.PushSubscription?.optOut?.();
+        await window.OneSignal?.logout?.();
       } catch (error) {
         console.warn('Disattivazione notifiche al logout:', error.message);
       } finally {
@@ -2719,7 +2730,7 @@
           listenForIncomingCalls();
           setupFCMListener();
           registerFCMToken();
-          registerOneSignalSubscription();
+          syncOneSignalUser().then(registerOneSignalSubscription);
           if (Notification.permission === 'granted' && window.OneSignal?.User?.PushSubscription) {
             window.OneSignal.User.PushSubscription.optIn().catch(console.warn);
           }
@@ -2953,7 +2964,7 @@
             const roomId = makeRoomId(currentUser.id, doc.id);
             const last = await getLastMessage(roomId);
 
-            html += contactHTML(doc.id, name, avatar, false, last.preview, last.time, user.email || '');
+            html += contactHTML(doc.id, name, avatar, false, last.preview, last.time, user.email || '', user);
           }
         } else {
           const friendsSnapshot = await db.collection('friends')
@@ -2975,7 +2986,7 @@
               const roomId = makeRoomId(currentUser.id, friendId);
               const last = await getLastMessage(roomId);
 
-              html += contactHTML(friendId, name, avatar, false, last.preview, last.time);
+              html += contactHTML(friendId, name, avatar, false, last.preview, last.time, '', friend);
             }
           }
         }
@@ -2991,12 +3002,13 @@
       }
     }
 
-    function contactHTML(id, name, avatar, isAI, preview = 'Inizia una conversazione', time = '', subtitle = '') {
+    function contactHTML(id, name, avatar, isAI, preview = 'Inizia una conversazione', time = '', subtitle = '', userData = {}) {
       chatRegistry[id] = {
         id,
         name,
         avatar,
-        isAI
+        isAI,
+        subscriptions: [...new Set([userData.onesignalSubscriptionId, userData.onesignalDesktopSubscriptionId].filter(Boolean))]
       };
 
       const avatarStyle = avatar && String(avatar).startsWith('data:image') ? `background-image:url('${avatar}')` : '';
@@ -4583,8 +4595,8 @@
       }
     }
 
-    async function sendCallWebhook(callId) {
-      if (!auth?.currentUser || !callId) return;
+    async function sendCallWebhook(callId, toUserId, callType) {
+      if (!auth?.currentUser || !callId || !toUserId) return;
 
       try {
         const idToken = await auth.currentUser.getIdToken();
@@ -4594,13 +4606,18 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
           },
-          body: JSON.stringify({ callId })
+          body: JSON.stringify({
+            callId, to: toUserId, type: callType, fromName: currentUser.name,
+            subscriptions: chatRegistry[toUserId]?.subscriptions || []
+          })
         });
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
           throw new Error(data.error || 'Invio push chiamata non riuscito');
         }
+        const result = await response.json();
+        if (!result.delivered) console.warn('Nessun dispositivo OneSignal associato al destinatario');
       } catch (error) {
         console.warn('Notifica push chiamata non inviata:', error.message);
       }
