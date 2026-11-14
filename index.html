@@ -2130,6 +2130,7 @@
     const PASSWORD_RESET_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-request';
     const MESSAGE_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-message';
     const ONESIGNAL_APP_ID = '810baf6d-ce56-4ee1-aa81-e6cd5c5d5d34';
+    const isDesktopPushDevice = !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       try {
@@ -2152,8 +2153,9 @@
       const subscription = window.OneSignal.User.PushSubscription;
       if (!subscription.id || !subscription.optedIn) return;
       try {
+        const field = isDesktopPushDevice ? 'onesignalDesktopSubscriptionId' : 'onesignalSubscriptionId';
         await db.collection('users').doc(currentUser.id).update({
-          onesignalSubscriptionId: subscription.id,
+          [field]: subscription.id,
           onesignalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch (error) {
@@ -2601,9 +2603,10 @@
 
       try {
         if (currentUser) {
+          const field = isDesktopPushDevice ? 'onesignalDesktopSubscriptionId' : 'onesignalSubscriptionId';
           await db.collection('users').doc(currentUser.id).update({
-            onesignalSubscriptionId: firebase.firestore.FieldValue.delete(),
-            fcmToken: firebase.firestore.FieldValue.delete()
+            [field]: firebase.firestore.FieldValue.delete(),
+            ...(!isDesktopPushDevice ? { fcmToken: firebase.firestore.FieldValue.delete() } : {})
           });
         }
         await window.OneSignal?.User?.PushSubscription?.optOut?.();
@@ -4288,6 +4291,11 @@
       report += `Service Worker: ${('serviceWorker' in navigator) ? '✅' : '❌'}\n`;
       report += `Permesso: ${('Notification' in window) ? Notification.permission : 'non supportato'}\n`;
       report += `Notifiche app: ${notificationsEnabled ? 'attive' : 'disattive'}\n`;
+      if (isDesktopPushDevice) {
+        const desktopSubscription = window.OneSignal?.User?.PushSubscription;
+        report += `OneSignal PC: ${desktopSubscription ? '✅' : '❌'}\n`;
+        report += `Iscrizione PC: ${desktopSubscription?.id && desktopSubscription?.optedIn ? '✅ attiva' : '❌ non attiva'}\n`;
+      }
 
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();
