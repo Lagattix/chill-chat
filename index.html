@@ -2586,7 +2586,7 @@
       }
     }
 
-    function logout() {
+    async function logout() {
       if (unsubscribeMessages) unsubscribeMessages();
       if (unsubscribeIncomingCalls) unsubscribeIncomingCalls();
       if (unsubscribeAnswer) unsubscribeAnswer();
@@ -2599,7 +2599,19 @@
         navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' });
       }
 
-      auth.signOut();
+      try {
+        if (currentUser) {
+          await db.collection('users').doc(currentUser.id).update({
+            onesignalSubscriptionId: firebase.firestore.FieldValue.delete(),
+            fcmToken: firebase.firestore.FieldValue.delete()
+          });
+        }
+        await window.OneSignal?.User?.PushSubscription?.optOut?.();
+      } catch (error) {
+        console.warn('Disattivazione notifiche al logout:', error.message);
+      } finally {
+        await auth.signOut();
+      }
     }
 
     async function setupAuthListener() {
@@ -2662,6 +2674,9 @@
           setupFCMListener();
           registerFCMToken();
           registerOneSignalSubscription();
+          if (Notification.permission === 'granted' && window.OneSignal?.User?.PushSubscription) {
+            window.OneSignal.User.PushSubscription.optIn().catch(console.warn);
+          }
           initServiceWorkerUser();
 
           if (Notification.permission === 'granted') {
