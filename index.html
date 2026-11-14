@@ -4483,17 +4483,18 @@
 
       if (unsubscribeIncomingCalls) unsubscribeIncomingCalls();
 
-      const startTime = firebase.firestore.Timestamp.now();
+      // Keep calls that started while the app was loading, but never replay old calls.
+      const oldestActiveCall = Date.now() - 2 * 60 * 1000;
 
       unsubscribeIncomingCalls = db.collection('calls')
         .where('to', '==', currentUser.id)
         .onSnapshot(snapshot => {
           snapshot.docChanges().forEach(change => {
-            if (change.type !== 'added') return;
+            if (change.type !== 'added' && change.type !== 'modified') return;
 
             const data = change.doc.data();
 
-            if (data.createdAt && data.createdAt < startTime) return;
+            if (data.createdAt && data.createdAt.toMillis() < oldestActiveCall) return;
             if (data.status !== 'ringing') return;
             if (currentCall) return;
 
