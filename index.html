@@ -1997,7 +1997,9 @@
   <!-- Friends Modal -->
   <div class="profile-modal" id="friendsModal" onclick="closeFriends(event)">
     <div class="profile-card" onclick="event.stopPropagation()" style="max-width:520px;">
-      <h2 style="margin:0 0 20px;font-size:22px;">Richieste di Amicizia</h2>
+      <h2 style="margin:0 0 20px;font-size:22px;">Amici</h2>
+      <button class="profile-button profile-button-primary" onclick="openCreateGroup()" style="width:100%;margin-bottom:20px;">👥 Crea gruppo</button>
+      <h3 style="margin:0 0 12px;font-size:17px;">Richieste di amicizia</h3>
       <div id="friendRequestsList"></div>
       <div class="profile-actions">
         <button class="profile-button profile-button-secondary" onclick="closeFriends()">Chiudi</button>
@@ -2024,6 +2026,32 @@
         <button class="profile-button profile-button-primary" onclick="openCreateGroup()">👥 Crea Gruppo con...</button>
         <button class="profile-button profile-button-secondary" onclick="closeContactProfile()">Chiudi</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Group details -->
+  <div class="profile-modal" id="groupProfileModal" onclick="closeGroupProfile(event)">
+    <div class="profile-card" onclick="event.stopPropagation()" style="max-width:530px;max-height:85vh;overflow-y:auto;">
+      <h2 style="margin:0 0 18px;font-size:22px;">👥 Info gruppo</h2>
+      <label class="label">Nome</label>
+      <input type="text" id="editGroupName" class="modal-input" maxlength="50" />
+      <div style="margin-top:16px;">
+        <label class="label">Immagine</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div id="editGroupIconPreview" style="width:60px;height:60px;border-radius:12px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-size:32px;background-size:cover;background-position:center;">👥</div>
+          <input type="file" id="editGroupIconInput" accept="image/*" style="display:none" onchange="previewEditGroupIcon(event)">
+          <button id="editGroupIconButton" class="small-btn" onclick="document.getElementById('editGroupIconInput').click()">📷 Cambia immagine</button>
+        </div>
+      </div>
+      <div id="groupProfileError" class="modal-error"></div>
+      <div class="profile-actions"><button id="saveGroupProfileButton" class="profile-button profile-button-primary" onclick="saveGroupProfile()">Salva nome e immagine</button></div>
+      <h3 style="margin:24px 0 10px;">Membri</h3>
+      <div id="groupProfileMembers"></div>
+      <div id="groupMemberEditor" style="display:none;margin-top:16px;">
+        <label class="label">Aggiungi amici</label>
+        <div id="groupProfileAvailable" style="max-height:180px;overflow-y:auto;"></div>
+      </div>
+      <div class="profile-actions"><button class="profile-button profile-button-secondary" onclick="closeGroupProfile()">Chiudi</button></div>
     </div>
   </div>
 
@@ -3849,18 +3877,123 @@
 
     async function openGroupProfile() {
       if (!activeChat?.isGroup) return;
+      editingGroupId = activeChat.id;
+      editingGroupIcon = null;
+      $('groupProfileError').style.display = 'none';
+      $('groupProfileModal').classList.add('visible');
+      await refreshGroupProfile();
+    }
 
-      try {
-        const groupDoc = await db.collection('groups').doc(activeChat.id).get();
-        if (!groupDoc.exists) return;
+    let editingGroupId = null;
+    let editingGroupIcon = null;
 
-        const group = groupDoc.data();
-        alert(`👥 ${group.name}\n\nMembri: ${(group.members || []).length}`);
-      } catch (error) {
-        console.error(error);
-        alert('Errore caricamento info gruppo');
+    function closeGroupProfile(event) {
+      if (!event || event.target.id === 'groupProfileModal') {
+        $('groupProfileModal').classList.remove('visible');
+        editingGroupId = null;
       }
     }
+
+    async function refreshGroupProfile() {
+      if (!editingGroupId) return;
+      try {
+        const groupDoc = await db.collection('groups').doc(editingGroupId).get();
+        if (!groupDoc.exists) throw new Error('Gruppo non trovato');
+        const group = groupDoc.data();
+        const owner = group.createdBy === currentUser.id;
+        $('editGroupName').value = group.name || '';
+        $('editGroupName').disabled = !owner;
+        $('editGroupIconInput').disabled = !owner;
+        $('editGroupIconButton').style.display = owner ? '' : 'none';
+        $('saveGroupProfileButton').style.display = owner ? '' : 'none';
+        const icon = editingGroupIcon || group.icon;
+        $('editGroupIconPreview').style.backgroundImage = icon ? `url('${icon}')` : '';
+        $('editGroupIconPreview').textContent = icon ? '' : '👥';
+        const members = await Promise.all((group.members || []).map(id => db.collection('users').doc(id).get()));
+        $('groupProfileMembers').innerHTML = members.map((doc, index) => {
+          const id = group.members[index];
+          const name = doc.exists ? (doc.data().name || 'Utente') : 'Utente';
+          const label = id === group.createdBy ? ' · creatore' : '';
+          return `<div class="member-row"><div style="flex:1;font-weight:700;">${safeName(name)}${label}</div>${owner && id !== currentUser.id ? `<button class="small-btn" onclick="removeGroupMember('${id}')">Rimuovi</button>` : ''}</div>`;
+        }).join('');
+        $('groupMemberEditor').style.display = owner ? 'block' : 'none';
+        if (owner) {
+          const friends = await getGroupEligibleFriends();
+          $('groupProfileAvailable').innerHTML = friends.filter(friend => !group.members.includes(friend.id)).map(friend =>
+            `<div class="member-row"><div style="flex:1;">${safeName(friend.name)}</div><button class="small-btn" onclick="addGroupMember('${friend.id}')">Aggiungi</button></div>`
+          ).join('') || '<div style="color:var(--text-muted);padding:10px;">Nessun altro amico disponibile</div>';
+        }
+      } catch (error) {
+        $('groupProfileError').textContent = error.message;
+        $('groupProfileError').style.display = 'block';
+      }
+    }
+
+    async function previewEditGroupIcon(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        editingGroupIcon = await prepareGroupIcon(file);
+        $('editGroupIconPreview').style.backgroundImage = `url('${editingGroupIcon}')`;
+        $('editGroupIconPreview').textContent = '';
+      } catch (error) {
+        $('groupProfileError').textContent = error.message;
+        $('groupProfileError').style.display = 'block';
+      }
+    }
+
+    async function saveGroupProfile() {
+      if (!editingGroupId) return;
+      const name = $('editGroupName').value.trim();
+      if (!name) {
+        $('groupProfileError').textContent = 'Inserisci un nome per il gruppo';
+        $('groupProfileError').style.display = 'block';
+        return;
+      }
+      try {
+        const groupSnapshot = await db.collection('groups').doc(editingGroupId).get();
+        if (!groupSnapshot.exists || groupSnapshot.data().createdBy !== currentUser.id) throw new Error('Solo il creatore può modificare il gruppo');
+        const changes = { name };
+        if (editingGroupIcon) changes.icon = editingGroupIcon;
+        await db.collection('groups').doc(editingGroupId).update(changes);
+        editingGroupIcon = null;
+        if (activeChat?.id === editingGroupId && activeChat.isGroup) {
+          activeChat.name = name;
+          $('chatUserName').textContent = name;
+          if (changes.icon) {
+            activeChat.avatar = changes.icon;
+            setAvatar($('chatAvatar'), changes.icon, '👥');
+          }
+        }
+        await loadChats();
+        await refreshGroupProfile();
+        $('groupProfileError').style.display = 'none';
+      } catch (error) {
+        $('groupProfileError').textContent = 'Impossibile salvare il gruppo: ' + error.message;
+        $('groupProfileError').style.display = 'block';
+      }
+    }
+
+    async function changeGroupMember(userId, add) {
+      if (!editingGroupId) return;
+      try {
+        const ref = db.collection('groups').doc(editingGroupId);
+        await db.runTransaction(async transaction => {
+          const snapshot = await transaction.get(ref);
+          if (!snapshot.exists || snapshot.data().createdBy !== currentUser.id) throw new Error('Solo il creatore può gestire i membri');
+          const members = snapshot.data().members || [];
+          if (!add && userId === currentUser.id) throw new Error('Il creatore non può essere rimosso');
+          transaction.update(ref, { members: add ? [...new Set([...members, userId])] : members.filter(id => id !== userId) });
+        });
+        await refreshGroupProfile();
+      } catch (error) {
+        $('groupProfileError').textContent = error.message;
+        $('groupProfileError').style.display = 'block';
+      }
+    }
+
+    function addGroupMember(userId) { return changeGroupMember(userId, true); }
+    function removeGroupMember(userId) { return changeGroupMember(userId, false); }
 
     function closeContactProfile(event) {
       if (!event || event.target.id === 'contactProfileModal') {
@@ -3895,16 +4028,18 @@
     let selectedGroupMembers = [];
 
     async function openCreateGroup() {
-      if (!activeChat || activeChat.isAI || activeChat.isGroup) return;
+      const fromFriends = $('friendsModal').classList.contains('visible');
+      if (!fromFriends && (!activeChat || activeChat.isAI || activeChat.isGroup)) return;
 
       $('groupNameInput').value = '';
       $('groupIconPreview').innerHTML = '👥';
       $('groupIconPreview').style.backgroundImage = '';
       $('createGroupError').style.display = 'none';
       groupIconBase64 = null;
-      selectedGroupMembers = [activeChat.id];
+      selectedGroupMembers = fromFriends ? [] : [activeChat.id];
 
       closeContactProfile();
+      if (fromFriends) closeFriends();
       await loadAvailableMembersForGroup();
       updateSelectedMembersUI();
 
@@ -3917,27 +4052,48 @@
       }
     }
 
-    function previewGroupIcon(event) {
+    async function previewGroupIcon(event) {
       const file = event.target.files[0];
       if (!file) return;
-
-      if (!file.type.startsWith('image/')) {
-        alert('Seleziona un’immagine valida');
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Immagine troppo grande. Max 5MB');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        groupIconBase64 = e.target.result;
+      try {
+        groupIconBase64 = await prepareGroupIcon(file);
         $('groupIconPreview').style.backgroundImage = `url('${groupIconBase64}')`;
         $('groupIconPreview').innerHTML = '';
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        $('createGroupError').textContent = error.message;
+        $('createGroupError').style.display = 'block';
+      }
+    }
+
+    async function prepareGroupIcon(file) {
+      if (!file.type.startsWith('image/')) throw new Error('Seleziona un’immagine valida');
+      if (file.size > 5 * 1024 * 1024) throw new Error('Immagine troppo grande. Max 5 MB');
+      const image = await compressImageToBase64(file, 256, 0.7);
+      if (image.length > 150000) throw new Error('Immagine troppo grande dopo la compressione');
+      return image;
+    }
+
+    async function getGroupEligibleFriends() {
+      const friendsList = [];
+      if (currentUser.isAdmin) {
+        const users = await db.collection('users').get();
+        users.forEach(doc => {
+          if (doc.id !== currentUser.id) {
+            const user = doc.data();
+            friendsList.push({ id: doc.id, name: user.name || 'Utente', avatar: user.avatar || userInitial(user.name) });
+          }
+        });
+      } else {
+        const friends = await db.collection('friends').where('userId', '==', currentUser.id).get();
+        const users = await Promise.all(friends.docs.map(doc => db.collection('users').doc(doc.data().friendId).get()));
+        users.forEach(doc => {
+          if (doc.exists) {
+            const user = doc.data();
+            friendsList.push({ id: doc.id, name: user.name || 'Amico', avatar: user.avatar || userInitial(user.name) });
+          }
+        });
+      }
+      return friendsList;
     }
 
     async function loadAvailableMembersForGroup() {
@@ -3945,37 +4101,7 @@
       container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Caricamento...</div>';
 
       try {
-        const friendsList = [];
-
-        if (currentUser.isAdmin) {
-          const users = await db.collection('users').get();
-          users.forEach(doc => {
-            if (doc.id !== currentUser.id) {
-              const user = doc.data();
-              friendsList.push({
-                id: doc.id,
-                name: user.name || 'Utente',
-                avatar: user.avatar || userInitial(user.name)
-              });
-            }
-          });
-        } else {
-          const friends = await db.collection('friends').where('userId', '==', currentUser.id).get();
-
-          for (const doc of friends.docs) {
-            const friendId = doc.data().friendId;
-            const userDoc = await db.collection('users').doc(friendId).get();
-
-            if (userDoc.exists) {
-              const user = userDoc.data();
-              friendsList.push({
-                id: friendId,
-                name: user.name || 'Amico',
-                avatar: user.avatar || userInitial(user.name)
-              });
-            }
-          }
-        }
+        const friendsList = await getGroupEligibleFriends();
 
         if (!friendsList.length) {
           container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Nessun amico disponibile</div>';
@@ -4050,7 +4176,7 @@
       try {
         const uniqueMembers = [...new Set([currentUser.id, ...selectedGroupMembers])];
 
-        await db.collection('groups').add({
+        const groupRef = await db.collection('groups').add({
           name,
           icon: groupIconBase64 || null,
           members: uniqueMembers,
@@ -4062,7 +4188,7 @@
 
         closeCreateGroup();
         await loadChats();
-        alert(`Gruppo "${name}" creato ✅`);
+        selectGroupChat(groupRef.id, name, groupIconBase64);
       } catch (error) {
         console.error(error);
         errorDiv.textContent = 'Errore durante la creazione del gruppo';
