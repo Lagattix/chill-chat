@@ -2119,6 +2119,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-auth.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-messaging.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
   <script>
     const VAPID_PUBLIC_KEY = 'BJymFYMqJUDtmbdE2x39atsqRScyu_jOIESRoCMAEcZ0OBJ6IiIGVhcIKzyEyWXOD5g-01AMju9G-gdrrRBRFKw';
@@ -2128,6 +2129,37 @@
     const BACKEND_URL = 'https://chill-chat-backend-yskn.vercel.app/api/chat';
     const PASSWORD_RESET_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-request';
     const MESSAGE_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-message';
+    const ONESIGNAL_APP_ID = '810baf6d-ce56-4ee1-aa81-e6cd5c5d5d34';
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      try {
+        await OneSignal.init({
+          appId: ONESIGNAL_APP_ID,
+          safari_web_id: 'web.onesignal.auto.261dc44c-6b5c-4882-ba5f-51ef0736d918',
+          serviceWorkerPath: 'chill-chat/push/onesignal/OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: '/chill-chat/push/onesignal/' },
+          notifyButton: { enable: false }
+        });
+        OneSignal.User.PushSubscription.addEventListener('change', registerOneSignalSubscription);
+        await registerOneSignalSubscription();
+      } catch (error) {
+        console.warn('OneSignal non disponibile:', error.message);
+      }
+    });
+
+    async function registerOneSignalSubscription() {
+      if (!currentUser || !window.OneSignal) return;
+      const subscription = window.OneSignal.User.PushSubscription;
+      if (!subscription.id || !subscription.optedIn) return;
+      try {
+        await db.collection('users').doc(currentUser.id).update({
+          onesignalSubscriptionId: subscription.id,
+          onesignalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (error) {
+        console.warn('Registrazione OneSignal non riuscita:', error.message);
+      }
+    }
     const CALL_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-call';
 
     let currentUser = null;
@@ -2629,6 +2661,7 @@
           listenForIncomingCalls();
           setupFCMListener();
           registerFCMToken();
+          registerOneSignalSubscription();
           initServiceWorkerUser();
 
           if (Notification.permission === 'granted') {
@@ -4021,6 +4054,8 @@
         notificationsEnabled = true;
         localStorage.setItem('notificationsEnabled', 'true');
         await registerFCMToken();
+        await window.OneSignal?.User?.PushSubscription?.optIn?.();
+        await registerOneSignalSubscription();
         return true;
       }
 
@@ -4035,6 +4070,8 @@
         notificationsEnabled = true;
         localStorage.setItem('notificationsEnabled', 'true');
         await registerFCMToken();
+        await window.OneSignal?.User?.PushSubscription?.optIn?.();
+        await registerOneSignalSubscription();
         showNotification('Conversando', 'Notifiche attivate ✅', '🔔');
         return true;
       }
