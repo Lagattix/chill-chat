@@ -25,6 +25,8 @@ public class MainActivity extends Activity {
     private PermissionRequest mediaRequest;
     private ValueCallback<Uri[]> fileChooserCallback;
     private String pendingCallId;
+    private boolean pendingAutoAnswer;
+    private boolean pageReady;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -40,6 +42,10 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         webView.addJavascriptInterface(new AndroidBridge(), "ConversandoAndroid");
         webView.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView view, String url) {
+                pageReady = true;
+                dispatchPendingCall();
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (url.startsWith(APP_URL)) return false;
@@ -85,16 +91,27 @@ public class MainActivity extends Activity {
 
     private void openCall(Intent intent) {
         pendingCallId = intent == null ? null : intent.getStringExtra("callId");
+        pendingAutoAnswer = intent != null && intent.getBooleanExtra("autoAnswer", false);
         String url = APP_URL;
         if (pendingCallId != null && pendingCallId.matches("[A-Za-z0-9]{1,128}")) {
-            url += (intent.getBooleanExtra("autoAnswer", false) ? "?answerCall=" : "?acceptCall=") + pendingCallId;
+            url += (pendingAutoAnswer ? "?answerCall=" : "?acceptCall=") + pendingCallId;
             if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
             stopService(new Intent(this, IncomingCallService.class));
+            if (pageReady) { dispatchPendingCall(); return; }
         } else {
             String roomId = intent == null ? null : intent.getStringExtra("roomId");
             if (roomId != null && roomId.matches("[A-Za-z0-9_-]{1,300}")) url += "?roomId=" + Uri.encode(roomId);
         }
+        pageReady = false;
         webView.loadUrl(url);
+    }
+
+    private void dispatchPendingCall() {
+        if (!pageReady || pendingCallId == null || !pendingCallId.matches("[A-Za-z0-9]{1,128}")) return;
+        String script = "window.openAndroidCallFromNotification && window.openAndroidCallFromNotification(" +
+            JSONObject.quote(pendingCallId) + "," + pendingAutoAnswer + ")";
+        webView.evaluateJavascript(script, null);
+        pendingCallId = null;
     }
 
     @Override protected void onNewIntent(Intent intent) {

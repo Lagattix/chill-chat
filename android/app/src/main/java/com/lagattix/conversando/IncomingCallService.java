@@ -17,9 +17,10 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.Manifest;
+import android.util.Log;
 
 public class IncomingCallService extends Service {
-    private static final String CHANNEL = "incoming_calls_v2";
+    private static final String CHANNEL = "incoming_calls_v3";
     private static final int NOTIFICATION_ID = 5171;
     private MediaPlayer player;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -47,7 +48,9 @@ public class IncomingCallService extends Service {
             player.prepare();
             player.start();
         } catch (Exception error) {
+            Log.e("Conversando", "Could not play incoming call ringtone", error);
             if (player != null) { player.release(); player = null; }
+            showFallback(this, intent);
         }
         handler.removeCallbacks(timeout);
         handler.postDelayed(timeout, 45000);
@@ -67,12 +70,12 @@ public class IncomingCallService extends Service {
         createChannel(context, true);
         NotificationManager manager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-            manager.notify(NOTIFICATION_ID, buildNotification(context, intent, "incoming_calls_fallback_v2"));
+            manager.notify(NOTIFICATION_ID, buildNotification(context, intent, "incoming_calls_fallback_v3"));
     }
 
     private static void createChannel(Context context, boolean fallback) {
         if (Build.VERSION.SDK_INT < 26) return;
-        String id = fallback ? "incoming_calls_fallback_v2" : CHANNEL;
+        String id = fallback ? "incoming_calls_fallback_v3" : CHANNEL;
         NotificationChannel channel = new NotificationChannel(id, "Chiamate in arrivo", NotificationManager.IMPORTANCE_HIGH);
         if (!fallback) channel.setSound(null, null);
         else channel.setSound(Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.incoming_call),
@@ -110,7 +113,6 @@ public class IncomingCallService extends Service {
             .setPriority(Notification.PRIORITY_MAX)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(pending)
-            .setFullScreenIntent(pending, true)
             .setOngoing(true)
             .addAction(new Notification.Action.Builder(android.R.drawable.sym_call_incoming, "Rispondi", answerPending).build())
             .addAction(new Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel, "Rifiuta", rejectPending).build());

@@ -2234,6 +2234,8 @@
     let remoteStream = null;
     let peerConnection = null;
     let currentCall = null;
+    let pendingCallNotification = null;
+    let openingCallNotification = false;
     let callDurationInterval = null;
     let isMuted = false;
     let isVideoOff = false;
@@ -2725,6 +2727,8 @@
             isAdmin: userData.isAdmin || false
           };
 
+          handleOpenFromCallNotification();
+
           if (window.ConversandoAndroid) {
             window.androidPushRegistrationStatus = 'in corso';
             window.ConversandoAndroid.registerUser(user.uid);
@@ -2769,7 +2773,6 @@
             hideAdminBadge();
           }
 
-          handleOpenFromCallNotification();
           handleOpenFromMessageNotification();
         } catch (error) {
           console.error('❌ Errore caricamento utente:', error);
@@ -5143,37 +5146,50 @@
       stopSyntheticRingtone();
     }
 
-    async function handleOpenFromCallNotification() {
-      const params = new URLSearchParams(window.location.search);
-      const autoAnswer = !!params.get('answerCall');
-      const callId = params.get('answerCall') || params.get('acceptCall');
-
-      if (!callId) return;
-
+    async function openAndroidCallFromNotification(callId, autoAnswer) {
+      if (!/^[A-Za-z0-9]{1,128}$/.test(callId || '')) return;
+      pendingCallNotification = { callId, autoAnswer: !!autoAnswer };
+      if (!currentUser || !db || openingCallNotification) return;
+      openingCallNotification = true;
       try {
-        const callDoc = await db.collection('calls').doc(callId).get();
-
-        if (callDoc.exists && callDoc.data().status === 'ringing') {
+        while (pendingCallNotification) {
+          const request = pendingCallNotification;
+          pendingCallNotification = null;
+          const callDoc = await db.collection('calls').doc(request.callId).get();
+          if (!callDoc.exists) continue;
           const data = callDoc.data();
-
-          currentCall = {
-            id: callId,
-            from: data.from,
-            fromName: data.fromName,
-            fromAvatar: data.fromAvatar,
-            type: data.type || 'audio',
-            offer: data.offer,
-            isInitiator: false
-          };
-
-          listenForCallEnd(callId);
-          if (autoAnswer) await acceptCall();
+          if (data.to !== currentUser.id || data.status !== 'ringing') continue;
+          if (currentCall && currentCall.id !== request.callId) continue;
+          if (!currentCall) {
+            currentCall = {
+              id: request.callId,
+              from: data.from,
+              fromName: data.fromName,
+              fromAvatar: data.fromAvatar,
+              type: data.type || 'audio',
+              offer: data.offer,
+              isInitiator: false
+            };
+            listenForCallEnd(request.callId);
+          }
+          if (request.autoAnswer) await acceptCall();
           else showIncomingCall(data);
         }
       } catch (error) {
-        console.warn(error.message);
+        console.warn('Apertura chiamata non riuscita:', error);
+      } finally {
+        openingCallNotification = false;
+        if (pendingCallNotification) openAndroidCallFromNotification(pendingCallNotification.callId, pendingCallNotification.autoAnswer);
       }
+    }
+    window.openAndroidCallFromNotification = openAndroidCallFromNotification;
 
+    function handleOpenFromCallNotification() {
+      const params = new URLSearchParams(window.location.search);
+      const autoAnswer = !!params.get('answerCall');
+      const callId = params.get('answerCall') || params.get('acceptCall');
+      if (!callId) return;
+      openAndroidCallFromNotification(callId, autoAnswer);
       window.history.replaceState({}, '', window.location.pathname);
     }
 
