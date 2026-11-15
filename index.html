@@ -4244,11 +4244,12 @@
         if (!groupDoc.exists) throw new Error('Gruppo non trovato');
         const group = groupDoc.data();
         const owner = group.createdBy === currentUser.id;
+        const groupAdmin = owner || (group.admins || []).includes(currentUser.id);
         $('editGroupName').value = group.name || '';
-        $('editGroupName').disabled = !owner;
-        $('editGroupIconInput').disabled = !owner;
-        $('editGroupIconButton').style.display = owner ? '' : 'none';
-        $('saveGroupProfileButton').style.display = owner ? '' : 'none';
+        $('editGroupName').disabled = !groupAdmin;
+        $('editGroupIconInput').disabled = !groupAdmin;
+        $('editGroupIconButton').style.display = groupAdmin ? '' : 'none';
+        $('saveGroupProfileButton').style.display = groupAdmin ? '' : 'none';
         const icon = editingGroupIcon || group.icon;
         $('editGroupIconPreview').style.backgroundImage = icon ? `url('${icon}')` : '';
         $('editGroupIconPreview').textContent = icon ? '' : '👥';
@@ -4256,11 +4257,14 @@
         $('groupProfileMembers').innerHTML = members.map((doc, index) => {
           const id = group.members[index];
           const name = doc.exists ? (doc.data().name || 'Utente') : 'Utente';
-          const label = id === group.createdBy ? ' · creatore' : '';
-          return `<div class="member-row"><div style="flex:1;font-weight:700;">${safeName(name)}${label}</div>${owner && id !== currentUser.id ? `<button class="small-btn" onclick="removeGroupMember('${id}')">Rimuovi</button>` : ''}</div>`;
+          const isAdmin = (group.admins || []).includes(id);
+          const label = id === group.createdBy ? ' · creatore' : isAdmin ? ' · admin' : '';
+          const adminButton = owner && id !== group.createdBy ? `<button class="small-btn" onclick="changeGroupAdmin('${id}', ${!isAdmin})">${isAdmin ? 'Rimuovi admin' : 'Rendi admin'}</button>` : '';
+          const removeButton = groupAdmin && id !== group.createdBy ? `<button class="small-btn" onclick="removeGroupMember('${id}')">Rimuovi</button>` : '';
+          return `<div class="member-row"><div style="flex:1;font-weight:700;">${safeName(name)}${label}</div>${adminButton}${removeButton}</div>`;
         }).join('');
-        $('groupMemberEditor').style.display = owner ? 'block' : 'none';
-        if (owner) {
+        $('groupMemberEditor').style.display = groupAdmin ? 'block' : 'none';
+        if (groupAdmin) {
           const friends = await getGroupEligibleFriends();
           $('groupProfileAvailable').innerHTML = friends.filter(friend => !group.members.includes(friend.id)).map(friend =>
             `<div class="member-row"><div style="flex:1;">${safeName(friend.name)}</div><button class="small-btn" onclick="addGroupMember('${friend.id}')">Aggiungi</button></div>`
@@ -4295,7 +4299,7 @@
       }
       try {
         const groupSnapshot = await db.collection('groups').doc(editingGroupId).get();
-        if (!groupSnapshot.exists || groupSnapshot.data().createdBy !== currentUser.id) throw new Error('Solo il creatore può modificare il gruppo');
+        if (!groupSnapshot.exists || (groupSnapshot.data().createdBy !== currentUser.id && !(groupSnapshot.data().admins || []).includes(currentUser.id))) throw new Error('Solo il creatore o un admin può modificare il gruppo');
         const changes = { name };
         if (editingGroupIcon) changes.icon = editingGroupIcon;
         await db.collection('groups').doc(editingGroupId).update(changes);
@@ -4323,10 +4327,11 @@
         const ref = db.collection('groups').doc(editingGroupId);
         await db.runTransaction(async transaction => {
           const snapshot = await transaction.get(ref);
-          if (!snapshot.exists || snapshot.data().createdBy !== currentUser.id) throw new Error('Solo il creatore può gestire i membri');
+          if (!snapshot.exists || (snapshot.data().createdBy !== currentUser.id && !(snapshot.data().admins || []).includes(currentUser.id))) throw new Error('Solo il creatore o un admin può gestire i membri');
           const members = snapshot.data().members || [];
-          if (!add && userId === currentUser.id) throw new Error('Il creatore non può essere rimosso');
-          transaction.update(ref, { members: add ? [...new Set([...members, userId])] : members.filter(id => id !== userId) });
+          if (!add && userId === snapshot.data().createdBy) throw new Error('Il creatore non può essere rimosso');
+          transaction.update(ref, add ? { members: [...new Set([...members, userId])] } :
+            { members: members.filter(id => id !== userId), admins: (snapshot.data().admins || []).filter(id => id !== userId) });
         });
         await refreshGroupProfile();
       } catch (error) {
@@ -4337,6 +4342,25 @@
 
     function addGroupMember(userId) { return changeGroupMember(userId, true); }
     function removeGroupMember(userId) { return changeGroupMember(userId, false); }
+
+    async function changeGroupAdmin(userId, promote) {
+      if (!editingGroupId) return;
+      try {
+        const ref = db.collection('groups').doc(editingGroupId);
+        await db.runTransaction(async transaction => {
+          const snapshot = await transaction.get(ref);
+          if (!snapshot.exists || snapshot.data().createdBy !== currentUser.id) throw new Error('Solo il creatore può scegliere gli admin');
+          if (userId === currentUser.id || !(snapshot.data().members || []).includes(userId)) throw new Error('Seleziona un membro del gruppo');
+          const admins = snapshot.data().admins || [];
+          transaction.update(ref, { admins: promote ? [...new Set([...admins, userId])] : admins.filter(id => id !== userId) });
+        });
+        await refreshGroupProfile();
+        $('groupProfileError').style.display = 'none';
+      } catch (error) {
+        $('groupProfileError').textContent = error.message;
+        $('groupProfileError').style.display = 'block';
+      }
+    }
 
     function closeContactProfile(event) {
       if (!event || event.target.id === 'contactProfileModal') {
@@ -4523,6 +4547,7 @@
           name,
           icon: groupIconBase64 || null,
           members: uniqueMembers,
+          admins: [],
           createdBy: currentUser.id,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           lastMessage: null,
