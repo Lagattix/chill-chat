@@ -1012,6 +1012,10 @@
       display: flex;
     }
 
+    #banScreen { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:20px; background:var(--bg-primary); }
+    #banScreen.visible { display:flex; }
+    #banScreen .profile-card { text-align:center; }
+
     .profile-card {
       background: var(--bg-secondary);
       border: 1px solid var(--border-subtle);
@@ -1675,6 +1679,15 @@
 </head>
 
 <body>
+  <section id="banScreen" role="alert" aria-live="polite">
+    <div class="profile-card">
+      <div style="font-size:48px;margin-bottom:12px;">⛔</div>
+      <h1 style="margin:0 0 12px;">Account bannato</h1>
+      <p id="banMessage">Hai infranto la policy e quindi riteniamo necessario bannarti.</p>
+      <p id="banCountdown" style="font-weight:700;"></p>
+      <button class="profile-button profile-button-secondary" onclick="logout()">Esci dall’account</button>
+    </div>
+  </section>
   <div id="installBanner" class="install-banner" aria-live="polite">
     <div class="install-banner-text">Installa l'app</div>
     <button id="installAppButton" class="install-banner-button" type="button" onclick="installApp()">
@@ -1977,8 +1990,34 @@
       </div>
 
       <div class="profile-actions">
+        <button id="banUserProfileButton" class="profile-button profile-button-secondary" style="display:none;color:#ff6b6b;" onclick="openBanUserModal()">⛔ Banna utente</button>
         <button class="profile-button profile-button-secondary" onclick="closeProfile()">Chiudi</button>
         <button class="profile-button profile-button-primary" onclick="logout()">Esci</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-modal" id="banUserModal" onclick="if(event.target===this)closeBanUserModal()">
+    <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="banUserTitle">
+      <h2 id="banUserTitle">Gestione ban utente</h2>
+      <label class="label" for="banUserEmail">Email dell’utente</label>
+      <input id="banUserEmail" class="modal-input" type="email" placeholder="utente@email.com" autocomplete="off">
+      <label class="label" for="banDuration" style="margin-top:14px;display:block;">Durata del ban</label>
+      <select id="banDuration" class="modal-input" onchange="toggleCustomBanDuration()">
+        <option value="1">1 ora</option>
+        <option value="24">1 giorno</option>
+        <option value="168">7 giorni</option>
+        <option value="720">30 giorni</option>
+        <option value="custom">Personalizzata (ore)</option>
+        <option value="permanent">Permanente</option>
+      </select>
+      <input id="banCustomHours" class="modal-input" type="number" min="1" max="87600" step="1" placeholder="Numero di ore" style="display:none;margin-top:10px;">
+      <p style="font-size:13px;color:var(--text-secondary);">L’utente vedrà: “Hai infranto la policy e quindi riteniamo necessario bannarti.”</p>
+      <p id="banUserStatus" role="status"></p>
+      <div class="profile-actions">
+        <button class="profile-button profile-button-primary" onclick="submitBanUser('ban')">Banna utente</button>
+        <button class="profile-button profile-button-secondary" onclick="submitBanUser('unban')">Rimuovi ban</button>
+        <button class="profile-button profile-button-secondary" onclick="closeBanUserModal()">Chiudi</button>
       </div>
     </div>
   </div>
@@ -2208,6 +2247,7 @@
       }
     }
     const CALL_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-call';
+    const BAN_USER_URL = 'https://chill-chat-backend-yskn.vercel.app/api/ban-user';
 
     let currentUser = null;
     let activeChat = null;
@@ -2235,6 +2275,9 @@
     let remoteStream = null;
     let peerConnection = null;
     let currentCall = null;
+    let unsubscribeBan = null;
+    let banCountdownTimer = null;
+    let banVisible = false;
     let pendingCallNotification = null;
     let openingCallNotification = false;
     let callDurationInterval = null;
@@ -2676,6 +2719,10 @@
     }
 
     async function logout() {
+      if (unsubscribeBan) { unsubscribeBan(); unsubscribeBan = null; }
+      if (banCountdownTimer) { clearInterval(banCountdownTimer); banCountdownTimer = null; }
+      banVisible = false;
+      $('banScreen').classList.remove('visible');
       if (window.ConversandoAndroid) {
         window.ConversandoAndroid.dismissCall(currentCall?.id || '');
         window.ConversandoAndroid.clearUser();
@@ -2715,6 +2762,10 @@
     async function setupAuthListener() {
       auth.onAuthStateChanged(async (user) => {
         if (!user) {
+          if (unsubscribeBan) { unsubscribeBan(); unsubscribeBan = null; }
+          if (banCountdownTimer) { clearInterval(banCountdownTimer); banCountdownTimer = null; }
+          banVisible = false;
+          $('banScreen').classList.remove('visible');
           currentUser = null;
           activeChat = null;
           OFFICIAL_ADMIN_UID = null;
@@ -2725,6 +2776,14 @@
         }
 
         try {
+          const banRef = db.collection('bans').doc(user.uid);
+          const initialBan = await banRef.get();
+          if (unsubscribeBan) unsubscribeBan();
+          unsubscribeBan = banRef.onSnapshot(snapshot => applyBanState(snapshot.data()));
+          if (isActiveBan(initialBan.data())) {
+            applyBanState(initialBan.data());
+            return;
+          }
           const userRef = db.collection('users').doc(user.uid);
           const userDoc = await userRef.get();
           let userData = userDoc.exists ? userDoc.data() : null;
@@ -2751,7 +2810,7 @@
             email: user.email,
             avatar: userData.avatar || userInitial(userData.name || user.email),
             friendCode: userData.friendCode,
-            isAdmin: userData.isAdmin || false
+            isAdmin: user.email?.toLowerCase() === 'conversando@admin.com'
           };
 
           handleOpenFromCallNotification();
@@ -3618,9 +3677,94 @@
       }
 
       updateNotificationsUI();
+      $('banUserProfileButton').style.display = isBanAdmin() ? 'block' : 'none';
       updateNameChangeInfo();
       updateProfileSocialStats();
       $('profileModal').classList.add('visible');
+    }
+
+    function isBanAdmin() {
+      return auth?.currentUser?.email?.toLowerCase() === 'conversando@admin.com' && currentUser?.id === auth.currentUser.uid;
+    }
+
+    function isActiveBan(ban) {
+      if (!ban) return false;
+      if (ban.permanent === true) return true;
+      return !!ban.expiresAt && ban.expiresAt.toMillis() > Date.now();
+    }
+
+    function applyBanState(ban) {
+      if (!isActiveBan(ban)) {
+        if (banVisible) window.location.reload();
+        return;
+      }
+      if (!banVisible) {
+        banVisible = true;
+        stopGlobalMessagePolling();
+        if (currentCall) endCall(false);
+        $('profileModal').classList.remove('visible');
+        $('banScreen').classList.add('visible');
+      }
+      if (banCountdownTimer) clearInterval(banCountdownTimer);
+      const countdown = $('banCountdown');
+      if (ban.permanent) {
+        countdown.textContent = 'Ban permanente';
+        return;
+      }
+      const expiresAt = ban.expiresAt.toMillis();
+      const update = () => {
+        const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+        if (!seconds) { clearInterval(banCountdownTimer); window.location.reload(); return; }
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor(seconds % 86400 / 3600);
+        const minutes = Math.floor(seconds % 3600 / 60);
+        const rest = seconds % 60;
+        countdown.textContent = `Sblocco tra ${days}g ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(rest).padStart(2, '0')}s`;
+      };
+      update();
+      banCountdownTimer = setInterval(update, 1000);
+    }
+
+    function openBanUserModal() {
+      if (!isBanAdmin()) return;
+      $('profileModal').classList.remove('visible');
+      $('banUserStatus').textContent = '';
+      $('banUserModal').classList.add('visible');
+    }
+
+    function closeBanUserModal() { $('banUserModal').classList.remove('visible'); }
+
+    function toggleCustomBanDuration() {
+      $('banCustomHours').style.display = $('banDuration').value === 'custom' ? 'block' : 'none';
+    }
+
+    async function submitBanUser(action) {
+      if (!isBanAdmin()) return;
+      const email = $('banUserEmail').value.trim().toLowerCase();
+      const duration = $('banDuration').value;
+      const permanent = duration === 'permanent';
+      const durationHours = duration === 'custom' ? Number($('banCustomHours').value) : Number(duration);
+      const status = $('banUserStatus');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+          (action === 'ban' && !permanent && (!Number.isInteger(durationHours) || durationHours < 1 || durationHours > 87600))) {
+        status.textContent = 'Inserisci un’email e una durata valide.';
+        return;
+      }
+      if (action === 'ban' && !confirm(`Bannare ${email} ${permanent ? 'permanentemente' : `per ${durationHours} ore`}?`)) return;
+      status.textContent = 'Operazione in corso…';
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch(BAN_USER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action, email, permanent, durationHours: permanent ? null : durationHours })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Operazione non riuscita');
+        status.textContent = action === 'ban' ? `Ban applicato a ${email}.` : `Ban rimosso da ${email}.`;
+      } catch (error) {
+        status.textContent = error.message;
+      }
     }
 
     function closeProfile(event) {
