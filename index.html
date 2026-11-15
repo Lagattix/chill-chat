@@ -1738,7 +1738,7 @@
           Non hai un account?
           <a href="#" onclick="showRegister(); return false;">Registrati</a>
           <br>
-          <a href="#" class="forgot-password-link" onclick="showPasswordReset(); return false;">Non ricordo la mia password</a>
+          <a href="#" class="forgot-password-link" onclick="showPasswordReset(); return false;">Ripristina password</a>
         </div>
       </div>
 
@@ -1761,19 +1761,19 @@
     <div class="password-reset-card">
       <div class="password-reset-title">Recupero password</div>
       <p class="password-reset-copy">
-        Inserisci l'email dell'account e alcuni dati di verifica. La richiesta verra inviata all'amministratore,
-        che controllera le informazioni prima di cambiare manualmente la password.
+        Inserisci l’email dell’account. L’amministratore riceverà la richiesta e potrà inviarti un codice.
+        Dopo averlo ricevuto, inseriscilo qui per scegliere una nuova password.
       </p>
       <input type="email" id="resetEmailInput" class="login-input" placeholder="Email account" autocomplete="email" />
-      <input type="text" id="resetNameInput" class="login-input" placeholder="Nome profilo usato nell'app" />
-      <input type="text" id="resetFriendCodeInput" class="login-input" placeholder="Codice amico, se lo ricordi" />
-      <input type="text" id="resetKnownContactInput" class="login-input" placeholder="Nome di un amico o gruppo presente nell'account" />
-      <input type="text" id="resetLastLoginInput" class="login-input" placeholder="Ultimo accesso indicativo (es. ieri, settimana scorsa)" />
-      <input type="text" id="resetProfileDetailInput" class="login-input" placeholder="Un dettaglio del profilo (avatar, bio, chat recente)" />
+      <div id="resetCodeFields" style="display:none;">
+        <input type="text" id="resetCodeInput" class="login-input" placeholder="Codice a 8 cifre" inputmode="numeric" maxlength="8" autocomplete="one-time-code" />
+        <input type="password" id="resetNewPasswordInput" class="login-input" placeholder="Nuova password (minimo 8 caratteri)" autocomplete="new-password" />
+      </div>
       <div id="passwordResetStatus" class="password-reset-status"></div>
       <div class="password-reset-actions">
         <button class="password-reset-secondary" type="button" onclick="closePasswordReset()">Annulla</button>
-        <button id="passwordResetSubmitBtn" class="login-button" type="button" onclick="submitPasswordReset()">Invia richiesta</button>
+        <button id="passwordResetSubmitBtn" class="login-button" type="button" onclick="submitPasswordReset()">Richiedi codice</button>
+        <button id="passwordResetConfirmBtn" class="login-button" type="button" style="display:none;" onclick="confirmPasswordReset()">Imposta nuova password</button>
       </div>
     </div>
   </div>
@@ -1990,10 +1990,26 @@
       </div>
 
       <div class="profile-actions">
+        <button id="passwordRequestsButton" class="profile-button profile-button-secondary" style="display:none;" onclick="openPasswordRequests()">🔑 Richieste password <span id="passwordRequestsCount"></span></button>
         <button id="banUserProfileButton" class="profile-button profile-button-secondary" style="display:none;color:#ff6b6b;" onclick="openBanUserModal()">⛔ Banna utente</button>
         <button class="profile-button profile-button-secondary" onclick="closeProfile()">Chiudi</button>
         <button class="profile-button profile-button-primary" onclick="logout()">Esci</button>
       </div>
+    </div>
+  </div>
+
+  <div class="profile-modal" id="passwordRequestsModal" onclick="if(event.target===this)closePasswordRequests()">
+    <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="passwordRequestsTitle">
+      <h2 id="passwordRequestsTitle">Richieste password</h2>
+      <p style="color:var(--text-secondary);">Genera un codice per una richiesta. Se l’email automatica non parte, usa il pulsante per inviarlo dal tuo programma di posta.</p>
+      <div id="passwordRequestsList"></div>
+      <p id="passwordRequestsStatus" role="status"></p>
+      <div id="generatedResetCode" style="display:none;" class="box">
+        <div>Codice per <strong id="generatedResetEmail"></strong></div>
+        <div id="generatedResetCodeText" style="font-size:28px;font-weight:700;letter-spacing:3px;margin:10px 0;"></div>
+        <a id="sendResetCodeEmailLink" class="profile-button profile-button-primary" style="display:block;text-align:center;text-decoration:none;" href="#">Invia codice via email</a>
+      </div>
+      <div class="profile-actions"><button class="profile-button profile-button-secondary" onclick="closePasswordRequests()">Chiudi</button></div>
     </div>
   </div>
 
@@ -2200,6 +2216,8 @@
     let OFFICIAL_ADMIN_UID = null;
     const BACKEND_URL = 'https://chill-chat-backend-yskn.vercel.app/api/chat';
     const PASSWORD_RESET_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-request';
+    const PASSWORD_RESET_ADMIN_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-admin';
+    const PASSWORD_RESET_CONFIRM_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-confirm';
     const MESSAGE_NOTIFICATION_URL = 'https://chill-chat-backend-yskn.vercel.app/api/notify-message';
     const ONESIGNAL_APP_ID = '810baf6d-ce56-4ee1-aa81-e6cd5c5d5d34';
     const isDesktopPushDevice = !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -2278,6 +2296,7 @@
     let unsubscribeBan = null;
     let banCountdownTimer = null;
     let banVisible = false;
+    let passwordRequestsTimer = null;
     let pendingCallNotification = null;
     let openingCallNotification = false;
     let callDurationInterval = null;
@@ -2525,6 +2544,11 @@
     function showPasswordReset() {
       $('authError').style.display = 'none';
       $('resetEmailInput').value = $('emailInput').value.trim();
+      $('resetCodeFields').style.display = 'none';
+      $('passwordResetSubmitBtn').style.display = 'block';
+      $('passwordResetConfirmBtn').style.display = 'none';
+      $('resetCodeInput').value = '';
+      $('resetNewPasswordInput').value = '';
       $('passwordResetStatus').className = 'password-reset-status';
       $('passwordResetStatus').textContent = '';
       $('passwordResetModal').classList.add('visible');
@@ -2542,25 +2566,8 @@
 
     async function submitPasswordReset() {
       const email = $('resetEmailInput').value.trim().toLowerCase();
-      const displayName = $('resetNameInput').value.trim();
-      const friendCode = $('resetFriendCodeInput').value.trim();
-      const knownContact = $('resetKnownContactInput').value.trim();
-      const lastLogin = $('resetLastLoginInput').value.trim();
-      const profileDetail = $('resetProfileDetailInput').value.trim();
-      const verificationFields = [displayName, friendCode, knownContact, lastLogin, profileDetail].filter(Boolean);
-
-      if (!email || !email.includes('@')) {
-        setPasswordResetStatus('Inserisci una email valida.', 'error');
-        return;
-      }
-
-      if (!displayName) {
-        setPasswordResetStatus('Inserisci anche il nome profilo usato nell app.', 'error');
-        return;
-      }
-
-      if (verificationFields.length < 3) {
-        setPasswordResetStatus('Per sicurezza servono almeno altri 2 dati di verifica oltre all email.', 'error');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setPasswordResetStatus('Inserisci un’email valida.', 'error');
         return;
       }
 
@@ -2569,46 +2576,57 @@
       submitBtn.textContent = 'Invio...';
       setPasswordResetStatus('Invio richiesta in corso...', 'success');
 
-      const payload = {
-        email,
-        displayName,
-        friendCode,
-        knownContact,
-        lastLogin,
-        profileDetail,
-        pageUrl: window.location.href,
-        userAgent: navigator.userAgent,
-        requestedAt: new Date().toISOString()
-      };
-
       try {
-        if (db) {
-          await db.collection('passwordResetRequests').add({
-            ...payload,
-            status: 'pending',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-
         const response = await fetch(PASSWORD_RESET_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ email })
         });
 
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(result.error || 'Email non inviata');
+          throw new Error(result.error || 'Richiesta non inviata');
         }
-
-        setPasswordResetStatus('Richiesta inviata. Se i dati coincidono, l amministratore ti aiutera con il cambio password.', 'success');
+        $('resetCodeFields').style.display = 'block';
+        $('passwordResetSubmitBtn').style.display = 'none';
+        $('passwordResetConfirmBtn').style.display = 'block';
+        setPasswordResetStatus('Richiesta inviata. Quando ricevi il codice, inseriscilo qui con la nuova password.', 'success');
       } catch (error) {
         console.error('Errore recupero password:', error);
-        setPasswordResetStatus('Richiesta salvata, ma l email admin potrebbe non essere partita: ' + error.message, 'error');
+        setPasswordResetStatus(error.message, 'error');
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Invia richiesta';
+        submitBtn.textContent = 'Richiedi codice';
       }
+    }
+
+    async function confirmPasswordReset() {
+      const email = $('resetEmailInput').value.trim().toLowerCase();
+      const code = $('resetCodeInput').value.trim();
+      const newPassword = $('resetNewPasswordInput').value;
+      if (!/^\d{8}$/.test(code) || newPassword.length < 8) {
+        setPasswordResetStatus('Inserisci il codice a 8 cifre e una nuova password di almeno 8 caratteri.', 'error');
+        return;
+      }
+      const button = $('passwordResetConfirmBtn');
+      button.disabled = true;
+      setPasswordResetStatus('Verifica codice in corso...', 'success');
+      try {
+        const response = await fetch(PASSWORD_RESET_CONFIRM_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code, newPassword })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Codice non valido');
+        $('passwordInput').value = '';
+        $('emailInput').value = email;
+        setPasswordResetStatus('Password aggiornata. Ora puoi accedere con la nuova password.', 'success');
+        $('resetCodeFields').style.display = 'none';
+        button.style.display = 'none';
+      } catch (error) {
+        setPasswordResetStatus(error.message, 'error');
+      } finally { button.disabled = false; }
     }
 
     function showHome() {
@@ -2719,6 +2737,7 @@
     }
 
     async function logout() {
+      if (passwordRequestsTimer) { clearInterval(passwordRequestsTimer); passwordRequestsTimer = null; }
       if (unsubscribeBan) { unsubscribeBan(); unsubscribeBan = null; }
       if (banCountdownTimer) { clearInterval(banCountdownTimer); banCountdownTimer = null; }
       banVisible = false;
@@ -2762,6 +2781,7 @@
     async function setupAuthListener() {
       auth.onAuthStateChanged(async (user) => {
         if (!user) {
+          if (passwordRequestsTimer) { clearInterval(passwordRequestsTimer); passwordRequestsTimer = null; }
           if (unsubscribeBan) { unsubscribeBan(); unsubscribeBan = null; }
           if (banCountdownTimer) { clearInterval(banCountdownTimer); banCountdownTimer = null; }
           banVisible = false;
@@ -2855,6 +2875,9 @@
 
           if (currentUser.isAdmin) {
             showAdminBadge();
+            refreshPasswordRequests();
+            if (passwordRequestsTimer) clearInterval(passwordRequestsTimer);
+            passwordRequestsTimer = setInterval(refreshPasswordRequests, 30000);
           } else {
             hideAdminBadge();
           }
@@ -3678,6 +3701,8 @@
 
       updateNotificationsUI();
       $('banUserProfileButton').style.display = isBanAdmin() ? 'block' : 'none';
+      $('passwordRequestsButton').style.display = isBanAdmin() ? 'block' : 'none';
+      if (isBanAdmin()) refreshPasswordRequests();
       updateNameChangeInfo();
       updateProfileSocialStats();
       $('profileModal').classList.add('visible');
@@ -3685,6 +3710,89 @@
 
     function isBanAdmin() {
       return auth?.currentUser?.email?.toLowerCase() === 'conversando@admin.com' && currentUser?.id === auth.currentUser.uid;
+    }
+
+    async function fetchPasswordRequests() {
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch(PASSWORD_RESET_ADMIN_URL, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Richieste non disponibili');
+      return data.requests || [];
+    }
+
+    async function refreshPasswordRequests() {
+      if (!isBanAdmin()) return;
+      try {
+        const requests = await fetchPasswordRequests();
+        $('passwordRequestsCount').textContent = requests.length ? `(${requests.length})` : '';
+        if ($('passwordRequestsModal').classList.contains('visible')) renderPasswordRequests(requests);
+      } catch (error) { console.warn('Richieste password:', error.message); }
+    }
+
+    async function openPasswordRequests() {
+      if (!isBanAdmin()) return;
+      $('profileModal').classList.remove('visible');
+      $('passwordRequestsModal').classList.add('visible');
+      $('passwordRequestsStatus').textContent = 'Caricamento richieste…';
+      try {
+        const requests = await fetchPasswordRequests();
+        renderPasswordRequests(requests);
+        $('passwordRequestsStatus').textContent = '';
+      } catch (error) { $('passwordRequestsStatus').textContent = error.message; }
+    }
+
+    function closePasswordRequests() {
+      $('passwordRequestsModal').classList.remove('visible');
+      $('generatedResetCode').style.display = 'none';
+      $('generatedResetCodeText').textContent = '';
+    }
+
+    function renderPasswordRequests(requests) {
+      const list = $('passwordRequestsList');
+      list.replaceChildren();
+      if (!requests.length) { list.textContent = 'Nessuna richiesta in attesa.'; return; }
+      requests.forEach(request => {
+        const row = document.createElement('div');
+        row.className = 'box';
+        row.style.marginBottom = '10px';
+        const label = document.createElement('div');
+        label.textContent = `${request.email} ha smarrito la password`;
+        const time = document.createElement('div');
+        time.style.cssText = 'font-size:12px;color:var(--text-secondary);margin:6px 0;';
+        time.textContent = request.createdAt ? new Date(request.createdAt).toLocaleString('it-IT') : '';
+        const button = document.createElement('button');
+        button.className = 'small-btn primary';
+        button.textContent = 'Genera e invia codice';
+        button.onclick = () => generatePasswordResetCode(request.id);
+        row.append(label, time, button);
+        list.append(row);
+      });
+    }
+
+    async function generatePasswordResetCode(id) {
+      if (!isBanAdmin()) return;
+      $('passwordRequestsStatus').textContent = 'Generazione del codice…';
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch(PASSWORD_RESET_ADMIN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Codice non generato');
+        $('generatedResetEmail').textContent = result.email;
+        $('generatedResetCodeText').textContent = result.code;
+        $('generatedResetCode').style.display = 'block';
+        const subject = encodeURIComponent('Codice di recupero Conversando');
+        const body = encodeURIComponent(`Il tuo codice di recupero Conversando è ${result.code}. Scade tra 15 minuti. Se non hai chiesto il recupero, ignora questa email.`);
+        $('sendResetCodeEmailLink').href = `mailto:${result.email}?subject=${subject}&body=${body}`;
+        $('passwordRequestsStatus').textContent = result.sent
+          ? 'Codice inviato automaticamente. Puoi inviarlo anche tu se necessario.'
+          : 'Invio automatico non disponibile. Premi “Invia codice via email” e spedisci il messaggio.';
+      } catch (error) { $('passwordRequestsStatus').textContent = error.message; }
     }
 
     function isActiveBan(ban) {
