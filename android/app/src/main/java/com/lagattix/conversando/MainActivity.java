@@ -7,6 +7,9 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.net.Uri;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -27,6 +30,7 @@ public class MainActivity extends Activity {
     private String pendingCallId;
     private boolean pendingAutoAnswer;
     private boolean pageReady;
+    private AudioFocusRequest callAudioFocus;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -134,6 +138,33 @@ public class MainActivity extends Activity {
         if (webView.canGoBack()) webView.goBack(); else super.onBackPressed();
     }
 
+    private void startCallAudio() {
+        AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (callAudioFocus == null) {
+            callAudioFocus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setOnAudioFocusChangeListener(focus -> { }).build();
+            audio.requestAudioFocus(callAudioFocus);
+        }
+        audio.setMode(AudioManager.MODE_IN_COMMUNICATION);
+    }
+
+    private void stopCallAudio() {
+        AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (callAudioFocus != null) {
+            audio.abandonAudioFocusRequest(callAudioFocus);
+            callAudioFocus = null;
+        }
+        audio.setMode(AudioManager.MODE_NORMAL);
+    }
+
+    @Override protected void onDestroy() {
+        stopCallAudio();
+        super.onDestroy();
+    }
+
     private class AndroidBridge {
         @JavascriptInterface public void registerUser(String uid) {
             if (uid == null || !uid.matches("[A-Za-z0-9_-]{1,128}")) return;
@@ -156,6 +187,8 @@ public class MainActivity extends Activity {
             CallMessagingService.showMessage(MainActivity.this, data);
         }
         @JavascriptInterface public void clearUser() { }
+        @JavascriptInterface public void beginCallAudio() { runOnUiThread(MainActivity.this::startCallAudio); }
+        @JavascriptInterface public void endCallAudio() { runOnUiThread(MainActivity.this::stopCallAudio); }
         @JavascriptInterface public void dismissCall(String callId) {
             stopService(new Intent(MainActivity.this, IncomingCallService.class));
         }

@@ -2108,7 +2108,8 @@
 
     <div id="callVideoContainer" class="call-video-container">
       <div class="video-stage">
-        <video id="remoteVideo" autoplay playsinline></video>
+        <video id="remoteVideo" autoplay muted playsinline></video>
+        <audio id="remoteAudio" autoplay playsinline></audio>
         <video id="localVideo" autoplay muted playsinline></video>
 
         <div class="call-info">
@@ -2244,6 +2245,32 @@
     let ringtoneGains = [];
     let audioCtx = null;
     let pendingIceCandidates = [];
+
+    function playRemoteAudio() {
+      const audio = $('remoteAudio');
+      if (!audio?.srcObject || !currentCall) return;
+      audio.muted = false;
+      audio.volume = 1;
+      audio.play().catch(error => console.warn('Audio remoto in attesa:', error.message));
+      if (currentCall.type === 'video') {
+        $('remoteVideo').play().catch(error => console.warn('Video remoto in attesa:', error.message));
+      }
+    }
+
+    function attachRemoteTrack(event) {
+      const stream = event.streams?.[0];
+      if (stream) remoteStream = stream;
+      else if (!remoteStream.getTracks().includes(event.track)) remoteStream.addTrack(event.track);
+      $('remoteAudio').srcObject = remoteStream;
+      $('remoteVideo').srcObject = remoteStream;
+      playRemoteAudio();
+      event.track.onunmute = playRemoteAudio;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) playRemoteAudio();
+    });
+    document.addEventListener('pointerdown', playRemoteAudio);
 
     // Browsers only allow background audio after the user has activated it in the page.
     document.addEventListener('pointerdown', () => {
@@ -4559,6 +4586,7 @@
         };
 
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        window.ConversandoAndroid?.beginCallAudio?.();
 
         peerConnection = new RTCPeerConnection(await getCallIceServers());
         pendingIceCandidates = [];
@@ -4572,13 +4600,14 @@
         const iceBuffer = [];
 
         peerConnection.onicecandidate = event => {
-          if (event.candidate) iceBuffer.push(event.candidate);
+          if (!event.candidate) return;
+          if (!currentCall?.id) { iceBuffer.push(event.candidate); return; }
+          db.collection('calls').doc(currentCall.id).collection('candidates').add({
+            candidate: event.candidate.toJSON(), from: currentUser.id
+          }).catch(console.error);
         };
 
-        peerConnection.ontrack = event => {
-          event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-          $('remoteVideo').play().catch(() => {});
-        };
+        peerConnection.ontrack = attachRemoteTrack;
 
         peerConnection.oniceconnectionstatechange = () => {
           console.log('ICE state:', peerConnection.iceConnectionState);
@@ -4617,21 +4646,12 @@
           toAvatar: chatAvatar
         };
 
-        for (const candidate of iceBuffer) {
+        for (const candidate of iceBuffer.splice(0)) {
           await db.collection('calls').doc(currentCall.id).collection('candidates').add({
             candidate: candidate.toJSON(),
             from: currentUser.id
           });
         }
-
-        peerConnection.onicecandidate = event => {
-          if (event.candidate && currentCall) {
-            db.collection('calls').doc(currentCall.id).collection('candidates').add({
-              candidate: event.candidate.toJSON(),
-              from: currentUser.id
-            }).catch(console.error);
-          }
-        };
 
         sendCallWebhook(currentCall.id, chatId, type);
         showCallUI(false);
@@ -4678,6 +4698,7 @@
       if (unsubscribeAnswer) unsubscribeAnswer();
       if (unsubscribeIce) unsubscribeIce();
 
+      let applyingAnswer = false;
       unsubscribeAnswer = callRef.onSnapshot(async snapshot => {
         const data = snapshot.data();
 
@@ -4688,11 +4709,19 @@
           return;
         }
 
-        if (data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-          await flushRemoteIceCandidates();
-          showCallUI(true);
-          startCallDuration();
+        if (data.answer && peerConnection && !peerConnection.currentRemoteDescription && !applyingAnswer) {
+          applyingAnswer = true;
+          try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            await flushRemoteIceCandidates();
+            showCallUI(true);
+            startCallDuration();
+            playRemoteAudio();
+          } catch (error) {
+            console.error('Risposta WebRTC non applicata:', error);
+          } finally {
+            applyingAnswer = false;
+          }
         }
 
       });
@@ -4823,6 +4852,7 @@
           audio: true,
           video: currentCall.type === 'video'
         });
+        window.ConversandoAndroid?.beginCallAudio?.();
 
         peerConnection = new RTCPeerConnection(await getCallIceServers());
         pendingIceCandidates = [];
@@ -4835,10 +4865,7 @@
 
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-        peerConnection.ontrack = event => {
-          event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-          $('remoteVideo').play().catch(() => {});
-        };
+        peerConnection.ontrack = attachRemoteTrack;
 
         peerConnection.onicecandidate = event => {
           if (event.candidate && currentCall) {
@@ -4884,6 +4911,7 @@
         $('incomingCallModal').style.display = 'none';
         showCallUI(true);
         startCallDuration();
+        playRemoteAudio();
       } catch (error) {
         console.error('❌ Errore accettazione chiamata:', error);
         alert('Errore chiamata: ' + error.message);
@@ -4915,6 +4943,7 @@
 
     async function endCall(updateFirestore = true) {
       stopRingtone();
+      window.ConversandoAndroid?.endCallAudio?.();
       if (currentCall) clearCallNotifications(currentCall.id);
 
       if (localStream) {
@@ -4923,7 +4952,9 @@
       }
 
       if (remoteStream) {
-        remoteStream.getTracks().forEach(track => track.stop());
+        $('remoteAudio').pause();
+        $('remoteAudio').srcObject = null;
+        $('remoteVideo').srcObject = null;
         remoteStream = null;
       }
 
@@ -4995,6 +5026,7 @@
         $('callWaitingScreen').style.display = 'none';
         $('callVideoContainer').style.display = 'flex';
         $('callContactName2').textContent = name;
+        playRemoteAudio();
       } else {
         $('callWaitingScreen').style.display = 'flex';
         $('callVideoContainer').style.display = 'none';
