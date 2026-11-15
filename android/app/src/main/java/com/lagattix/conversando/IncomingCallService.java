@@ -70,12 +70,12 @@ public class IncomingCallService extends Service {
         createChannel(context, true);
         NotificationManager manager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-            manager.notify(NOTIFICATION_ID, buildNotification(context, intent, "incoming_calls_fallback_v3"));
+            manager.notify(NOTIFICATION_ID, buildNotification(context, intent, "incoming_calls_fallback_v4"));
     }
 
     private static void createChannel(Context context, boolean fallback) {
         if (Build.VERSION.SDK_INT < 26) return;
-        String id = fallback ? "incoming_calls_fallback_v3" : CHANNEL;
+        String id = fallback ? "incoming_calls_fallback_v4" : CHANNEL;
         NotificationChannel channel = new NotificationChannel(id, "Chiamate in arrivo", NotificationManager.IMPORTANCE_HIGH);
         if (!fallback) channel.setSound(null, null);
         else channel.setSound(Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.incoming_call),
