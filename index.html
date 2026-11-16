@@ -5808,6 +5808,21 @@
     function pairStreakFor(userId) {
       return pairStreaks.get(makeRoomId(currentUser.id, userId));
     }
+    function pairRestoreState(streak) {
+      if (!streak) return { eligible: false, days: 0, left: 2 };
+      const today = streakDay(new Date());
+      const missed = previousStreakDay(today);
+      const prior = previousStreakDay(missed);
+      const left = Math.max(0, 2 - (Number(streak.restoresUsed) || 0));
+      const beforeReset = streak.lastCompletedDay === prior && streak.count > 0;
+      const afterReset = streak.lastCompletedDay === today &&
+        streak.lostStreak?.missedDay === missed && streak.lostStreak.previousCount > 0;
+      return {
+        eligible: left > 0 && (beforeReset || afterReset),
+        days: afterReset ? streak.lostStreak.previousCount : streak.count || 0,
+        left
+      };
+    }
     function robotBadge(streak, userId) {
       const days = activeStreakDays(streak, 'lastCompletedDay');
       if (days < 5) return null;
@@ -5848,6 +5863,7 @@
       }
       if ($('contactProfileModal').classList.contains('visible')) renderContactStreak();
     }
+    setInterval(renderPairStreaks, 60000);
     function renderContactStreak() {
       const section = $('contactStreakSection');
       section.replaceChildren();
@@ -5855,9 +5871,24 @@
       section.style.display = 'block';
       const streak = pairStreakFor(activeChat.id);
       const days = activeStreakDays(streak, 'lastCompletedDay');
+      const restore = pairRestoreState(streak);
       const line = document.createElement('div');
       line.textContent = `Streak reciproca: ${days} ${days === 1 ? 'giorno' : 'giorni'} consecutivi. Entrambi dovete scrivervi ogni giorno.`;
       section.append(line);
+      if (streak) {
+        const remaining = document.createElement('div');
+        remaining.style.marginTop = '8px';
+        remaining.textContent = `Ripristini gratuiti rimasti per voi due: ${restore.left}/2`;
+        section.append(remaining);
+      }
+      if (restore.eligible) {
+        const button = document.createElement('button');
+        button.className = 'profile-button profile-button-primary';
+        button.style.marginTop = '10px';
+        button.textContent = `↩️ Ripristina la streak di ${restore.days} ${restore.days === 1 ? 'giorno' : 'giorni'}`;
+        button.onclick = () => restorePairStreak(activeChat.id, button);
+        section.append(button);
+      }
       if (days >= 5) {
         const button = document.createElement('button');
         button.className = 'profile-button profile-button-secondary';
@@ -5865,6 +5896,24 @@
         button.textContent = `🤖 ${streak.robotName || 'Dai un nome al robottino'} · cambia outfit`;
         button.onclick = () => openStreakRobot(activeChat.id);
         section.append(button);
+      }
+    }
+    async function restorePairStreak(userId, button) {
+      if (!currentUser || !auth?.currentUser || !userId) return;
+      button.disabled = true;
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch(STREAK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ kind: 'restore', roomId: makeRoomId(currentUser.id, userId) })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Ripristino non riuscito');
+        button.textContent = 'Streak ripristinata';
+      } catch (error) {
+        alert('Impossibile ripristinare la streak: ' + error.message);
+        button.disabled = false;
       }
     }
     function openStreakRobot(userId) {
