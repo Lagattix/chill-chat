@@ -42,6 +42,9 @@ service cloud.firestore {
         request.resource.data.members.hasAll(request.resource.data.get('admins', [])) &&
         !(request.resource.data.createdBy in request.resource.data.get('admins', []));
     }
+    function validChannelId(channelId) {
+      return channelId in ['globale', 'sport', 'musica', 'gaming', 'cinema', 'tecnologia', 'viaggi'];
+    }
     function validCall() {
       return request.resource.data.get('from', null) is string &&
         request.resource.data.get('to', null) is string &&
@@ -125,6 +128,39 @@ service cloud.firestore {
           request.auth.uid in request.resource.data.members));
       allow delete: if activeUser() &&
         (resource.data.get('createdBy', null) == request.auth.uid || isAdmin());
+    }
+
+    match /channels/{channelId} {
+      allow read, write: if false;
+
+      match /members/{userId} {
+        allow get: if activeUser() && validChannelId(channelId) && isOwner(userId);
+        allow list: if false;
+        allow create: if activeUser() && validChannelId(channelId) && isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['joinedAt']) &&
+          request.resource.data.joinedAt == request.time;
+        allow update: if false;
+        allow delete: if activeUser() && validChannelId(channelId) && isOwner(userId);
+      }
+
+      match /messages/{messageId} {
+        function isChannelMember() {
+          return activeUser() && validChannelId(channelId) &&
+            exists(/databases/$(database)/documents/channels/$(channelId)/members/$(request.auth.uid));
+        }
+        function validChannelMessage() {
+          return request.resource.data.keys().hasOnly(['senderId', 'senderName', 'text', 'createdAt']) &&
+            request.resource.data.senderId == request.auth.uid &&
+            request.resource.data.senderName is string &&
+            request.resource.data.text is string &&
+            request.resource.data.text.size() > 0 &&
+            request.resource.data.text.size() <= 2000 &&
+            request.resource.data.createdAt == request.time;
+        }
+        allow read: if isChannelMember();
+        allow create: if isChannelMember() && validChannelMessage();
+        allow update, delete: if false;
+      }
     }
 
     match /calls/{callId} {

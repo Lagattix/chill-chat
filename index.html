@@ -1528,6 +1528,57 @@
     .bottom-nav-item .icon { font-size:20px; line-height:1; }
     .bottom-nav-item.active { background: linear-gradient(135deg, rgba(201,169,97,.24), rgba(201,169,97,.08)); color:var(--accent-primary); box-shadow: inset 0 0 0 1px rgba(201,169,97,.22); }
 
+    .app-container.visible.channels-mode { display: block; }
+    .app-container.channels-mode .sidebar, .app-container.channels-mode .chat-area,
+    .app-container.channels-mode .postcard-page, .app-container.channels-mode .mobile-overlay { display:none !important; }
+    .channels-page { display:none; height:calc(100vh - 49px - 74px); padding:18px; background:var(--bg-primary); }
+    body.install-banner-visible .channels-page { height:calc(100vh - 49px - 74px - var(--install-banner-height)); }
+    .app-container.channels-mode .channels-page { display:flex; }
+    .channels-shell { display:grid; grid-template-columns:minmax(220px,300px) minmax(0,1fr); width:min(1100px,100%); height:100%; margin:auto; overflow:hidden; border:1px solid var(--border-subtle); border-radius:20px; background:var(--bg-secondary); }
+    .channels-list-panel { padding:18px; overflow-y:auto; border-right:1px solid var(--border-subtle); }
+    .channels-list-panel h2 { margin:0 0 6px; }
+    .channels-list-panel p { color:var(--text-secondary); font-size:13px; margin:0 0 16px; }
+    .channel-card { display:flex; align-items:center; gap:10px; width:100%; padding:12px; margin:6px 0; border:1px solid var(--border-subtle); border-radius:14px; background:var(--bg-tertiary); color:var(--text-primary); text-align:left; cursor:pointer; }
+    .channel-card.active { border-color:var(--accent-primary); background:rgba(201,169,97,.12); }
+    .channel-card-icon { font-size:26px; }
+    .channel-card small { display:block; color:var(--text-secondary); margin-top:3px; }
+    .channel-chat-panel { display:flex; flex-direction:column; min-width:0; min-height:0; }
+    .channel-header { display:flex; align-items:center; gap:12px; padding:16px; border-bottom:1px solid var(--border-subtle); }
+    .channel-header h3 { margin:0; }
+    .channel-header p { margin:3px 0 0; color:var(--text-secondary); font-size:13px; }
+    .channel-action { margin-left:auto; padding:9px 13px; border:1px solid var(--accent-primary); border-radius:10px; background:transparent; color:var(--accent-primary); cursor:pointer; white-space:nowrap; }
+    .channel-messages { flex:1; min-height:0; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+    .channel-message { max-width:min(82%,650px); padding:10px 13px; border-radius:14px; background:var(--bg-tertiary); overflow-wrap:anywhere; }
+    .channel-message.mine { align-self:flex-end; background:rgba(201,169,97,.20); }
+    .channel-message-meta { color:var(--accent-primary); font-size:12px; font-weight:700; margin-bottom:4px; }
+    .channel-message-text { white-space:pre-wrap; }
+    .channel-empty { margin:auto; color:var(--text-secondary); text-align:center; padding:22px; }
+    .channel-compose { display:flex; gap:8px; padding:12px; border-top:1px solid var(--border-subtle); }
+    .channel-compose input { flex:1; min-width:0; padding:12px; border:1px solid var(--border-subtle); border-radius:12px; background:var(--bg-tertiary); color:var(--text-primary); }
+    .channel-compose button { padding:0 18px; border:0; border-radius:12px; background:var(--accent-primary); color:#111; font-weight:800; cursor:pointer; }
+    .channel-compose button:disabled { opacity:.5; cursor:default; }
+    .channel-consent { position:fixed; inset:0; z-index:2100; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.78); }
+    .channel-consent.visible { display:flex; }
+    .channel-consent-card { width:min(430px,100%); padding:26px; border:1px solid var(--border-subtle); border-radius:20px; background:var(--bg-secondary); text-align:center; }
+    .channel-consent-card h2 { margin:0 0 12px; }
+    .channel-consent-card p { color:var(--text-secondary); line-height:1.5; }
+    .channel-consent-actions { display:flex; gap:10px; justify-content:center; margin-top:22px; }
+    .channel-consent-actions button { padding:11px 19px; border-radius:10px; cursor:pointer; }
+    @media (max-width:768px) {
+      .channels-page { height:calc(100dvh - 72px); padding:0; }
+      body.install-banner-visible .channels-page { height:calc(100dvh - var(--install-banner-height) - 72px); }
+      .channels-shell { display:flex; flex-direction:column; border:0; border-radius:0; }
+      .channels-list-panel { flex:none; padding:18px 14px 8px; border-right:0; border-bottom:1px solid var(--border-subtle); overflow:visible; }
+      .channels-list-panel h2 { font-size:22px; }
+      .channels-list-panel p { margin-bottom:8px; }
+      #channelsList { display:flex; overflow-x:auto; gap:8px; padding-bottom:8px; }
+      .channel-card { flex:0 0 auto; width:auto; min-width:116px; margin:0; padding:9px; }
+      .channel-card small { display:none; }
+      .channel-chat-panel { flex:1; }
+      .channel-header { padding:12px; }
+      .channel-header p { font-size:12px; }
+    }
+
     .postcard-page { display:none; height: calc(100vh - 49px - 74px); width:100%; background:
       radial-gradient(circle at 18% 8%, rgba(0,224,255,.08), transparent 24%),
       radial-gradient(circle at 82% 92%, rgba(255,0,102,.10), transparent 28%),
@@ -1717,6 +1768,10 @@
         <span>Amici</span>
         <span id="friendRequestBadge" class="badge">0</span>
       </button>
+      <button class="top-nav-item" id="navChannels" onclick="showChannelsTab()">
+        <span class="top-nav-item-icon">📢</span>
+        <span>Canali</span>
+      </button>
       <button class="top-nav-item" id="navProfile" onclick="showProfile()">
         <span class="top-nav-item-icon">👤</span>
         <span>Profilo</span>
@@ -1849,6 +1904,27 @@
         </div>
       </div>
     </section>
+    <section class="channels-page" id="channelsPage" aria-label="Canali tematici">
+      <div class="channels-shell">
+        <aside class="channels-list-panel">
+          <h2>📢 Canali</h2>
+          <p>Unisciti ai temi che ti interessano e parla con gli altri iscritti.</p>
+          <div id="channelsList"></div>
+        </aside>
+        <div class="channel-chat-panel">
+          <div class="channel-header">
+            <div id="channelHeaderIcon" style="font-size:30px;">🌍</div>
+            <div><h3 id="channelHeaderName">Scegli un canale</h3><p id="channelHeaderDescription">Seleziona un tema per iniziare.</p></div>
+            <button id="channelActionButton" class="channel-action" style="display:none;" onclick="toggleChannelMembership()"></button>
+          </div>
+          <div id="channelMessages" class="channel-messages"><div class="channel-empty">Scegli un canale per vedere la conversazione.</div></div>
+          <div class="channel-compose">
+            <input id="channelMessageInput" maxlength="2000" placeholder="Scrivi nel canale..." autocomplete="off" onkeydown="if(event.key==='Enter' && !event.isComposing)sendChannelMessage()" disabled>
+            <button id="channelSendButton" onclick="sendChannelMessage()" disabled>Invia</button>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="postcard-page" id="postcardPage">
       <div class="postcard-shell">
         <div class="postcard-topbar">
@@ -1928,6 +2004,10 @@
         <span class="icon">👥</span>
         <span>Amici</span>
       </button>
+      <button class="bottom-nav-item" id="bottomChannelsBtn" onclick="showChannelsTab()">
+        <span class="icon">📢</span>
+        <span>Canali</span>
+      </button>
       <button class="bottom-nav-item" id="bottomPostcardBtn" onclick="showPostcardTab()">
         <span class="icon">💌</span>
         <span>Cartoline</span>
@@ -1939,6 +2019,19 @@
     </nav>
 
   </main>
+
+  <div id="globalChannelConsent" class="channel-consent" role="dialog" aria-modal="true" aria-labelledby="globalChannelConsentTitle">
+    <div class="channel-consent-card">
+      <div style="font-size:42px;">🌍</div>
+      <h2 id="globalChannelConsentTitle">Vuoi entrare nel canale Globale?</h2>
+      <p>Nel canale Globale puoi parlare di qualsiasi argomento con le persone che scelgono di iscriversi. Gli altri canali sono facoltativi e puoi unirti più tardi.</p>
+      <div id="globalChannelConsentStatus" role="status"></div>
+      <div class="channel-consent-actions">
+        <button type="button" class="profile-button profile-button-secondary" onclick="answerGlobalChannelConsent(false)">No, grazie</button>
+        <button type="button" class="profile-button profile-button-primary" onclick="answerGlobalChannelConsent(true)">Sì, entra</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Profile Modal -->
   <div class="profile-modal" id="profileModal" onclick="closeProfile(event)">
@@ -2288,6 +2381,18 @@
     const userAvatarsCache = {};
     const chatRegistry = {};
     const groupRegistry = {};
+    const CHANNELS = [
+      { id: 'globale', name: 'Globale', icon: '🌍', description: 'Parla di tutto con gli iscritti.' },
+      { id: 'sport', name: 'Sport', icon: '⚽', description: 'Partite, allenamenti e passioni sportive.' },
+      { id: 'musica', name: 'Musica', icon: '🎵', description: 'Artisti, canzoni e concerti.' },
+      { id: 'gaming', name: 'Gaming', icon: '🎮', description: 'Videogiochi e nuove sfide.' },
+      { id: 'cinema', name: 'Cinema', icon: '🎬', description: 'Film, serie e consigli.' },
+      { id: 'tecnologia', name: 'Tecnologia', icon: '💻', description: 'Novità e idee tecnologiche.' },
+      { id: 'viaggi', name: 'Viaggi', icon: '✈️', description: 'Luoghi, itinerari e avventure.' }
+    ];
+    let joinedChannelIds = new Set();
+    let selectedChannelId = null;
+    let unsubscribeChannelMessages = null;
 
     let localStream = null;
     let remoteStream = null;
@@ -2616,9 +2721,11 @@
     }
 
     function showHome() {
+      showChatTab();
       $('navHome')?.classList.add('active');
       $('navProfile')?.classList.remove('active');
       $('navFriends')?.classList.remove('active');
+      $('navChannels')?.classList.remove('active');
       $('profileModal')?.classList.remove('visible');
       $('friendsModal')?.classList.remove('visible');
       setBottomNavActive('bottomChatBtn');
@@ -2710,7 +2817,7 @@
           email,
           friendCode,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true });
       } catch (error) {
         console.error('❌ Errore registrazione:', error);
         const messages = {
@@ -2774,6 +2881,8 @@
           $('banScreen').classList.remove('visible');
           currentUser = null;
           activeChat = null;
+          resetChannelSession();
+          $('globalChannelConsent').classList.remove('visible');
           OFFICIAL_ADMIN_UID = null;
           $('loginScreen').style.display = 'flex';
           $('topNav').style.display = 'none';
@@ -2818,6 +2927,8 @@
             friendCode: userData.friendCode,
             isAdmin: user.email?.toLowerCase() === 'conversando@admin.com'
           };
+
+          resetChannelSession();
 
           handleOpenFromCallNotification();
 
@@ -2869,6 +2980,9 @@
           }
 
           handleOpenFromMessageNotification();
+          if (userData.globalChannelPrompted !== true) {
+            $('globalChannelConsent').classList.add('visible');
+          }
         } catch (error) {
           console.error('❌ Errore caricamento utente:', error);
         }
@@ -3675,6 +3789,7 @@
     function showProfile() {
       $('navHome')?.classList.remove('active');
       $('navFriends')?.classList.remove('active');
+      $('navChannels')?.classList.remove('active');
       $('navProfile')?.classList.add('active');
       setBottomNavActive('bottomProfileBtn');
 
@@ -4083,6 +4198,7 @@
     async function showFriends() {
       $('navHome')?.classList.remove('active');
       $('navProfile')?.classList.remove('active');
+      $('navChannels')?.classList.remove('active');
       $('navFriends')?.classList.add('active');
       setBottomNavActive('bottomFriendsBtn');
       $('friendsModal').classList.add('visible');
@@ -5510,9 +5626,192 @@
     let postcardUnsubscribe = null;
     let pendingPostcardImageBase64 = '';
 
+    function resetChannelSession() {
+      if (unsubscribeChannelMessages) unsubscribeChannelMessages();
+      unsubscribeChannelMessages = null;
+      joinedChannelIds = new Set();
+      selectedChannelId = null;
+      $('appContainer')?.classList.remove('channels-mode');
+    }
+
+    function channelRef(channelId) {
+      return db.collection('channels').doc(channelId);
+    }
+
+    async function answerGlobalChannelConsent(join) {
+      if (!currentUser) return;
+      const buttons = $('globalChannelConsent').querySelectorAll('button');
+      buttons.forEach(button => { button.disabled = true; });
+      $('globalChannelConsentStatus').textContent = 'Salvataggio...';
+      try {
+        if (join) {
+          await channelRef('globale').collection('members').doc(currentUser.id).set({
+            joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          joinedChannelIds.add('globale');
+        }
+        await db.collection('users').doc(currentUser.id).update({ globalChannelPrompted: true });
+        $('globalChannelConsent').classList.remove('visible');
+        if ($('appContainer').classList.contains('channels-mode')) {
+          renderChannelList();
+          if (selectedChannelId === 'globale') selectChannel('globale');
+        }
+      } catch (error) {
+        $('globalChannelConsentStatus').textContent = 'Non è stato possibile salvare la scelta: ' + error.message;
+      } finally {
+        buttons.forEach(button => { button.disabled = false; });
+      }
+    }
+
+    async function showChannelsTab() {
+      if (!currentUser) return;
+      const app = $('appContainer');
+      app.classList.remove('postcard-mode');
+      app.classList.add('channels-mode');
+      $('navHome')?.classList.remove('active');
+      $('navFriends')?.classList.remove('active');
+      $('navProfile')?.classList.remove('active');
+      $('navChannels')?.classList.add('active');
+      $('profileModal')?.classList.remove('visible');
+      $('friendsModal')?.classList.remove('visible');
+      $('sidebar')?.classList.remove('mobile-visible');
+      $('mobileOverlay')?.classList.remove('visible');
+      $('mobileMenuBtnFixed').style.display = 'none';
+      setBottomNavActive('bottomChannelsBtn');
+      $('channelsList').textContent = 'Caricamento canali...';
+      try {
+        const memberships = await Promise.all(CHANNELS.map(channel =>
+          channelRef(channel.id).collection('members').doc(currentUser.id).get()));
+        joinedChannelIds = new Set(CHANNELS.filter((channel, index) => memberships[index].exists).map(channel => channel.id));
+        renderChannelList();
+        selectChannel(selectedChannelId || 'globale');
+      } catch (error) {
+        $('channelsList').textContent = 'Impossibile caricare i canali: ' + error.message;
+      }
+    }
+
+    function renderChannelList() {
+      const list = $('channelsList');
+      list.replaceChildren();
+      CHANNELS.forEach(channel => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'channel-card' + (selectedChannelId === channel.id ? ' active' : '');
+        const icon = document.createElement('span');
+        icon.className = 'channel-card-icon';
+        icon.textContent = channel.icon;
+        const detail = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = channel.name;
+        const status = document.createElement('small');
+        status.textContent = joinedChannelIds.has(channel.id) ? 'Iscritto' : 'Iscriviti';
+        detail.append(title, status);
+        button.append(icon, detail);
+        button.onclick = () => selectChannel(channel.id);
+        list.append(button);
+      });
+    }
+
+    function selectChannel(channelId) {
+      const channel = CHANNELS.find(item => item.id === channelId);
+      if (!channel || !currentUser) return;
+      if (unsubscribeChannelMessages) unsubscribeChannelMessages();
+      unsubscribeChannelMessages = null;
+      selectedChannelId = channelId;
+      renderChannelList();
+      $('channelHeaderIcon').textContent = channel.icon;
+      $('channelHeaderName').textContent = channel.name;
+      $('channelHeaderDescription').textContent = channel.description;
+      const joined = joinedChannelIds.has(channelId);
+      $('channelActionButton').style.display = 'block';
+      $('channelActionButton').textContent = joined ? 'Esci dal canale' : 'Iscriviti';
+      $('channelMessageInput').disabled = !joined;
+      $('channelSendButton').disabled = !joined;
+      if (!joined) {
+        $('channelMessages').innerHTML = '<div class="channel-empty">Iscriviti per leggere e scrivere in questo canale.</div>';
+        return;
+      }
+      $('channelMessages').innerHTML = '<div class="channel-empty">Caricamento messaggi...</div>';
+      unsubscribeChannelMessages = channelRef(channelId).collection('messages')
+        .orderBy('createdAt', 'asc').limitToLast(100)
+        .onSnapshot(snapshot => renderChannelMessages(snapshot.docs), error => {
+          $('channelMessages').textContent = 'Impossibile caricare i messaggi: ' + error.message;
+        });
+    }
+
+    function renderChannelMessages(docs) {
+      const container = $('channelMessages');
+      const atBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+      container.replaceChildren();
+      if (!docs.length) {
+        container.innerHTML = '<div class="channel-empty">Ancora nessun messaggio. Inizia tu la conversazione!</div>';
+        return;
+      }
+      docs.forEach(doc => {
+        const data = doc.data();
+        const message = document.createElement('div');
+        message.className = 'channel-message' + (data.senderId === currentUser.id ? ' mine' : '');
+        const meta = document.createElement('div');
+        meta.className = 'channel-message-meta';
+        const time = data.createdAt?.toDate?.().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) || 'Ora';
+        meta.textContent = `${data.senderName || 'Utente'} · ${time}`;
+        const body = document.createElement('div');
+        body.className = 'channel-message-text';
+        body.textContent = data.text || '';
+        message.append(meta, body);
+        container.append(message);
+      });
+      if (atBottom) container.scrollTop = container.scrollHeight;
+    }
+
+    async function toggleChannelMembership() {
+      if (!selectedChannelId || !currentUser) return;
+      const channelId = selectedChannelId;
+      const button = $('channelActionButton');
+      button.disabled = true;
+      try {
+        const ref = channelRef(channelId).collection('members').doc(currentUser.id);
+        if (joinedChannelIds.has(channelId)) {
+          await ref.delete();
+          joinedChannelIds.delete(channelId);
+        } else {
+          await ref.set({ joinedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          joinedChannelIds.add(channelId);
+        }
+        selectChannel(channelId);
+      } catch (error) {
+        alert('Impossibile modificare l’iscrizione: ' + error.message);
+      } finally { button.disabled = false; }
+    }
+
+    async function sendChannelMessage() {
+      const channelId = selectedChannelId;
+      const input = $('channelMessageInput');
+      const text = input.value.trim();
+      if (!currentUser || !channelId || !joinedChannelIds.has(channelId) || !text) return;
+      const button = $('channelSendButton');
+      button.disabled = true;
+      try {
+        await channelRef(channelId).collection('messages').add({
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          text: text.slice(0, 2000),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        input.value = '';
+      } catch (error) {
+        alert('Messaggio non inviato: ' + error.message);
+      } finally { button.disabled = !joinedChannelIds.has(channelId); }
+    }
+
     function showChatTab() {
       const app = $('appContainer');
       app.classList.remove('postcard-mode');
+      app.classList.remove('channels-mode');
+      if (unsubscribeChannelMessages) unsubscribeChannelMessages();
+      unsubscribeChannelMessages = null;
+      $('navChannels')?.classList.remove('active');
+      $('navHome')?.classList.add('active');
       setBottomNavActive('bottomChatBtn');
       if (window.innerWidth <= 768) $('mobileMenuBtnFixed').style.display = 'flex';
     }
@@ -5525,7 +5824,11 @@
 
     function showPostcardTab() {
       const app = $('appContainer');
+      app.classList.remove('channels-mode');
       app.classList.add('postcard-mode');
+      if (unsubscribeChannelMessages) unsubscribeChannelMessages();
+      unsubscribeChannelMessages = null;
+      $('navChannels')?.classList.remove('active');
       setBottomNavActive('bottomPostcardBtn');
       $('sidebar')?.classList.remove('mobile-visible');
       $('mobileOverlay')?.classList.remove('visible');
