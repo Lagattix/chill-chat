@@ -2418,6 +2418,7 @@
     let unsubscribeCallStatus = null;
     let unsubscribeIce = null;
     let globalPollingInterval = null;
+    let lastContactsRefreshAt = 0;
 
     let db = null;
     let auth = null;
@@ -2495,7 +2496,10 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) playRemoteAudio();
+      if (!document.hidden) {
+        playRemoteAudio();
+        if (currentUser && Date.now() - lastContactsRefreshAt > 15000) loadChats();
+      }
     });
     document.addEventListener('pointerdown', playRemoteAudio);
 
@@ -3237,13 +3241,13 @@
           .get();
 
         if (!groupsSnapshot.empty) {
-          html += `<div class="section-label">Gruppi</div>`;
-
-          groupsSnapshot.forEach(doc => {
+          const groupEntries = [];
+          for (const doc of groupsSnapshot.docs) {
             const group = doc.data();
             const groupName = group.name || 'Gruppo';
             const icon = group.icon || '';
             const memberCount = group.members?.length || 0;
+            const last = await getLastMessage(`group_${doc.id}`);
 
             groupRegistry[doc.id] = {
               id: doc.id,
@@ -3251,23 +3255,26 @@
               icon
             };
 
-            html += `
-              <div class="contact-item" data-name="${safeName(groupName).toLowerCase()}" data-group-id="${safeName(doc.id)}">
+            groupEntries.push({ name: groupName, last, html: `
+              <div class="contact-item" data-name="${safeName(groupName).toLowerCase()}" data-group-id="${safeName(doc.id)}" data-incoming-at="${last.incomingAt}" data-outgoing-at="${last.outgoingAt}">
                 <div class="contact-avatar" style="${icon ? `background-image:url('${icon}')` : ''}">${icon ? '' : '👥'}</div>
                 <div class="contact-info">
                   <div class="contact-name">${safeName(groupName)}</div>
-                  <div class="contact-preview">${memberCount} membri</div>
+                  <div class="contact-preview">${safeName(last.preview === 'Inizia una conversazione' ? `${memberCount} membri` : last.preview)}</div>
                 </div>
-                <div class="contact-meta"><div class="contact-time"></div></div>
+                <div class="contact-meta"><div class="contact-time">${safeName(last.time)}</div></div>
               </div>
-            `;
-          });
+            ` });
+          }
+          groupEntries.sort(compareChatActivity);
+          html += `<div class="section-label">Gruppi</div>` + groupEntries.map(entry => entry.html).join('');
         }
 
         if (currentUser?.isAdmin) {
           const usersSnapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
           html += `<div class="section-label admin">👑 Tutti gli Utenti</div>`;
 
+          const userEntries = [];
           for (const doc of usersSnapshot.docs) {
             if (doc.id === currentUser.id) continue;
 
@@ -3277,8 +3284,10 @@
             const roomId = makeRoomId(currentUser.id, doc.id);
             const last = await getLastMessage(roomId);
 
-            html += contactHTML(doc.id, name, avatar, false, last.preview, last.time, user.email || '', user);
+            userEntries.push({ name, last, html: contactHTML(doc.id, name, avatar, false, last.preview, last.time, user.email || '', user, last) });
           }
+          userEntries.sort(compareChatActivity);
+          html += userEntries.map(entry => entry.html).join('');
         } else {
           const friendsSnapshot = await db.collection('friends')
             .where('userId', '==', currentUser.id)
@@ -3287,6 +3296,7 @@
           if (!friendsSnapshot.empty) {
             html += `<div class="section-label">Amici</div>`;
 
+            const friendEntries = [];
             for (const friendDoc of friendsSnapshot.docs) {
               const friendId = friendDoc.data().friendId;
               const userDoc = await db.collection('users').doc(friendId).get();
@@ -3299,25 +3309,62 @@
               const roomId = makeRoomId(currentUser.id, friendId);
               const last = await getLastMessage(roomId);
 
-              html += contactHTML(friendId, name, avatar, false, last.preview, last.time, '', friend);
+              friendEntries.push({ name, last, html: contactHTML(friendId, name, avatar, false, last.preview, last.time, '', friend, last) });
             }
+            friendEntries.sort(compareChatActivity);
+            html += friendEntries.map(entry => entry.html).join('');
           }
         }
 
         contactsList.innerHTML = html;
+        lastContactsRefreshAt = Date.now();
         bindChatClicks();
         bindGroupClicks();
         renderPairStreaks();
       } catch (error) {
         console.error('❌ Errore caricamento chat:', error);
         contactsList.innerHTML = html;
+        lastContactsRefreshAt = Date.now();
         bindChatClicks();
         bindGroupClicks();
         renderPairStreaks();
       }
     }
 
-    function contactHTML(id, name, avatar, isAI, preview = 'Inizia una conversazione', time = '', subtitle = '', userData = {}) {
+    function compareChatActivity(a, b) {
+      return Number(!!b.last.incomingAt) - Number(!!a.last.incomingAt) ||
+        (b.last.incomingAt || b.last.outgoingAt) - (a.last.incomingAt || a.last.outgoingAt) ||
+        a.name.localeCompare(b.name, 'it');
+    }
+
+    function sortContactSections() {
+      const list = $('contactsList');
+      list.querySelectorAll('.section-label').forEach(label => {
+        const items = [];
+        for (let next = label.nextElementSibling; next && !next.classList.contains('section-label'); next = next.nextElementSibling) {
+          if (next.classList.contains('contact-item')) items.push(next);
+        }
+        items.sort((a, b) => compareChatActivity(
+          { name: a.dataset.name || '', last: { incomingAt: Number(a.dataset.incomingAt), outgoingAt: Number(a.dataset.outgoingAt) } },
+          { name: b.dataset.name || '', last: { incomingAt: Number(b.dataset.incomingAt), outgoingAt: Number(b.dataset.outgoingAt) } }
+        ));
+        label.after(...items);
+      });
+    }
+
+    function markContactActivity(roomId, senderId, timestamp) {
+      if (!currentUser || !roomId || !timestamp) return;
+      const isGroup = roomId.startsWith('group_');
+      const item = [...$('contactsList').querySelectorAll('.contact-item')].find(element =>
+        isGroup ? element.dataset.groupId === roomId.slice(6) :
+          element.dataset.chatId && makeRoomId(currentUser.id, element.dataset.chatId) === roomId);
+      if (!item) return;
+      const key = senderId === currentUser.id ? 'outgoingAt' : 'incomingAt';
+      item.dataset[key] = String(Math.max(Number(item.dataset[key]) || 0, timestamp));
+      sortContactSections();
+    }
+
+    function contactHTML(id, name, avatar, isAI, preview = 'Inizia una conversazione', time = '', subtitle = '', userData = {}, activity = {}) {
       chatRegistry[id] = {
         id,
         name,
@@ -3330,7 +3377,7 @@
       const avatarStyle = avatar && String(avatar).startsWith('data:image') ? `background-image:url('${avatar}')` : '';
       const avatarText = avatarStyle ? '' : safeName(avatar);
       return `
-        <div class="contact-item" data-name="${safeName(name).toLowerCase()}" data-chat-id="${safeName(id)}">
+        <div class="contact-item" data-name="${safeName(name).toLowerCase()}" data-chat-id="${safeName(id)}" data-incoming-at="${activity.incomingAt || 0}" data-outgoing-at="${activity.outgoingAt || 0}">
           <div class="contact-avatar online ${isAI ? 'ai' : ''}" style="${avatarStyle}">${avatarText}</div>
           <div class="contact-info">
             <div class="contact-name">${safeName(name)}</div>
@@ -3367,12 +3414,16 @@
         const snap = await db.collection('messages')
           .where('roomId', '==', roomId)
           .orderBy('timestamp', 'desc')
-          .limit(1)
+          .limit(100)
           .get();
 
-        if (snap.empty) return { preview: 'Inizia una conversazione', time: '' };
+        if (snap.empty) return { preview: 'Inizia una conversazione', time: '', incomingAt: 0, outgoingAt: 0 };
 
         const msg = snap.docs[0].data();
+        const incoming = snap.docs.find(doc => doc.data().senderId !== currentUser.id);
+        const outgoing = snap.docs.find(doc => doc.data().senderId === currentUser.id);
+        const incomingAt = incoming?.data().timestamp?.toMillis?.() || 0;
+        const outgoingAt = outgoing?.data().timestamp?.toMillis?.() || 0;
         const preview = (msg.text || '').substring(0, 42) + ((msg.text || '').length > 42 ? '...' : '');
         let time = '';
 
@@ -3384,9 +3435,9 @@
             : date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
         }
 
-        return { preview, time };
+        return { preview, time, incomingAt, outgoingAt };
       } catch {
-        return { preview: 'Inizia una conversazione', time: '' };
+        return { preview: 'Inizia una conversazione', time: '', incomingAt: 0, outgoingAt: 0 };
       }
     }
 
@@ -3643,6 +3694,7 @@
         });
 
         input.value = '';
+        markContactActivity(roomId, currentUser.id, Date.now());
 
         if (!activeChat.isAI && !activeChat.isGroup) recordStreakInteraction('pair', sentMessage.id);
 
@@ -3768,6 +3820,7 @@
 
       const latest = newMessages[newMessages.length - 1];
       lastSeenMessages[roomId] = latest.timestamp || firebase.firestore.Timestamp.now();
+      markContactActivity(roomId, latest.senderId, latest.timestamp?.toMillis?.() || Date.now());
 
       if (notificationsEnabled) {
         const sender = latest.senderName || 'Nuovo messaggio';
@@ -3782,7 +3835,7 @@
       lastSeenMessages = {};
 
       globalPollingInterval = setInterval(async () => {
-        if (!currentUser || document.hidden || window.ConversandoAndroid) return;
+        if (!currentUser || document.hidden) return;
 
         try {
           const rooms = new Set();
@@ -3828,7 +3881,10 @@
 
             const lastSeen = lastSeenMessages[roomId];
             if (!lastSeen || (latest.timestamp && latest.timestamp.seconds > lastSeen.seconds)) {
-              checkForNewMessages(roomId, [latest]);
+              if (window.ConversandoAndroid) {
+                markContactActivity(roomId, latest.senderId, latest.timestamp?.toMillis?.() || Date.now());
+                lastSeenMessages[roomId] = latest.timestamp || firebase.firestore.Timestamp.now();
+              } else checkForNewMessages(roomId, [latest]);
               updatePreviewFromMessage(latest);
             }
           }
