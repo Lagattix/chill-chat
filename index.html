@@ -1619,6 +1619,15 @@
     .postcard-time { color:rgba(255,255,255,.72); font-size:12px; margin-top:1px; }
     .postcard-top-meta-spacer { flex:1; }
     .postcard-delete-btn { border:none; width:38px; height:38px; border-radius:50%; background:rgba(12,12,16,.46); color:#fff; cursor:pointer; border:1px solid rgba(255,255,255,.12); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); font-size:15px; }
+    .postcard-follow-btn { border:1px solid rgba(201,169,97,.7); border-radius:999px; padding:8px 12px; background:rgba(10,10,14,.72); color:#f3ddaa; font-size:12px; font-weight:900; cursor:pointer; white-space:nowrap; }
+    .postcard-follow-btn.following { background:rgba(201,169,97,.24); color:#fff; }
+    .postcard-follow-btn:disabled { opacity:.55; cursor:default; }
+    .postcard-feed-filters { display:flex; gap:7px; margin-top:9px; }
+    .postcard-feed-filter { border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 11px; background:transparent; color:rgba(255,255,255,.65); font-size:12px; font-weight:800; cursor:pointer; }
+    .postcard-feed-filter.active { border-color:var(--accent-primary); background:rgba(201,169,97,.18); color:#fff; }
+    .postcard-shell { display:flex; flex-direction:column; }
+    .postcard-topbar { flex:none; }
+    .postcard-feed { flex:1; min-height:0; height:auto; }
 
     .postcard-action-rail { position:absolute; right:14px; bottom:110px; z-index:4; display:flex; flex-direction:column; align-items:center; gap:14px; }
     .postcard-creator-rail-btn { border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:7px; color:#fff; }
@@ -1709,6 +1718,8 @@
       .postcard-cartoon-outline{inset:8px; border-radius:22px;}
       .postcard-top-meta{top:14px; left:14px; right:70px;}
       .postcard-author-button{padding:7px 10px 7px 7px;}
+      .postcard-author-button{max-width:46%;}
+      .postcard-follow-btn{padding:7px 9px;font-size:11px;}
       .postcard-avatar{width:38px;height:38px;}
       .postcard-action-rail{right:10px; bottom:108px; gap:12px;}
       .postcard-creator-rail-avatar{width:54px;height:54px;}
@@ -1931,6 +1942,10 @@
           <div>
             <h2>💌 Cartoline</h2>
             <div class="postcard-subtitle">feed verticale stile TikTok • avatar creator, like, commenti e profilo</div>
+            <div class="postcard-feed-filters">
+              <button id="postcardFilterAll" class="postcard-feed-filter active" onclick="setPostcardFeedFilter('all')">Tutti</button>
+              <button id="postcardFilterFollowing" class="postcard-feed-filter" onclick="setPostcardFeedFilter('following')">Seguiti</button>
+            </div>
           </div>
           <button class="postcard-upload-btn" onclick="openPostcardComposer()">＋ Crea</button>
         </div>
@@ -2881,6 +2896,16 @@
           $('banScreen').classList.remove('visible');
           currentUser = null;
           activeChat = null;
+          if (postcardUnsubscribe) { postcardUnsubscribe(); postcardUnsubscribe = null; }
+          if (postcardFollowingUnsubscribe) { postcardFollowingUnsubscribe(); postcardFollowingUnsubscribe = null; }
+          postcardsCache = [];
+          followedPostcardAuthors = new Set();
+          postcardFeedFilter = 'all';
+          postcardFollowBusy.clear();
+          activePostcardCreatorId = null;
+          $('postcardCreatorModal')?.classList.remove('visible');
+          $('postcardFilterAll')?.classList.add('active');
+          $('postcardFilterFollowing')?.classList.remove('active');
           resetChannelSession();
           $('globalChannelConsent').classList.remove('visible');
           OFFICIAL_ADMIN_UID = null;
@@ -5622,6 +5647,11 @@
     // ===== Cartoline social senza Storage =====
     let postcardsCache = [];
     let postcardUnsubscribe = null;
+    let postcardFollowingUnsubscribe = null;
+    let followedPostcardAuthors = new Set();
+    let postcardFeedFilter = 'all';
+    const postcardFollowBusy = new Set();
+    let activePostcardCreatorId = null;
     let pendingPostcardImageBase64 = '';
 
     function resetChannelSession() {
@@ -5871,6 +5901,13 @@
     function listenPostcards() {
       if (!db || postcardUnsubscribe) { renderPostcards(); return; }
 
+      postcardFollowingUnsubscribe = db.collection('followers')
+        .where('fromUserId', '==', currentUser.id)
+        .onSnapshot(snapshot => {
+          followedPostcardAuthors = new Set(snapshot.docs.map(doc => doc.data().toUserId));
+          renderPostcards();
+        }, error => console.warn('Autori seguiti non caricati:', error.message));
+
       postcardUnsubscribe = db.collection('postcards')
         .orderBy('createdAt', 'desc')
         .limit(60)
@@ -5888,20 +5925,34 @@
     function renderPostcards() {
       const feed = $('postcardFeed');
       if (!feed) return;
+      const scrollTop = feed.scrollTop;
+      const visiblePosts = postcardFeedFilter === 'following'
+        ? postcardsCache.filter(post => followedPostcardAuthors.has(post.authorId))
+        : postcardsCache;
 
-      if (!postcardsCache.length) {
+      if (!visiblePosts.length) {
+        const following = postcardFeedFilter === 'following';
         feed.innerHTML = `
           <div class="postcard-empty">
             <div class="postcard-empty-card">
               <div class="big-icon">💌</div>
-              <h3>Prime cartoline</h3>
-              <p>Crea una cartolina con foto, titolo e canale. Il feed è pubblico per tutti gli utenti loggati e l'immagine viene salvata direttamente in Firestore.</p>
+              <h3>${following ? 'Nessuna cartolina dei creator seguiti' : 'Prime cartoline'}</h3>
+              <p>${following ? 'Segui un creator dalle sue cartoline per ritrovarle qui.' : 'Crea una cartolina con foto, titolo e canale. Il feed è pubblico per tutti gli utenti loggati.'}</p>
             </div>
           </div>`;
         return;
       }
 
-      feed.innerHTML = postcardsCache.map(postcardHTML).join('');
+      feed.innerHTML = visiblePosts.map(postcardHTML).join('');
+      feed.scrollTop = scrollTop;
+    }
+
+    function setPostcardFeedFilter(filter) {
+      postcardFeedFilter = filter === 'following' ? 'following' : 'all';
+      $('postcardFilterAll').classList.toggle('active', postcardFeedFilter === 'all');
+      $('postcardFilterFollowing').classList.toggle('active', postcardFeedFilter === 'following');
+      $('postcardFeed').scrollTop = 0;
+      renderPostcards();
     }
 
     function renderPostcardError(message) {
@@ -5924,6 +5975,8 @@
       const channel = formatChannelLabel(card.channel || 'community');
       const title = safeName(card.title || 'Cartolina');
       const authorName = safeName(card.authorName || 'Utente');
+      const isOwnPostcard = currentUser?.id === card.authorId;
+      const followingAuthor = followedPostcardAuthors.has(card.authorId);
 
       return `
         <article class="postcard-card" data-postcard-id="${card.id}">
@@ -5942,6 +5995,7 @@
                   <div class="postcard-time">${safeName(when)}</div>
                 </div>
               </button>
+              ${!isOwnPostcard ? `<button class="postcard-follow-btn ${followingAuthor ? 'following' : ''}" onclick="togglePostcardFollow('${card.authorId}')">${followingAuthor ? '✓ Seguito' : '+ Segui'}</button>` : ''}
               <div class="postcard-top-meta-spacer"></div>
               ${canDelete ? `<button class="postcard-delete-btn" onclick="deletePostcard('${card.id}')" title="Elimina">🗑️</button>` : ''}
             </div>
@@ -5980,6 +6034,31 @@
         </article>`;
     }
 
+    async function togglePostcardFollow(authorId) {
+      if (!currentUser || !authorId || authorId === currentUser.id || postcardFollowBusy.has(authorId)) return;
+      postcardFollowBusy.add(authorId);
+      try {
+        const ref = db.collection('followers').doc(`${currentUser.id}_${authorId}`);
+        if (followedPostcardAuthors.has(authorId)) {
+          await ref.delete();
+          followedPostcardAuthors.delete(authorId);
+        } else {
+          await ref.set({
+            fromUserId: currentUser.id,
+            toUserId: authorId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          followedPostcardAuthors.add(authorId);
+        }
+        renderPostcards();
+        if (activePostcardCreatorId === authorId) await openPostcardCreator(authorId);
+      } catch (error) {
+        alert('Iscrizione non aggiornata: ' + error.message);
+      } finally {
+        postcardFollowBusy.delete(authorId);
+      }
+    }
+
     function formatCompactCount(value) {
       const num = Number(value || 0);
       if (num >= 1000000) return (num / 1000000).toFixed(num >= 10000000 ? 0 : 1).replace(/\.0$/, '') + 'M';
@@ -6015,6 +6094,7 @@
 
     async function openPostcardCreator(authorId) {
       if (!authorId) return;
+      activePostcardCreatorId = authorId;
 
       const basePosts = postcardsCache.filter(post => post.authorId === authorId);
       let posts = sortPostcardsNewestFirst(basePosts);
@@ -6038,6 +6118,16 @@
       const totalLikes = posts.reduce((sum, post) => sum + Number(post.likeCount || Object.keys(post.likedBy || {}).length || 0), 0);
       const totalComments = posts.reduce((sum, post) => sum + Number(post.commentCount || 0), 0);
       const uniqueChannels = new Set(posts.map(post => formatChannelLabel(post.channel || 'community'))).size || 1;
+      let followerCount = 0;
+      try {
+        const followers = await db.collection('followers').where('toUserId', '==', authorId).get();
+        followerCount = followers.size;
+      } catch (error) {
+        console.warn('Follower creator non caricati:', error.message);
+      }
+      if (activePostcardCreatorId !== authorId) return;
+      const isOwnProfile = currentUser?.id === authorId;
+      const followingAuthor = followedPostcardAuthors.has(authorId);
 
       $('postcardCreatorContent').innerHTML = `
         <div class="postcard-creator-hero">
@@ -6050,7 +6140,9 @@
               <div class="postcard-creator-stat"><strong>${formatCompactCount(totalLikes)}</strong><span>Like</span></div>
               <div class="postcard-creator-stat"><strong>${formatCompactCount(totalComments)}</strong><span>Commenti</span></div>
               <div class="postcard-creator-stat"><strong>${formatCompactCount(uniqueChannels)}</strong><span>Canali</span></div>
+              <div class="postcard-creator-stat"><strong>${formatCompactCount(followerCount)}</strong><span>Follower</span></div>
             </div>
+            ${!isOwnProfile ? `<button id="postcardCreatorFollowButton" class="postcard-follow-btn ${followingAuthor ? 'following' : ''}" onclick="togglePostcardFollow('${authorId}')">${followingAuthor ? '✓ Seguito · Non seguire' : '+ Segui creator'}</button>` : ''}
           </div>
         </div>
         <div class="postcard-creator-bio">Tocca una cartolina per aprirla direttamente nel feed. L'avatar sopra i like porta sempre a questo profilo creator.</div>`;
@@ -6065,13 +6157,18 @@
     function closePostcardCreator(event) {
       if (event && event.target !== $('postcardCreatorModal')) return;
       $('postcardCreatorModal')?.classList.remove('visible');
+      activePostcardCreatorId = null;
     }
 
     function scrollToPostcard(postcardId) {
       closePostcardCreator();
       showPostcardTab();
       setTimeout(() => {
-        const target = document.querySelector(`[data-postcard-id="${postcardId}"]`);
+        let target = document.querySelector(`[data-postcard-id="${postcardId}"]`);
+        if (!target && postcardFeedFilter === 'following') {
+          setPostcardFeedFilter('all');
+          target = document.querySelector(`[data-postcard-id="${postcardId}"]`);
+        }
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 80);
     }
