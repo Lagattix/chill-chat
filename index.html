@@ -1737,6 +1737,22 @@
       .postcard-creator-avatar{width:64px;height:64px; font-size:22px;}
       .postcard-creator-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;}
     }
+    .streak-robot { display:inline-flex; align-items:center; justify-content:center; margin-left:6px; color:#facc15; vertical-align:middle; cursor:pointer; font-size:17px; }
+    .streak-robot svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .streak-robot[data-tier="10"] { color:#fb923c; }
+    .streak-robot[data-tier="30"] { color:#ef4444; }
+    .streak-robot[data-tier="50"] { color:#22c55e; }
+    .streak-robot[data-tier="100"] { color:#a855f7; }
+    .streak-robot[data-tier="150"] { color:#3b82f6; }
+    .streak-robot[data-tier="200"] { color:#fff; }
+    body.light-mode .streak-robot[data-tier="200"], body.light-mode .channel-streak[data-tier="200"] { color:#111; }
+    .channel-streak { display:inline-block; margin:0 4px; color:#facc15; font-weight:800; }
+    .channel-streak[data-tier="10"] { color:#fb923c; }
+    .channel-streak[data-tier="30"] { color:#ef4444; }
+    .channel-streak[data-tier="50"] { color:#22c55e; }
+    .channel-streak[data-tier="100"] { color:#a855f7; }
+    .channel-streak[data-tier="150"] { color:#3b82f6; }
+    .channel-streak[data-tier="200"] { color:#fff; }
   </style>
 </head>
 
@@ -1887,7 +1903,7 @@
         <div class="chat-user-info" id="chatUserInfo">
           <div class="chat-avatar" id="chatAvatar" onclick="openContactProfile()" title="Vedi profilo">C</div>
           <div class="chat-user-details">
-            <h2 id="chatUserName">Conversina</h2>
+            <h2 id="chatUserName">Conversina</h2><span id="chatStreakBadge"></span>
             <div class="chat-user-status">
               <span class="status-dot"></span>
               <span id="chatUserStatus">Online</span>
@@ -2188,11 +2204,29 @@
         </div>
       </div>
 
+      <div id="contactStreakSection" style="margin:14px 0;color:var(--text-secondary);"></div>
+
       <div class="profile-actions">
         <button class="profile-button profile-button-secondary" onclick="clearChatHistory()" style="color:#ff6b6b;">🗑️ Svuota Chat</button>
         <button class="profile-button profile-button-primary" onclick="openCreateGroup()">👥 Crea Gruppo con...</button>
         <button class="profile-button profile-button-secondary" onclick="closeContactProfile()">Chiudi</button>
       </div>
+    </div>
+  </div>
+
+  <div class="profile-modal" id="streakRobotModal" onclick="if(event.target===this)this.classList.remove('visible')">
+    <div class="profile-card" onclick="event.stopPropagation()" style="max-width:420px;">
+      <h2 style="margin:0 0 10px;">🤖 Il vostro robottino</h2>
+      <p id="streakRobotInfo"></p>
+      <label class="label" for="streakRobotName">Nome</label>
+      <input id="streakRobotName" class="modal-input" maxlength="24" placeholder="Dai un nome al robottino">
+      <label class="label" for="streakRobotOutfit">Outfit</label>
+      <select id="streakRobotOutfit" class="modal-input">
+        <option value="classico">Classico</option><option value="cappello">Cappello 🎩</option>
+        <option value="corona">Corona 👑</option><option value="cuffie">Cuffie 🎧</option>
+        <option value="cravatta">Cravatta 👔</option>
+      </select>
+      <div class="profile-actions"><button class="profile-button profile-button-primary" onclick="saveStreakRobot()">Salva</button><button class="profile-button profile-button-secondary" onclick="$('streakRobotModal').classList.remove('visible')">Chiudi</button></div>
     </div>
   </div>
 
@@ -2323,6 +2357,7 @@
     const ADMIN_ID = 'admin_conversando_official';
     let OFFICIAL_ADMIN_UID = null;
     const BACKEND_URL = 'https://chill-chat-backend-yskn.vercel.app/api/chat';
+    const STREAK_URL = 'https://chill-chat-backend-yskn.vercel.app/api/streaks';
     const PASSWORD_RESET_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-request';
     const PASSWORD_RESET_ADMIN_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-admin';
     const PASSWORD_RESET_CONFIRM_URL = 'https://chill-chat-backend-yskn.vercel.app/api/password-reset-confirm';
@@ -2408,6 +2443,12 @@
     let joinedChannelIds = new Set();
     let selectedChannelId = null;
     let unsubscribeChannelMessages = null;
+    let unsubscribePairStreaks = null;
+    let unsubscribeChannelStreaks = null;
+    const pairStreaks = new Map();
+    const channelStreaks = new Map();
+    let channelMessageDocs = [];
+    let editingStreakUserId = null;
 
     let localStream = null;
     let remoteStream = null;
@@ -2896,6 +2937,8 @@
           $('banScreen').classList.remove('visible');
           currentUser = null;
           activeChat = null;
+          if (unsubscribePairStreaks) { unsubscribePairStreaks(); unsubscribePairStreaks = null; }
+          pairStreaks.clear();
           if (postcardUnsubscribe) { postcardUnsubscribe(); postcardUnsubscribe = null; }
           if (postcardFollowingUnsubscribe) { postcardFollowingUnsubscribe(); postcardFollowingUnsubscribe = null; }
           postcardsCache = [];
@@ -2974,6 +3017,7 @@
           $('currentUserName').textContent = currentUser.isAdmin ? '👑 ' + currentUser.name : currentUser.name;
 
           await loadChats();
+          listenPairStreaks();
           await loadFriendRequests();
           startGlobalMessagePolling();
           listenForIncomingCalls();
@@ -3263,11 +3307,13 @@
         contactsList.innerHTML = html;
         bindChatClicks();
         bindGroupClicks();
+        renderPairStreaks();
       } catch (error) {
         console.error('❌ Errore caricamento chat:', error);
         contactsList.innerHTML = html;
         bindChatClicks();
         bindGroupClicks();
+        renderPairStreaks();
       }
     }
 
@@ -3371,6 +3417,7 @@
       setAvatar($('chatAvatar'), isAI ? '🤖' : avatar, userInitial(name));
       $('chatAvatar').classList.toggle('ai', isAI);
       $('chatUserName').textContent = name;
+      renderPairStreaks();
       $('chatUserStatus').textContent = 'Online';
 
       $('callButtons').style.display = (!isAI && !activeChat.isGroup) ? 'flex' : 'none';
@@ -3398,6 +3445,7 @@
       setAvatar($('chatAvatar'), groupIcon || '👥', '👥');
       $('chatAvatar').classList.remove('ai');
       $('chatUserName').textContent = groupName;
+      $('chatStreakBadge').replaceChildren();
       $('chatUserStatus').textContent = 'Gruppo';
       $('callButtons').style.display = 'none';
 
@@ -3595,6 +3643,8 @@
         });
 
         input.value = '';
+
+        if (!activeChat.isAI && !activeChat.isGroup) recordStreakInteraction('pair', sentMessage.id);
 
         if (!activeChat.isAI) {
           sendMessagePushNotification(activeChat, text, roomId);
@@ -4341,6 +4391,7 @@
       }
 
       $('contactProfileModal').classList.add('visible');
+      renderContactStreak();
     }
 
     async function openGroupProfile() {
@@ -5654,9 +5705,130 @@
     let activePostcardCreatorId = null;
     let pendingPostcardImageBase64 = '';
 
+    const streakDateFormat = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    function streakDay(date) {
+      const parts = Object.fromEntries(streakDateFormat.formatToParts(date).map(part => [part.type, part.value]));
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    }
+    function previousStreakDay(day) {
+      return new Date(Date.parse(`${day}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+    }
+    function activeStreakDays(streak, dayField) {
+      if (!streak?.[dayField]) return 0;
+      const today = streakDay(new Date());
+      return streak[dayField] === today || streak[dayField] === previousStreakDay(today)
+        ? Number(streak.count) || 0 : 0;
+    }
+    function streakTier(days) {
+      return days >= 200 ? 200 : days >= 150 ? 150 : days >= 100 ? 100 :
+        days >= 50 ? 50 : days >= 30 ? 30 : days >= 10 ? 10 : 5;
+    }
+    function channelRoman(days) {
+      return days >= 200 ? 'VII' : days >= 150 ? 'VI' : days >= 100 ? 'V' :
+        days >= 50 ? 'IV' : days >= 10 ? 'III' : days >= 5 ? 'II' : days >= 3 ? 'I' : '';
+    }
+    function pairStreakFor(userId) {
+      return pairStreaks.get(makeRoomId(currentUser.id, userId));
+    }
+    function robotBadge(streak, userId) {
+      const days = activeStreakDays(streak, 'lastCompletedDay');
+      if (days < 5) return null;
+      const badge = document.createElement('span');
+      badge.className = 'streak-robot';
+      badge.dataset.tier = String(streakTier(days));
+      badge.title = `${streak.robotName || 'Robottino'} · ${days} giorni consecutivi · ${streak.outfit || 'classico'}`;
+      badge.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="4"/><path d="M12 3v3M9 3h6M3 12H1m22 0h-2"/><circle cx="8.5" cy="12" r="1" fill="currentColor"/><circle cx="15.5" cy="12" r="1" fill="currentColor"/><path d="M9 17h6"/></svg>';
+      const outfit = { cappello: '🎩', corona: '👑', cuffie: '🎧', cravatta: '👔' }[streak.outfit];
+      if (outfit) badge.append(document.createTextNode(outfit));
+      badge.onclick = event => { event.stopPropagation(); openStreakRobot(userId); };
+      return badge;
+    }
+    function listenPairStreaks() {
+      if (unsubscribePairStreaks) unsubscribePairStreaks();
+      unsubscribePairStreaks = db.collection('pairStreaks')
+        .where('participants', 'array-contains', currentUser.id)
+        .onSnapshot(snapshot => {
+          pairStreaks.clear();
+          snapshot.forEach(doc => pairStreaks.set(doc.id, doc.data()));
+          renderPairStreaks();
+        }, error => console.warn('Streak chat:', error));
+    }
+    function renderPairStreaks() {
+      if (!currentUser) return;
+      document.querySelectorAll('.contact-item[data-chat-id]').forEach(item => {
+        const name = item.querySelector('.contact-name');
+        name?.querySelector('.streak-robot')?.remove();
+        if (item.dataset.chatId === CONVERSINA_ID) return;
+        const badge = robotBadge(pairStreakFor(item.dataset.chatId), item.dataset.chatId);
+        if (badge) name?.append(badge);
+      });
+      const header = $('chatStreakBadge');
+      header.replaceChildren();
+      if (activeChat && !activeChat.isGroup && !activeChat.isAI) {
+        const badge = robotBadge(pairStreakFor(activeChat.id), activeChat.id);
+        if (badge) header.append(badge);
+      }
+      if ($('contactProfileModal').classList.contains('visible')) renderContactStreak();
+    }
+    function renderContactStreak() {
+      const section = $('contactStreakSection');
+      section.replaceChildren();
+      if (!activeChat || activeChat.isAI || activeChat.isGroup) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      const streak = pairStreakFor(activeChat.id);
+      const days = activeStreakDays(streak, 'lastCompletedDay');
+      const line = document.createElement('div');
+      line.textContent = `Streak reciproca: ${days} ${days === 1 ? 'giorno' : 'giorni'} consecutivi. Entrambi dovete scrivervi ogni giorno.`;
+      section.append(line);
+      if (days >= 5) {
+        const button = document.createElement('button');
+        button.className = 'profile-button profile-button-secondary';
+        button.style.marginTop = '10px';
+        button.textContent = `🤖 ${streak.robotName || 'Dai un nome al robottino'} · cambia outfit`;
+        button.onclick = () => openStreakRobot(activeChat.id);
+        section.append(button);
+      }
+    }
+    function openStreakRobot(userId) {
+      if (!currentUser || !userId || userId === CONVERSINA_ID) return;
+      const streak = pairStreakFor(userId);
+      const days = activeStreakDays(streak, 'lastCompletedDay');
+      if (days < 5) return;
+      editingStreakUserId = userId;
+      $('streakRobotInfo').textContent = `${days} giorni insieme. Il nome e l’outfit sono condivisi da entrambi.`;
+      $('streakRobotName').value = streak.robotName || '';
+      $('streakRobotOutfit').value = streak.outfit || 'classico';
+      $('streakRobotModal').classList.add('visible');
+    }
+    async function saveStreakRobot() {
+      if (!editingStreakUserId || !currentUser) return;
+      const name = $('streakRobotName').value.trim().slice(0, 24);
+      const outfit = $('streakRobotOutfit').value;
+      try {
+        await db.collection('pairStreaks').doc(makeRoomId(currentUser.id, editingStreakUserId)).update({ robotName: name, outfit });
+        $('streakRobotModal').classList.remove('visible');
+      } catch (error) { alert('Impossibile salvare il robottino: ' + error.message); }
+    }
+    async function recordStreakInteraction(kind, messageId, channelId) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch(STREAK_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ kind, messageId, channelId })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      } catch (error) { console.warn('Streak non aggiornata:', error); }
+    }
+
     function resetChannelSession() {
       if (unsubscribeChannelMessages) unsubscribeChannelMessages();
       unsubscribeChannelMessages = null;
+      if (unsubscribeChannelStreaks) unsubscribeChannelStreaks();
+      unsubscribeChannelStreaks = null;
+      channelStreaks.clear();
+      channelMessageDocs = [];
       joinedChannelIds = new Set();
       selectedChannelId = null;
       $('appContainer')?.classList.remove('channels-mode');
@@ -5746,6 +5918,10 @@
       if (!channel || !currentUser) return;
       if (unsubscribeChannelMessages) unsubscribeChannelMessages();
       unsubscribeChannelMessages = null;
+      if (unsubscribeChannelStreaks) unsubscribeChannelStreaks();
+      unsubscribeChannelStreaks = null;
+      channelStreaks.clear();
+      channelMessageDocs = [];
       selectedChannelId = channelId;
       renderChannelList();
       $('channelHeaderIcon').textContent = channel.icon;
@@ -5761,9 +5937,14 @@
         return;
       }
       $('channelMessages').innerHTML = '<div class="channel-empty">Caricamento messaggi...</div>';
+      unsubscribeChannelStreaks = channelRef(channelId).collection('streaks').onSnapshot(snapshot => {
+        channelStreaks.clear();
+        snapshot.forEach(doc => channelStreaks.set(doc.id, doc.data()));
+        renderChannelMessages(channelMessageDocs);
+      }, error => console.warn('Streak canale:', error));
       unsubscribeChannelMessages = channelRef(channelId).collection('messages')
         .orderBy('createdAt', 'asc').limitToLast(100)
-        .onSnapshot(snapshot => renderChannelMessages(snapshot.docs), error => {
+        .onSnapshot(snapshot => { channelMessageDocs = snapshot.docs; renderChannelMessages(channelMessageDocs); }, error => {
           $('channelMessages').textContent = 'Impossibile caricare i messaggi: ' + error.message;
         });
     }
@@ -5783,7 +5964,19 @@
         const meta = document.createElement('div');
         meta.className = 'channel-message-meta';
         const time = data.createdAt?.toDate?.().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) || 'Ora';
-        meta.textContent = `${data.senderName || 'Utente'} · ${time}`;
+        meta.textContent = data.senderName || 'Utente';
+        const streak = channelStreaks.get(data.senderId);
+        const days = activeStreakDays(streak, 'lastActiveDay');
+        const roman = channelRoman(days);
+        if (roman) {
+          const badge = document.createElement('span');
+          badge.className = 'channel-streak';
+          badge.dataset.tier = String(streakTier(days));
+          badge.textContent = roman;
+          badge.title = `${days} giorni consecutivi nel canale`;
+          meta.append(badge);
+        }
+        meta.append(document.createTextNode(` · ${time}`));
         const body = document.createElement('div');
         body.className = 'channel-message-text';
         body.textContent = data.text || '';
@@ -5821,13 +6014,14 @@
       const button = $('channelSendButton');
       button.disabled = true;
       try {
-        await channelRef(channelId).collection('messages').add({
+        const sentMessage = await channelRef(channelId).collection('messages').add({
           senderId: currentUser.id,
           senderName: currentUser.name,
           text: text.slice(0, 2000),
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         input.value = '';
+        recordStreakInteraction('channel', sentMessage.id, channelId);
       } catch (error) {
         alert('Messaggio non inviato: ' + error.message);
       } finally { button.disabled = !joinedChannelIds.has(channelId); }
@@ -5839,6 +6033,8 @@
       app.classList.remove('channels-mode');
       if (unsubscribeChannelMessages) unsubscribeChannelMessages();
       unsubscribeChannelMessages = null;
+      if (unsubscribeChannelStreaks) unsubscribeChannelStreaks();
+      unsubscribeChannelStreaks = null;
       $('navChannels')?.classList.remove('active');
       $('navHome')?.classList.add('active');
       setBottomNavActive('bottomChatBtn');
@@ -5866,6 +6062,8 @@
       app.classList.add('postcard-mode');
       if (unsubscribeChannelMessages) unsubscribeChannelMessages();
       unsubscribeChannelMessages = null;
+      if (unsubscribeChannelStreaks) unsubscribeChannelStreaks();
+      unsubscribeChannelStreaks = null;
       $('navChannels')?.classList.remove('active');
       setBottomNavActive('bottomPostcardBtn');
       $('sidebar')?.classList.remove('mobile-visible');

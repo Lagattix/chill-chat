@@ -110,6 +110,18 @@ service cloud.firestore {
         (resource.data.get('senderId', null) == request.auth.uid || isAdmin());
     }
 
+    match /pairStreaks/{roomId} {
+      allow read: if activeUser() && request.auth.uid in resource.data.participants;
+      allow create, delete: if false;
+      allow update: if activeUser() && request.auth.uid in resource.data.participants &&
+        resource.data.count >= 5 &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['robotName', 'outfit']) &&
+        request.resource.data.get('robotName', '') is string &&
+        request.resource.data.get('robotName', '').size() <= 24 &&
+        request.resource.data.get('outfit', 'classico') in
+          ['classico', 'cappello', 'corona', 'cuffie', 'cravatta'];
+    }
+
     match /groups/{groupId} {
       allow read: if activeUser();
       allow create: if activeUser() && validGroup() &&
@@ -132,6 +144,12 @@ service cloud.firestore {
 
     match /channels/{channelId} {
       allow read, write: if false;
+
+      match /streaks/{userId} {
+        allow read: if activeUser() && validChannelId(channelId) &&
+          exists(/databases/$(database)/documents/channels/$(channelId)/members/$(request.auth.uid));
+        allow write: if false;
+      }
 
       match /members/{userId} {
         allow get: if activeUser() && validChannelId(channelId) && isOwner(userId);
