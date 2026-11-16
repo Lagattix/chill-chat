@@ -3980,8 +3980,7 @@
       if (!event || event.target.id === 'profileModal') {
         $('profileModal').classList.remove('visible');
         $('navProfile')?.classList.remove('active');
-        $('navHome')?.classList.add('active');
-        setBottomNavActive('bottomChatBtn');
+        restoreMainTabSelection();
       }
     }
 
@@ -4209,8 +4208,7 @@
       if (!event || event.target.id === 'friendsModal') {
         $('friendsModal').classList.remove('visible');
         $('navFriends')?.classList.remove('active');
-        $('navHome')?.classList.add('active');
-        setBottomNavActive('bottomChatBtn');
+        restoreMainTabSelection();
       }
     }
 
@@ -5632,6 +5630,7 @@
       joinedChannelIds = new Set();
       selectedChannelId = null;
       $('appContainer')?.classList.remove('channels-mode');
+      setBottomNavActive('bottomChatBtn');
     }
 
     function channelRef(channelId) {
@@ -5814,6 +5813,15 @@
       $('navHome')?.classList.add('active');
       setBottomNavActive('bottomChatBtn');
       if (window.innerWidth <= 768) $('mobileMenuBtnFixed').style.display = 'flex';
+    }
+
+    function restoreMainTabSelection() {
+      const app = $('appContainer');
+      const channels = app.classList.contains('channels-mode');
+      const postcards = app.classList.contains('postcard-mode');
+      $('navHome')?.classList.toggle('active', !channels && !postcards);
+      $('navChannels')?.classList.toggle('active', channels);
+      setBottomNavActive(channels ? 'bottomChannelsBtn' : postcards ? 'bottomPostcardBtn' : 'bottomChatBtn');
     }
 
     function setBottomNavActive(activeId) {
