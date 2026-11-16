@@ -4,7 +4,7 @@
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-const APP_VERSION = '2026-11-13-restore-existing-users-1';
+const APP_VERSION = '2026-11-16-video-tracks-1';
 const STATIC_CACHE = `conversando-static-${APP_VERSION}`;
 const RUNTIME_CACHE = `conversando-runtime-${APP_VERSION}`;
 const APP_SCOPE = '/chill-chat/';

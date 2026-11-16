@@ -1689,9 +1689,9 @@
     </div>
   </section>
   <div id="installBanner" class="install-banner" aria-live="polite">
-    <div class="install-banner-text">Installa l'app</div>
-    <button id="installAppButton" class="install-banner-button" type="button" onclick="installApp()">
-      Installa
+    <div class="install-banner-text">Scarica Conversando per Android</div>
+    <button id="installAppButton" class="install-banner-button" type="button" onclick="openApkReleases()">
+      Vai alle Releases
     </button>
   </div>
 
@@ -2310,21 +2310,25 @@
 
     function playRemoteAudio() {
       const audio = $('remoteAudio');
-      if (!audio?.srcObject || !currentCall) return;
-      audio.muted = false;
-      audio.volume = 1;
-      audio.play().catch(error => console.warn('Audio remoto in attesa:', error.message));
-      if (currentCall.type === 'video') {
+      if (!currentCall) return;
+      if (audio?.srcObject?.getAudioTracks().length) {
+        audio.muted = false;
+        audio.volume = 1;
+        audio.play().catch(error => console.warn('Audio remoto in attesa:', error.message));
+      }
+      if (currentCall.type === 'video' && $('remoteVideo').srcObject?.getVideoTracks().length) {
         $('remoteVideo').play().catch(error => console.warn('Video remoto in attesa:', error.message));
       }
     }
 
     function attachRemoteTrack(event) {
-      const stream = event.streams?.[0];
-      if (stream) remoteStream = stream;
-      else if (!remoteStream.getTracks().includes(event.track)) remoteStream.addTrack(event.track);
-      $('remoteAudio').srcObject = remoteStream;
-      $('remoteVideo').srcObject = remoteStream;
+      if (!remoteStream) remoteStream = new MediaStream();
+      if (!remoteStream.getTracks().includes(event.track)) remoteStream.addTrack(event.track);
+      if (event.track.kind === 'audio') {
+        $('remoteAudio').srcObject = new MediaStream(remoteStream.getAudioTracks());
+      } else if (event.track.kind === 'video') {
+        $('remoteVideo').srcObject = new MediaStream(remoteStream.getVideoTracks());
+      }
       playRemoteAudio();
       event.track.onunmute = playRemoteAudio;
     }
@@ -2413,26 +2417,8 @@
       banner.setAttribute('aria-hidden', 'false');
     }
 
-    async function installApp() {
-      if (isAppInstalled()) {
-        updateInstallBanner();
-        return;
-      }
-
-      if (!deferredInstallPrompt) {
-        alert('Per installare l’app, apri il menu del browser e scegli "Installa app" o "Aggiungi alla schermata Home".');
-        return;
-      }
-
-      deferredInstallPrompt.prompt();
-      const choice = await deferredInstallPrompt.userChoice;
-      deferredInstallPrompt = null;
-
-      if (choice.outcome === 'accepted') {
-        document.body.classList.remove('install-banner-visible');
-      } else {
-        updateInstallBanner();
-      }
+    function openApkReleases() {
+      window.open('https://github.com/Lagattix/chill-chat/releases', '_blank', 'noopener,noreferrer');
     }
 
     window.addEventListener('beforeinstallprompt', event => {
@@ -4870,7 +4856,9 @@
         remoteStream = new MediaStream();
 
         $('localVideo').srcObject = localStream;
-        $('remoteVideo').srcObject = remoteStream;
+        $('localVideo').play().catch(error => console.warn('Anteprima video in attesa:', error.message));
+        $('remoteVideo').srcObject = null;
+        $('remoteAudio').srcObject = null;
         $('localVideo').style.display = type === 'video' ? 'block' : 'none';
         $('toggleVideoBtn').style.display = type === 'video' ? 'block' : 'none';
 
@@ -5136,7 +5124,9 @@
         remoteStream = new MediaStream();
 
         $('localVideo').srcObject = localStream;
-        $('remoteVideo').srcObject = remoteStream;
+        $('localVideo').play().catch(error => console.warn('Anteprima video in attesa:', error.message));
+        $('remoteVideo').srcObject = null;
+        $('remoteAudio').srcObject = null;
         $('localVideo').style.display = currentCall.type === 'video' ? 'block' : 'none';
         $('toggleVideoBtn').style.display = currentCall.type === 'video' ? 'block' : 'none';
 
