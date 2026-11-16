@@ -5787,7 +5787,7 @@
     }
     function channelRoman(days) {
       return days >= 200 ? 'VII' : days >= 150 ? 'VI' : days >= 100 ? 'V' :
-        days >= 50 ? 'IV' : days >= 10 ? 'III' : days >= 5 ? 'II' : days >= 3 ? 'I' : '';
+        days >= 50 ? 'IV' : days >= 30 ? 'III' : days >= 10 ? 'II' : days >= 5 ? 'I' : '';
     }
     function pairStreakFor(userId) {
       return pairStreaks.get(makeRoomId(currentUser.id, userId));
