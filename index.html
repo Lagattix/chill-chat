@@ -3411,17 +3411,21 @@
 
     async function getLastMessage(roomId) {
       try {
-        const snap = await db.collection('messages')
+        const query = db.collection('messages')
           .where('roomId', '==', roomId)
           .orderBy('timestamp', 'desc')
-          .limit(100)
-          .get();
+          .limit(100);
+        let snap = await query.get();
 
         if (snap.empty) return { preview: 'Inizia una conversazione', time: '', incomingAt: 0, outgoingAt: 0 };
 
         const msg = snap.docs[0].data();
-        const incoming = snap.docs.find(doc => doc.data().senderId !== currentUser.id);
+        let incoming = snap.docs.find(doc => doc.data().senderId !== currentUser.id);
         const outgoing = snap.docs.find(doc => doc.data().senderId === currentUser.id);
+        while (!incoming && snap.docs.length === 100) {
+          snap = await query.startAfter(snap.docs[snap.docs.length - 1]).get();
+          incoming = snap.docs.find(doc => doc.data().senderId !== currentUser.id);
+        }
         const incomingAt = incoming?.data().timestamp?.toMillis?.() || 0;
         const outgoingAt = outgoing?.data().timestamp?.toMillis?.() || 0;
         const preview = (msg.text || '').substring(0, 42) + ((msg.text || '').length > 42 ? '...' : '');
