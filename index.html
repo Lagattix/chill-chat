@@ -1753,6 +1753,11 @@
     .channel-streak[data-tier="100"] { color:#a855f7; }
     .channel-streak[data-tier="150"] { color:#3b82f6; }
     .channel-streak[data-tier="200"] { color:#fff; }
+    .leaderboard-menu-button { flex-shrink:0; border:1px solid var(--accent-primary); border-radius:10px; background:transparent; color:var(--accent-primary); font-size:11px; font-weight:700; padding:5px 7px; cursor:pointer; }
+    .leaderboard-row { display:flex; align-items:center; gap:10px; padding:12px 4px; border-bottom:1px solid var(--border-subtle); }
+    .leaderboard-rank { width:30px; color:var(--accent-primary); font-weight:800; }
+    .leaderboard-people { flex:1; min-width:0; overflow-wrap:anywhere; }
+    .leaderboard-days { white-space:nowrap; font-weight:700; color:var(--accent-primary); }
   </style>
 </head>
 
@@ -1881,6 +1886,7 @@
           <div class="user-status">
             <span class="status-dot"></span>
             <span id="currentUserName">Utente</span>
+            <button class="leaderboard-menu-button" type="button" onclick="openStreakLeaderboard()">Clas. streak</button>
           </div>
           <button class="logout-btn" onclick="logout()">Esci</button>
         </div>
@@ -2227,6 +2233,15 @@
         <option value="cravatta">Cravatta 👔</option>
       </select>
       <div class="profile-actions"><button class="profile-button profile-button-primary" onclick="saveStreakRobot()">Salva</button><button class="profile-button profile-button-secondary" onclick="$('streakRobotModal').classList.remove('visible')">Chiudi</button></div>
+    </div>
+  </div>
+
+  <div class="profile-modal" id="streakLeaderboardModal" onclick="if(event.target===this)closeStreakLeaderboard()">
+    <div class="profile-card" role="dialog" aria-modal="true" aria-labelledby="streakLeaderboardTitle" onclick="event.stopPropagation()" style="max-width:500px;">
+      <h2 id="streakLeaderboardTitle" style="margin:0 0 8px;">🏆 Classifica streak</h2>
+      <p style="color:var(--text-secondary);margin:0 0 16px;">Le 10 coppie con più giorni consecutivi di messaggi reciproci.</p>
+      <div id="streakLeaderboardList" aria-live="polite">Caricamento classifica...</div>
+      <div class="profile-actions"><button class="profile-button profile-button-secondary" onclick="closeStreakLeaderboard()">Chiudi</button></div>
     </div>
   </div>
 
@@ -2941,6 +2956,7 @@
           $('banScreen').classList.remove('visible');
           currentUser = null;
           activeChat = null;
+          $('streakLeaderboardModal').classList.remove('visible');
           if (unsubscribePairStreaks) { unsubscribePairStreaks(); unsubscribePairStreaks = null; }
           pairStreaks.clear();
           if (postcardUnsubscribe) { postcardUnsubscribe(); postcardUnsubscribe = null; }
@@ -5880,6 +5896,47 @@
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
       } catch (error) { console.warn('Streak non aggiornata:', error); }
+    }
+
+    async function openStreakLeaderboard() {
+      if (!currentUser || !auth?.currentUser) return;
+      $('streakLeaderboardModal').classList.add('visible');
+      const list = $('streakLeaderboardList');
+      list.textContent = 'Caricamento classifica...';
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch(STREAK_URL, {
+          headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const { leaders } = await response.json();
+        list.replaceChildren();
+        if (!Array.isArray(leaders) || !leaders.length) {
+          list.textContent = 'Non ci sono abbastanza streak, iniziane una per diventare primo!';
+          return;
+        }
+        leaders.slice(0, 10).forEach(entry => {
+          const row = document.createElement('div');
+          row.className = 'leaderboard-row';
+          const rank = document.createElement('span');
+          rank.className = 'leaderboard-rank';
+          rank.textContent = `${entry.rank}.`;
+          const people = document.createElement('span');
+          people.className = 'leaderboard-people';
+          people.textContent = Array.isArray(entry.people) ? entry.people.join(' e ') : 'Utenti';
+          const days = document.createElement('span');
+          days.className = 'leaderboard-days';
+          days.textContent = `${entry.days} ${entry.days === 1 ? 'giorno' : 'giorni'}`;
+          row.append(rank, people, days);
+          list.append(row);
+        });
+      } catch (error) {
+        console.warn('Classifica streak:', error);
+        list.textContent = 'Impossibile caricare la classifica. Riprova tra poco.';
+      }
+    }
+    function closeStreakLeaderboard() {
+      $('streakLeaderboardModal').classList.remove('visible');
     }
 
     function resetChannelSession() {
